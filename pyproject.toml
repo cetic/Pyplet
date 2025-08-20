@@ -1,0 +1,22 @@
+[project]
+name = "Pyplet"
+version = "0.0.1"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "build>=1.2.2.post1",
+    "cython>=3.1.2",
+    "pyodide-build>=0.30.5",
+    "python-minifier>=2.11.3",
+    "tornado>=6.5.1",
+]
+authors = [
+  {name = "Maxime Istasse", email = "istassem@gmail.com"},
+]
+
+[dependency-groups]
+examples = [
+    "matplotlib>=3.10.5",
+    "numpy>=2.3.2",
+]
