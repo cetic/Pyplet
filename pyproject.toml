@@ -15,6 +15,9 @@ authors = [
   {name = "Maxime Istasse", email = "istassem@gmail.com"},
 ]
 
+[tool.setuptools]
+packages = ["pyplet"]
+
 [dependency-groups]
 examples = [
     "matplotlib>=3.10.5",
