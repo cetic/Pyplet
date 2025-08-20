@@ -21,7 +21,6 @@ sockets = []
 
 async def sample():
     while True:
-        print("sampling")
         live = {
             "chat_server": len(chat_server.sockets),
             "numpy_server": len(numpy_server.sockets),

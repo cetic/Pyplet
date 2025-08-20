@@ -1,9 +1,6 @@
 from js import console, document
 
 import numpy as np
-
-document.pyodideMplTarget = document.getElementById("container")
-
 import matplotlib.pyplot as plt
 import io
 
