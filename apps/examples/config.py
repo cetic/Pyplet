@@ -2,6 +2,7 @@ import pyplet.common.cdn_imports as cdn_imports
 import pyplet.common.dom as d
 from pyplet.common.utils import get_import
 import pyplet.server
+from . import dashboard_server
 
 import zipfile
 import glob

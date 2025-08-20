@@ -5,9 +5,11 @@ import asyncio
 import tornado.websocket
 
 client_libraries = ["matplotlib", "numpy"]
+sockets = []
 
 
 async def websocket_server_loop(ws):
+    sockets.append(ws)
     while True:
         bytes = io.BytesIO()
         array = np.random.randn(10, 10)
@@ -18,3 +20,4 @@ async def websocket_server_loop(ws):
             break
         print(array)
         await asyncio.sleep(1)
+    sockets.remove(ws)
