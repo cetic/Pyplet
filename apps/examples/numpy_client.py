@@ -16,6 +16,7 @@ async def websocket_client_loop(ws):
         if im is None:
             im = fig.gca().imshow(array, vmin=-4, vmax=4)
             plt.show()
+            document.getElementById("container").appendChild(document.body.lastChild)
         else:
             im.set_data(array)
             plt.draw()

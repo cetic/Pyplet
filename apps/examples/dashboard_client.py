@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import json
 import numpy as np
 
+from js import document
+
 fig = plt.figure()
 lines = None
 
@@ -16,6 +18,7 @@ async def websocket_client_loop(ws):
                 (lines[l],) = plt.plot(history[l])
             plt.legend(list(history))
             plt.show()
+            document.getElementById("container").appendChild(document.body.lastChild)
             print(history)
         else:
             live = json.loads(await ws.receive())
