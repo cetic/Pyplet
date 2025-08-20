@@ -4,10 +4,10 @@ Pyplet is an application server meant to serve interactive web applications enti
 
 ## Installation
 
-To install Pyplet clone the repository and copy the repository 
+To install Pyplet, clone the repository and copy the pyodide packages.
 
 ```
-git clone 
+git clone git@git.cetic.be:seglab/pyplet.git
 wget https://github.com/pyodide/pyodide/releases/download/0.28.0/pyodide-0.28.0.tar.bz2
 tar -xvjf pyodide-0.28.0.tar.bz2
 ```
