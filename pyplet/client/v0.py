@@ -4,7 +4,7 @@ async def bootstrap(project_name, app_name, deps=()):
     # print(glob.glob("**", recursive=True))
     from js import WebSocket
     from pyodide.ffi import create_proxy
-    from pyplet.common.utils import get_import
+    from pyplet.utils import get_import
     import asyncio
 
     if deps:

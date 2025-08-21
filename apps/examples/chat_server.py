@@ -39,6 +39,5 @@ async def websocket_server_loop(ws):
             }
         )
         await asyncio.gather(*(s.send(msg) for s in sockets.values()))
-    print(f"User {name} left.")
     del sockets[name]
     available.insert(0, name)

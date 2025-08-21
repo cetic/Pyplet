@@ -1,4 +1,5 @@
-from .common import dom as d, bootstrap as b
+from .. import dom as d
+from ..dom import bootstrap as b
 import typing as t
 import collections
 import glob

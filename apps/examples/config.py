@@ -1,6 +1,5 @@
-import pyplet.common.cdn_imports as cdn_imports
-import pyplet.common.dom as d
-from pyplet.common.utils import get_import
+import pyplet.dom as d
+from pyplet.utils import get_import
 import pyplet.server
 from . import dashboard_server
 
@@ -17,7 +16,8 @@ def package(handler: pyplet.server.PackageHandler):
     with zipfile.ZipFile(zip_bytes, "w") as zip_file:
         files = [
             (os.path.dirname(os.path.dirname(pyplet.__file__)), "pyplet/client/**"),
-            (os.path.dirname(os.path.dirname(pyplet.__file__)), "pyplet/common/**"),
+            (os.path.dirname(os.path.dirname(pyplet.__file__)), "pyplet/dom/**"),
+            (os.path.dirname(os.path.dirname(pyplet.__file__)), "pyplet/*.py"),
             (os.getcwd(), f"apps/{project}/**"),
         ]
         for root_dir, pattern in files:
@@ -41,12 +41,12 @@ def serve(handler: pyplet.server.AppHandler):
     return [
         d.head(
             d.script(src=f"{server}/pyodide/pyodide.js"),
-            d.script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
-            d.script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
             d.link(
                 rel="stylesheet",
                 href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",
             ),
+            d.script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
+            d.script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
         ),
         d.body(
             d.div(id="container"),

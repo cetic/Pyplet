@@ -6,7 +6,7 @@ import os
 import asyncio
 import json
 
-from .common.utils import get_import
+from ..utils import get_import
 from . import templates
 from apps import config
 
@@ -106,7 +106,3 @@ async def amain():
 
 def main():
     asyncio.run(amain())
-
-
-if __name__ == "__main__":
-    main()

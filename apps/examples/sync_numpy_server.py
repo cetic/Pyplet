@@ -26,7 +26,6 @@ async def send_to_all():
                     await ws.send(value)
                 except tornado.websocket.WebSocketClosedError:
                     sockets.remove(ws)
-            print(array)
         await asyncio.sleep(1)
 
 

@@ -1,5 +1,5 @@
 from js import document
-from pyplet.common import dom as d
+from pyplet import dom as d
 import matplotlib.pyplot as plt
 import numpy as np
 

@@ -234,15 +234,3 @@ class _DomFX:
 
     def __ror__(self, node):
         return self.f(node, *self.args, **self.kwargs)
-
-
-@DomFX
-def label(node, text, row_class, col_classes=None):
-    if node.id is None:
-        node.append(id=gen_id())
-    label_node = label(text, _for=node.id, _class="form-label")
-    if col_classes is not None:
-        a, b = col_classes.split(",")
-        label_node.append_class(a)
-        node = div(_class=b).append(node)
-    return div(_class=row_class).append(label_node, node)

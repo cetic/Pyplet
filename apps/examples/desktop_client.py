@@ -1,4 +1,4 @@
-import pyplet.common.dom as d
+import pyplet.dom as d
 from js import document, console, jQuery as jQ
 from pyodide.ffi import create_proxy
 
@@ -19,14 +19,18 @@ def new_window(e):
 
     @create_proxy
     def close(event, _):
-        iframe.src = "/"
+        # iframe.src = "/"
+        iframe.remove()
+        close.destroy()
 
     div = tree._render_dom(document)
     container.appendChild(div)
     iframe = div.firstChild
-    iframe.addEventListener("load", hide_bar)
+    iframe.addEventListener("load", on_load)
 
-    jQ(container.lastChild).dialog().on("dialogclose", close)
+    jQ(container.lastChild).dialog({"width": 800, "height": 600}).on(
+        "dialogclose", close
+    )
 
 
 tree = d.div(
@@ -36,10 +40,9 @@ container.appendChild(tree._render_dom(document))
 
 
 @create_proxy
-def hide_bar(event):
+def on_load(event):
     jQ(".navbar", event.target.contentDocument).remove()
     jQ(".footer", event.target.contentDocument).remove()
-    console.log(jQ(".ui-dialog-title", event.target.parentNode))
     jQ(".ui-dialog-title", jQ(event.target.parentNode).closest(".ui-dialog")).text(
         event.target.contentDocument.title
     )

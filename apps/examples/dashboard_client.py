@@ -19,7 +19,6 @@ async def websocket_client_loop(ws):
             plt.legend(list(history))
             plt.show()
             document.getElementById("container").appendChild(document.body.lastChild)
-            print(history)
         else:
             live = json.loads(await ws.receive())
             for l in live:
