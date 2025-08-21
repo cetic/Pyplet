@@ -41,6 +41,12 @@ def serve(handler: pyplet.server.AppHandler):
     return [
         d.head(
             d.script(src=f"{server}/pyodide/pyodide.js"),
+            d.script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
+            d.script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
+            d.link(
+                rel="stylesheet",
+                href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",
+            ),
         ),
         d.body(
             d.div(id="container"),
