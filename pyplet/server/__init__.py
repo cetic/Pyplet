@@ -9,6 +9,7 @@ import json
 from ..utils import get_import
 from . import templates
 from apps import config
+import pyplet
 
 
 __all__ = ["main"]
@@ -40,7 +41,9 @@ class AppHandler(tornado.web.RequestHandler):
         self.write(dom.__html__())
 
 
-class WebSocketHandler(tornado.websocket.WebSocketHandler):
+class ServerWebSocket(tornado.websocket.WebSocketHandler):
+    closing_message = pyplet.WebSocket.closing_message
+
     async def open(self, project_name, app_name):
         server = get_import(f"apps.{project_name}.{app_name}_server")
 
@@ -60,7 +63,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         asyncio.get_running_loop().create_task(self.aclose())
 
     async def aclose(self):
-        await self.queue.put(StopIteration)
+        await self.queue.put(self.closing_message)
 
 
 def make_app():
@@ -88,7 +91,7 @@ def make_app():
             ),
             (r"/", LoginHandler),
             (r"/apps/([a-zA-Z0-9_]+)/([a-zA-Z0-9_]+)\.zip", PackageHandler),
-            (r"/apps/([a-zA-Z0-9_]+)/([a-zA-Z0-9_]+).ws", WebSocketHandler),
+            (r"/apps/([a-zA-Z0-9_]+)/([a-zA-Z0-9_]+).ws", ServerWebSocket),
             (r"/apps/([a-zA-Z0-9_]+)/([a-zA-Z0-9_]+)", AppHandler),
             (r"/.*", tornado.web.RedirectHandler, {"url": "/", "permanent": False}),
         ],

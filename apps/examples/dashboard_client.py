@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import json
 import numpy as np
+import pyplet
 
 from js import document
 
@@ -8,7 +9,7 @@ fig = plt.figure()
 lines = None
 
 
-async def websocket_client_loop(ws):
+async def websocket_client_loop(ws: pyplet.WebSocket):
     history = None
     lines = {}
     while True:

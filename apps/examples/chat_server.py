@@ -1,13 +1,14 @@
 import json
 import asyncio
+import pyplet
 
 available = ["jack", "denis", "max"]
 sockets = {}
 
 
-async def websocket_server_loop(ws):
+async def websocket_server_loop(ws: pyplet.WebSocket):
     if not available:
-        ws.send(
+        await ws.send(
             json.dumps(
                 {
                     "type": "error",
@@ -19,7 +20,7 @@ async def websocket_server_loop(ws):
 
     name = available.pop()
     sockets[name] = ws
-    ws.send(
+    await ws.send(
         json.dumps(
             {
                 "type": "init",
@@ -29,7 +30,7 @@ async def websocket_server_loop(ws):
     )
     while True:
         msg = await ws.receive()
-        if msg is StopIteration:
+        if msg is ws.closing_message:
             break
         msg = json.dumps(
             {

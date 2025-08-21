@@ -1,5 +1,6 @@
 from js import document, console
 from pyodide.ffi import create_proxy
+import pyplet
 import json
 
 container = document.getElementById("container")
@@ -22,7 +23,7 @@ def render(html):
     container.appendChild(p)
 
 
-async def websocket_client_loop(ws):
+async def websocket_client_loop(ws: pyplet.WebSocket):
     init = decode(await ws.receive())
     assert init["type"] == "init"
     render(f"<b>Logged in as {init['name']}</b>")
@@ -31,13 +32,13 @@ async def websocket_client_loop(ws):
     async def submit(_):
         message = input.value
         input.value = ""
-        ws.send(message)
+        await ws.send(message)
 
     input.addEventListener("change", submit)
 
     while True:
         msg = await ws.receive()
-        if msg is StopIteration:
+        if msg is ws.closing_message:
             break
         msg = decode(msg)
         render(f"<b>{msg['name']}</b>: {msg['message']}")

@@ -67,7 +67,7 @@ def serve(handler: pyplet.server.AppHandler):
                         import io, zipfile
                         zip_file = zipfile.ZipFile(io.BytesIO(response), 'r')
                         zip_file.extractall()
-                        from pyplet.client.v0 import bootstrap
+                        from pyplet.client import bootstrap
                         await bootstrap({project!r}, {app!r}, {client_libraries!r})
                         
                     import asyncio
