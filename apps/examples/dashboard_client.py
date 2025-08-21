@@ -21,7 +21,10 @@ async def websocket_client_loop(ws: pyplet.WebSocket):
             plt.show()
             document.getElementById("container").appendChild(document.body.lastChild)
         else:
-            live = json.loads(await ws.receive())
+            msg = await ws.receive()
+            if msg is ws.closing_message:
+                break
+            live = json.loads(msg)
             for l in live:
                 history[l].append(live[l])
                 lines[l].set_ydata(history[l])

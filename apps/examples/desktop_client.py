@@ -36,7 +36,7 @@ def new_window(e):
 tree = d.div(
     d.button("New window", id="new_window_button").on("click", new_window),
 )
-container.appendChild(tree._render_dom(document))
+container.appendChild(d.render_dom(tree))
 
 
 @create_proxy

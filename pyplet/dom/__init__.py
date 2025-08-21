@@ -72,55 +72,62 @@ class Node:
         return other is self
 
     def _render_dom(self, document):
-        element = (
-            document.createElement(self.tag)
-            if self.ns is None
-            else document.createElementNS(self.ns, self.tag)
-        )
-        for prop, value in self.props.items():
-            (
-                element.setAttribute(prop, value)
-                if self.ns is None
-                else element.setAttributeNS(None, prop, value)
-            )
-        for child in self.children:
-            if child is None:
-                continue
-            elif isinstance(child, str):
-                child = document.createTextNode(child)
-            else:
-                child = child._render_dom(document)
-            element.appendChild(child)
-        for event_name, handler in self.event_listeners:
-            element.addEventListener(event_name, handler)
-        return element
+        return render_dom(self)
 
     def __html__(self):
-        lst = [getattr(self, "prelude", "")]
-        self._render_html(lst)
-        return "".join(lst)
+        return render_html(self)
 
-    def _render_html(self, lst):
-        assert not self.event_listeners
-        tag = self.tag
+
+def render_html(node):
+    def _render_html(node, lst):
+        assert not node.event_listeners
+        tag = node.tag
         lst.append(f"<{tag}")
-        for k, v in self.props.items():
+        for k, v in node.props.items():
             lst.append(f" {k}={v!r}")
-        if not self.children and tag not in _never_closed:
+        if not node.children and tag not in _never_closed:
             lst.append(">" if tag in _self_closing else "/>")
             return
         lst.append(">")
 
-        for child in self.children:
+        for child in node.children:
             if isinstance(child, str):
                 lst.append(child)
             else:
-                child._render_html(lst)
+                _render_html(child, lst)
 
         lst.append(f"</{tag}>")
 
-    def _render_react(self):
-        return
+    lst = [getattr(node, "prelude", "")]
+    _render_html(node, lst)
+    return "".join(lst)
+
+
+def render_dom(node):
+    from js import document
+
+    element = (
+        document.createElement(node.tag)
+        if node.ns is None
+        else document.createElementNS(node.ns, node.tag)
+    )
+    for prop, value in node.props.items():
+        (
+            element.setAttribute(prop, value)
+            if node.ns is None
+            else element.setAttributeNS(None, prop, value)
+        )
+    for child in node.children:
+        if child is None:
+            continue
+        elif isinstance(child, str):
+            child = document.createTextNode(child)
+        else:
+            child = render_dom(child)
+        element.appendChild(child)
+    for event_name, handler in node.event_listeners:
+        element.addEventListener(event_name, handler)
+    return element
 
 
 def html(prelude, *children, **props):

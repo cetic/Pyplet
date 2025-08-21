@@ -8,6 +8,7 @@ import json
 
 from ..utils import get_import
 from . import templates
+from .. import dom as d
 from apps import config
 import pyplet
 
@@ -28,7 +29,7 @@ class PackageHandler(tornado.web.RequestHandler):
 
 class LoginHandler(tornado.web.RequestHandler):
     async def get(self):
-        self.write(templates.index_template(self).__html__())
+        self.write(d.render_html(templates.index_template(self)))
 
 
 class AppHandler(tornado.web.RequestHandler):
@@ -38,7 +39,7 @@ class AppHandler(tornado.web.RequestHandler):
         dom = templates.application_template(
             f"{project_name}/{app_name}", self, content=content
         )
-        self.write(dom.__html__())
+        self.write(d.render_html(dom))
 
 
 class ServerWebSocket(tornado.websocket.WebSocketHandler):
