@@ -105,7 +105,7 @@ def new_password_confirmation(handler, email):
 
 
 def index_template(handler):
-    applications = ["/" + p[:-10] for p in glob.glob("apps/*/*_client.py")]
+    applications = ["/" + p[:-10] for p in sorted(glob.glob("apps/*/*_client.py"))]
     projects = collections.defaultdict(d.ul)
     for application in applications:
         project, app_name = application.split("/")[-2:]
