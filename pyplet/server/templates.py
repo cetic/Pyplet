@@ -134,7 +134,7 @@ def about_template(handler):
                 d.p(
                     "It is developed at the ",
                     d.a("CETIC", href="https://www.cetic.be/", target="_blank"),
-                    " to provide its partners with tailor-made and easily accessible annotation applications.",
+                    " to develop web applications.",
                 ),
                 d.p(
                     "Its applications can be written entirely in Python while leveraging two of the most vibrant programming "

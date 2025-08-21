@@ -53,8 +53,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     async def receive(self):
         return await self.queue.get()
 
-    def send(self, message):
-        return super().write_message(message, binary=not isinstance(message, str))
+    async def send(self, message):
+        await super().write_message(message, binary=not isinstance(message, str))
 
     def on_close(self):
         asyncio.get_running_loop().create_task(self.aclose())

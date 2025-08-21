@@ -17,6 +17,7 @@ historical_data = {
     "dashboard_server": [],
 }
 sockets = []
+sockets_lock = asyncio.Lock()
 
 
 async def sample():
@@ -27,13 +28,17 @@ async def sample():
             "sync_numpy_server": len(sync_numpy_server.sockets),
             "dashboard_server": len(sockets),
         }
-        for s in list(sockets):
-            try:
-                await s.send(json.dumps(live))
-            except tornado.websocket.WebSocketClosedError:
-                sockets.remove(s)
-        for l in live:
-            historical_data[l].append(live[l])
+        async with sockets_lock:
+            msg = json.dumps(live)
+            exceptions = await asyncio.gather(
+                *(s.send(msg) for s in sockets),
+                return_exceptions=True,
+            )
+            for socket, exc in zip(sockets, exceptions):
+                if exc:
+                    sockets.remove(socket)
+            for l in live:
+                historical_data[l].append(live[l])
         await asyncio.sleep(1)
 
 
@@ -41,5 +46,6 @@ asyncio.create_task(sample())
 
 
 async def websocket_server_loop(ws):
-    ws.send(json.dumps(historical_data))
-    sockets.append(ws)
+    async with sockets_lock:
+        await ws.send(json.dumps(historical_data))
+        sockets.append(ws)
