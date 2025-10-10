@@ -1,4 +1,4 @@
-import json
+# The template file must be written i used chat_server example temporarly
 import asyncio
 import pyplet
 

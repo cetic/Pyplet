@@ -1,3 +1,4 @@
+# The template file must be written i used chat_client example temporarly
 from js import document, console
 from pyodide.ffi import create_proxy
 import pyplet

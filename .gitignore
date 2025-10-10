@@ -1,2 +1,7 @@
 __pycache__
 uv.lock
+*.egg-info/
+pyodide-*
+venv
+dist
+env

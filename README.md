@@ -33,3 +33,8 @@ python -m pyplet.server
 ```
 
 We advise you to take inspiration from the `apps/` folder present in this repository.
+
+## Initialize new pyplet project
+```
+pyplet init <my_project_name>
+```
