@@ -1,7 +1,50 @@
-__pycache__
-uv.lock
+# Python cache/artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
+
+# Build & packaging
+build/
+dist/
 *.egg-info/
+.eggs/
+wheelhouse/
+
+# MkDocs output
+site/
+
+# Caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.cache/
+
+# Env files
+.env
+.env.*
+
+# Project-specific
+uv.lock
+pyodide-*.tar.bz2
 pyodide-*
-venv
-dist
-env
+pyplet/pyodide/
+Pyplet.egg-info/
+
+# Apps (ignore local clones but keep config, template, and local examples repo)
+apps/*
+!apps/config.py
+!apps/template/
+!apps/template/**
+apps/pyplet_examples/
