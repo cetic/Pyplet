@@ -1,8 +1,24 @@
+"""Convenience helpers styled after Bootstrap 5 components.
+
+These helpers produce :mod:`pyplet.dom` nodes with reasonable classes and
+markup for quick prototyping.
+
+Docstring style: Google.
+"""
+
 from .. import dom as d
 
 
 @d.DomFX
 def label(node, text, row_class, col_classes=None):
+    """Attach a label to a form control, optionally placing both in a grid.
+
+    Args:
+        node: Target control node.
+        text: Label text.
+        row_class: Row container classes.
+        col_classes: Optional comma-separated classes ``"label_col,control_col"``.
+    """
     if node.id is None:
         node.append(id=d.gen_id())
     label_node = label(text, _for=node.id, _class="form-label")
@@ -17,6 +33,7 @@ nav = d.Node._new_factory("nav")
 
 
 def navbar(*children):
+    """Create a basic Bootstrap navbar container."""
     return nav(_class="navbar").append(
         d.div(_class="container").append(
             *children,
@@ -25,6 +42,7 @@ def navbar(*children):
 
 
 def input(type, *, id=d.skip, _class=d.auto, label=None, **props):
+    """Create a Bootstrap-styled input and optional label."""
     if _class is d.auto:
         _class = {
             "submit": "btn btn-primary",
@@ -42,6 +60,7 @@ def input(type, *, id=d.skip, _class=d.auto, label=None, **props):
 def slider(
     value=0, min=0, max=100, step=1, _class="form-range", id=d.skip, label=None, **props
 ):
+    """Create a range slider with optional label."""
     if id is d.skip and label is not None:
         id = d.gen_id()
     slider = input(
@@ -60,6 +79,13 @@ def slider(
 
 
 def dropdown(text, btn_classes="btn btn-primary dropdown-toggle", children=()):
+    """Create a dropdown component.
+
+    Args:
+        text: Button text.
+        btn_classes: Button CSS classes.
+        children: Iterable of menu item nodes.
+    """
     # add dropdown-item class in children
     for child in children:
         if "class" not in child.props:

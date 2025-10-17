@@ -1,3 +1,17 @@
+"""Lightweight DOM builder and renderer.
+
+This module provides a tiny DOM DSL for both server-side HTML generation and
+client-side DOM creation in Pyodide. It exposes:
+
+- ``Node``: a data structure representing elements, attributes, children and event listeners
+- HTML/SVG element factories (e.g., ``div``, ``span``, ``svg``)
+- ``render_html``: serialize a tree to HTML
+- ``render_dom``: create live DOM nodes in the browser
+- convenience helpers like ``append_class`` and ``append_style``
+
+Docstring style: Google.
+"""
+
 import re
 import typing as T
 
@@ -16,6 +30,16 @@ def handle_attr_kwargs(kwargs):
 
 
 class Node:
+    """A DOM node definition.
+
+    Args:
+        tag: Tag name, e.g. ``"div"``.
+        props: Sequence of key/value attributes.
+        children: Sequence of strings or :class:`Node` children.
+        event_listeners: Sequence of ``(event_name, handler)`` pairs (browser-only).
+        ns: Optional XML namespace (used for SVG elements).
+    """
+
     def __init__(self, tag=None, *, props=(), children=(), event_listeners=(), ns=None):
         self.tag = tag
         self.props = dict(props)
@@ -24,22 +48,33 @@ class Node:
         self.ns = ns
 
     def append(self, *children, **props):
+        """Append children and/or update attributes.
+
+        Returns:
+            self: to allow method chaining.
+        """
         if props:
             self.props.update(handle_attr_kwargs(props))
         self.children.extend(children)
         return self
 
     def on(self, event_name, handler):
+        """Register a browser event listener.
+
+        Note: effective only when rendered with :func:`render_dom` in Pyodide.
+        """
         self.event_listeners.append((event_name, handler))
         return self
 
     def append_class(self, cls):
+        """Append a CSS class to the ``class`` attribute."""
         if "class" in self.props:
             cls = f'{self.props["class"]} {cls}'
         self.props["class"] = cls
         return self
 
     def append_style(self, style):
+        """Append a CSS style declaration to the ``style`` attribute."""
         if "style" in self.props:
             style = f'{self.props["style"]};{style}'
         self.props["style"] = style
@@ -47,14 +82,17 @@ class Node:
 
     @property
     def id(self):
+        """Return the element ``id`` attribute if present."""
         return self.props.get("id", None)
 
     @property
     def classes(self):
+        """Return the element ``class`` attribute if present."""
         return self.props.get("class", None)
 
     @staticmethod
     def _new_factory(type, ns=None):
+        """Create a simple element factory for a given tag/namespace."""
         def factory(*children, **props):
             return Node(
                 type,
@@ -72,13 +110,23 @@ class Node:
         return other is self
 
     def _render_dom(self, document):
+        """Render this node into a live DOM Element (Pyodide only)."""
         return render_dom(self)
 
     def __html__(self):
+        """Return HTML serialization for this node and descendants."""
         return render_html(self)
 
 
 def render_html(node):
+    """Serialize a node tree to HTML.
+
+    Args:
+        node: Root node to render.
+
+    Returns:
+        The HTML string.
+    """
     def _render_html(node, lst):
         assert not node.event_listeners
         tag = node.tag
@@ -104,6 +152,7 @@ def render_html(node):
 
 
 def render_dom(node):
+    """Create a live DOM Element from a node tree (browser only)."""
     from js import document
 
     element = (
@@ -131,6 +180,11 @@ def render_dom(node):
 
 
 def html(prelude, *children, **props):
+    """Create a top-level ``<html>`` node with a prelude.
+
+    The prelude can be used to inject a doctype or other content that must
+    appear before the root element.
+    """
     node = Node("html", props=handle_attr_kwargs(props), children=children)
     node.prelude = prelude
     return node
@@ -212,6 +266,7 @@ text = Node._new_factory("text", _SVG_NS)
 
 
 def append_classes(node, classes):
+    """Append CSS classes to a node."""
     if "class" in node.props:
         classes = f'{node.props["class"]} {classes}'
     node.props["class"] = classes
