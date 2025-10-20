@@ -6,6 +6,8 @@ theme:
     - content.code.copy
     - navigation.sections
     - navigation.tracking
+  # Site-wide browser note (shown in the header)
+  announcement: "For best results use a Chromium-based browser (Chrome, Edge, Brave). Others work but visuals/behavior may differ."
   palette:
     - media: "(prefers-color-scheme)"
       toggle:
@@ -71,4 +73,3 @@ nav:
     - WebSocket Protocol: api/websocket.md
     - Client Utils: api/client-utils.md
   - Troubleshooting: troubleshooting.md
-

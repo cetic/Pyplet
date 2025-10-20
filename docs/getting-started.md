@@ -11,6 +11,9 @@ This guide gets you up and running locally with Pyplet.
 - Python 3.13 or newer
 - A virtual environment tool (e.g., `uv`, `venv`, or `virtualenv`)
 
+!!! note "Browser support"
+    For the best experience, use a Chromium‑based browser (Chrome, Edge, Brave). Other browsers are compatible, but some graphical elements or behaviors may differ, or in some cases look or perform poorly.
+
 ## Install Pyplet
 
 ```bash
@@ -60,4 +63,3 @@ Examples include:
 - NumPy heatmap stream (binary frames + Matplotlib)
 - Dashboard (live chart of service connections)
 - Frontend-only app (Pyodide + Matplotlib + DOM)
-
