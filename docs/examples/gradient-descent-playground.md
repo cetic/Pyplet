@@ -22,6 +22,9 @@ git submodule update --init --recursive
 ## Highlights
 
 - Objective catalogue defined in `gradient_descent_playground_client.py:92` with Autograd-backed functions.
+- Control panel (function, optimizer, hyperparameters, transport buttons) lives in
+  `gradient_descent_playground_client.py:249` and no longer includes the former
+  diagnostics sidebar, keeping the layout focused on interaction.
 - Slider proxies in `gradient_descent_playground_client.py:362` feed hyperparameter updates into the simulation loop.
 - Optimizer step logic centralised in `gradient_descent_playground_client.py:974`.
 - Canvas rendering pipeline anchored by `gradient_descent_playground_client.py:1048`.
