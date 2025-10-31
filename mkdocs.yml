@@ -64,7 +64,13 @@ nav:
     - Frontend-only App: tutorials/frontend-only.md
     - WebSocket App: tutorials/websocket-app.md
   - Examples:
-    - GradientDescentPlayground: examples/gradient-descent-playground.md
+    - Chat: examples/chat.md
+    - Dashboard: examples/dashboard.md
+    - Desktop: examples/desktop.md
+    - Frontend Only: examples/frontend-only.md
+    - Gradient Descent Playground: examples/gradient-descent-playground.md
+    - NumPy Stream: examples/numpy-stream.md
+    - Sync NumPy: examples/sync-numpy.md
   - API Reference:
     - DOM: api/dom.md
     - Bootstrap Helpers: api/bootstrap.md

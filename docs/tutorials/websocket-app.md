@@ -9,7 +9,7 @@ Let’s build a real-time app that exchanges messages between browser and server
 ## Client: handling input and messages
 
 ```python
---8<-- "apps/examples/chat_client.py"
+--8<-- "apps/pyplet_examples/chat_client.py"
 ```
 
 The client:
@@ -21,7 +21,7 @@ The client:
 ## Server: broadcasting to all clients
 
 ```python
---8<-- "apps/examples/chat_server.py"
+--8<-- "apps/pyplet_examples/chat_server.py"
 ```
 
 The server loop:
@@ -33,4 +33,3 @@ The server loop:
 ## Run it
 
 Start the server and open multiple browser tabs to the chat app’s URL. You should see messages broadcast in real-time.
-

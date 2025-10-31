@@ -1,41 +1,34 @@
 ---
-title: GradientDescentPlayground
+title: Gradient Descent Playground
 ---
 
-# Example: GradientDescentPlayground
+# Example: Gradient Descent Playground
 
-This demo lives in a separate repository and can be included under `apps/` in two ways.
+A 1D optimization playground that visualizes gradient-based optimizers entirely in the browser. Adjust objectives, hyperparameters, and transport controls to see how each optimizer behaves in real time.
 
-## Option 1: Git submodule (recommended)
+## Location
+
+- Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
+- Path: `apps/examples/gradient_descent_playground_*`
+- Client entry point: `gradient_descent_playground_client.py`
+- Server shim: `gradient_descent_playground_server.py`
+
+Pull the examples repository (submodule) after cloning Pyplet:
 
 ```bash
-git submodule add git@git.cetic.be:seglab/gradientdescentplayground.git apps/GradientDescentPlayground
 git submodule update --init --recursive
 ```
 
-To update later:
+## Highlights
 
-```bash
-cd apps/GradientDescentPlayground
-git pull origin main  # or the appropriate default branch
-```
+- Objective catalogue defined in `gradient_descent_playground_client.py:92` with Autograd-backed functions.
+- Slider proxies in `gradient_descent_playground_client.py:362` feed hyperparameter updates into the simulation loop.
+- Optimizer step logic centralised in `gradient_descent_playground_client.py:974`.
+- Canvas rendering pipeline anchored by `gradient_descent_playground_client.py:1048`.
 
-## Option 2: Plain clone (quick local setup)
+## Extending the playground
 
-```bash
-git clone git@git.cetic.be:seglab/gradientdescentplayground.git apps/GradientDescentPlayground
-```
+- Add new objectives by extending the `FUNCTIONS` mapping and wiring corresponding widgets in `render_layout`.
+- Introduce optimizers by updating `apply_optimizer_step` and the UI controls that expose new hyperparameters.
 
-## Launching the demo
-
-Start the Pyplet server and open:
-
-```
-http://127.0.0.1:8888/apps/GradientDescentPlayground/GradientDescentPlayground
-```
-
-Notes:
-
-- The final URL segment must match the `_client`/`_server` filename prefix inside the demo folder
-- If the demo declares extra `client_libraries`, Pyodide installs them automatically on first load
-
+Refer to the example repository README for a deeper walkthrough of the architecture and implementation notes.

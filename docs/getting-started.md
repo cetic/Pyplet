@@ -22,7 +22,7 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-Optionally install example dependencies used by the bundled demo apps:
+Optionally install example dependencies used by the official example micro-apps:
 
 ```bash
 uv sync --group examples
@@ -57,9 +57,4 @@ Server settings live in `apps/config.py`:
 
 Open any app by navigating to `/apps/<project>/<name>` where `<project>` is the folder under `apps/` (e.g., `examples`) and `<name>` matches the `_client`/`_server` filename prefix.
 
-Examples include:
-
-- Chat (real-time broadcast with WebSockets)
-- NumPy heatmap stream (binary frames + Matplotlib)
-- Dashboard (live chart of service connections)
-- Frontend-only app (Pyodide + Matplotlib + DOM)
+The official examples repository lives at `apps/examples` (a Git submodule). Run `git submodule update --init --recursive` to pull it after cloning. Refer to the **Examples** section of the documentation for a full tour of the available micro-apps.
