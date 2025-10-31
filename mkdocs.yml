@@ -71,6 +71,7 @@ nav:
     - Gradient Descent Playground: examples/gradient-descent-playground.md
     - NumPy Stream: examples/numpy-stream.md
     - Sync NumPy: examples/sync-numpy.md
+    - Sync Slider: examples/sync-slider.md
   - API Reference:
     - DOM: api/dom.md
     - Bootstrap Helpers: api/bootstrap.md
