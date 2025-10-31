@@ -14,7 +14,7 @@ In this tutorial, you’ll build a client-only app that:
 We can reuse the included example as a template and adapt it later:
 
 ```python
---8<-- "apps/examples/frontend_only_client.py"
+--8<-- "apps/pyplet_examples/frontend_only_client.py"
 ```
 
 ## Server stub
@@ -22,7 +22,7 @@ We can reuse the included example as a template and adapt it later:
 Because this app runs entirely in the browser, the server component just declares client libraries so the bundle brings NumPy and Matplotlib:
 
 ```python
---8<-- "apps/examples/frontend_only_server.py"
+--8<-- "apps/pyplet_examples/frontend_only_server.py"
 ```
 
 ## Run it
@@ -30,4 +30,3 @@ Because this app runs entirely in the browser, the server component just declare
 Start the server and navigate to the URL shown on the home page for the “frontend_only” app.
 
 That’s it — you’ve built a fully client-side experience entirely in Python.
-

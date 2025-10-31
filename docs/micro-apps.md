@@ -29,7 +29,7 @@ Packaging (`apps/<project>/config.py`):
 - `serve(handler)`: returns a DOM tree that loads Pyodide, unpacks the app zip, and calls `pyplet.client.bootstrap()`
 
 ```python
---8<-- "apps/examples/config.py"
+--8<-- "apps/pyplet_examples/config.py"
 ```
 
 ## URLs
@@ -43,27 +43,4 @@ Packaging (`apps/<project>/config.py`):
 
 Any additional Python packages used by the client don’t need pre-installation. Declare them in the server file as `client_libraries`, and Pyodide installs them at runtime.
 
-```python
---8<-- "apps/examples/frontend_only_server.py"
-```
-
-## Example: Frontend-only
-
-```python
---8<-- "apps/examples/frontend_only_client.py"
-```
-
-## Example: NumPy stream (binary frames)
-
-Client:
-
-```python
---8<-- "apps/examples/numpy_client.py"
-```
-
-Server:
-
-```python
---8<-- "apps/examples/numpy_server.py"
-```
-
+The **Examples** section of the documentation walks through concrete micro-apps that apply these patterns—real-time chat, dashboards, canvas-based playgrounds, and more. Start there when you want a guided tour of fully working apps.
