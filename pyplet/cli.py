@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import importlib
 
+
 def create_project(project_name: str):
     """
     Create a new project directory under ./apps/project_name and copy
@@ -12,18 +13,20 @@ def create_project(project_name: str):
     """
     # Validate project name for Python importability
     if not project_name.isidentifier():
-        print(f"[ERROR] '{project_name}' is not a valid Python's module name . "
-              "Use only letters, numbers and underscores, "
-              "and dont start with a number.")
+        print(
+            f"[ERROR] '{project_name}' is not a valid Python's module name . "
+            "Use only letters, numbers and underscores, "
+            "and dont start with a number."
+        )
         sys.exit(1)
     cwd = Path.cwd()
     script_dir = Path(__file__).resolve().parent
-    examples_dir = script_dir.parent / "apps" / "examples"
+    template_dir = script_dir.parent / "apps" / "template"
 
     # Sources
-    src_client = examples_dir / "template_client.py"
-    src_server = examples_dir / "template_server.py"
-    src_config = examples_dir / "config.py"
+    src_client = template_dir / "template_client.py"
+    src_server = template_dir / "template_server.py"
+    src_config = template_dir / "config.py"
     src_global_config = script_dir.parent / "apps" / "config.py"
 
     # Create apps dir if it doesn't exist
@@ -57,6 +60,7 @@ def create_project(project_name: str):
 
     print(f"[OK] Files copied: client.py, server.py, config.py")
 
+
 def start_server():
     """
     Import pyplet.server.__init__ and run its main() function.
@@ -70,20 +74,22 @@ def start_server():
     print("[OK] Starting pyplet server...")
     server_module.main()
 
+
 def main():
     parser = argparse.ArgumentParser(description="Pyplet project initializer")
     subparsers = parser.add_subparsers(dest="command")
 
     # init command
     parser_init = subparsers.add_parser(
-        "init", help="Create a new project directory with client.py, server.py and config.py under ./apps/"
+        "init",
+        help="Create a new project directory with client.py, server.py and config.py under ./apps/",
     )
-    parser_init.add_argument("project_name", help="Name of the project directory to create under ./apps/")
+    parser_init.add_argument(
+        "project_name", help="Name of the project directory to create under ./apps/"
+    )
 
     # start command
-    subparsers.add_parser(
-        "start", help="Launch pyplet.server.main()"
-    )
+    subparsers.add_parser("start", help="Launch pyplet.server.main()")
 
     args = parser.parse_args()
 
@@ -93,6 +99,7 @@ def main():
         start_server()
     else:
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()
