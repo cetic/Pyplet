@@ -5,12 +5,14 @@ import tornado.websocket
 import os
 import asyncio
 import json
+import sys
+from importlib import import_module
 
 from ..utils import get_import
 from . import templates
 from .. import dom as d
-from apps import config
 import pyplet
+from pyplet.server import config
 
 
 __all__ = ["main"]
@@ -23,8 +25,8 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
 
 class PackageHandler(tornado.web.RequestHandler):
     async def get(self, project_name, app_name):
-        config = get_import(f"apps.{project_name}.config")
-        config.package(self)
+        app_config = get_import(f"{config.apps}.{project_name}.config")
+        app_config.package(self)
 
 
 class LoginHandler(tornado.web.RequestHandler):
@@ -34,8 +36,8 @@ class LoginHandler(tornado.web.RequestHandler):
 
 class AppHandler(tornado.web.RequestHandler):
     async def get(self, project_name, app_name):
-        config = get_import(f"apps.{project_name}.config")
-        content = config.serve(self)
+        app_config = get_import(f"{config.apps}.{project_name}.config")
+        content = app_config.serve(self)
         dom = templates.application_template(
             f"{project_name}/{app_name}", self, content=content
         )
@@ -46,7 +48,7 @@ class ServerWebSocket(tornado.websocket.WebSocketHandler):
     closing_message = pyplet.WebSocket.closing_message
 
     async def open(self, project_name, app_name):
-        server = get_import(f"apps.{project_name}.{app_name}_server")
+        server = get_import(f"{config.apps}.{project_name}.{app_name}_server")
 
         self.queue = asyncio.Queue()
         asyncio.create_task(server.websocket_server_loop(self))
@@ -100,13 +102,8 @@ def make_app():
     )
 
 
-async def amain():
+async def astart():
     app = make_app()
-
     app.listen(config.port, config.address)
-    print(f"Listening to {config.url}")
+    print(f"Listening to {config.url or f'http://{config.address}:{config.port}'}")
     await asyncio.Event().wait()
-
-
-def main():
-    asyncio.run(amain())
