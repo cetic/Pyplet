@@ -1,8 +1,10 @@
+import os
+import sys
 import argparse
 import shutil
 from pathlib import Path
-import sys
 import importlib
+import asyncio
 
 
 def create_project(project_name: str):
@@ -20,14 +22,13 @@ def create_project(project_name: str):
         )
         sys.exit(1)
     cwd = Path.cwd()
-    script_dir = Path(__file__).resolve().parent
-    template_dir = script_dir.parent / "apps" / "template"
+    pyplet_dir = Path(__file__).resolve().parent.parent
+    template_dir = pyplet_dir.parent / "apps" / "template"
 
     # Sources
     src_client = template_dir / "template_client.py"
     src_server = template_dir / "template_server.py"
     src_config = template_dir / "config.py"
-    src_global_config = script_dir.parent / "apps" / "config.py"
 
     # Create apps dir if it doesn't exist
     apps_dir = cwd / "apps"
@@ -36,14 +37,6 @@ def create_project(project_name: str):
         apps_dir.mkdir(parents=True, exist_ok=True)
     else:
         print(f"[INFO] Apps directory './apps/' already exists, skipping copy")
-
-    # Copy global config.py only if it does not exist
-    global_config_dest = apps_dir / "config.py"
-    if not global_config_dest.exists():
-        shutil.copyfile(src_global_config, global_config_dest)
-        print(f"[OK] Global config copied to './apps/config.py'")
-    else:
-        print(f"[INFO] Global config './apps/config.py' already exists, skipping copy")
 
     # Create project dir if it doesnt exist
     project_dir = apps_dir / project_name
@@ -61,21 +54,15 @@ def create_project(project_name: str):
     print(f"[OK] Files copied: client.py, server.py, config.py")
 
 
-def start_server():
-    """
-    Import pyplet.server.__init__ and run its main() function.
-    """
-    try:
-        server_module = importlib.import_module("pyplet.server")
-    except ModuleNotFoundError:
-        print("[ERROR] pyplet.server module not found. Is pyplet installed?")
-        sys.exit(1)
-
-    print("[OK] Starting pyplet server...")
-    server_module.main()
+def script_main():
+    if os.getcwd() not in sys.path:
+        sys.path.append(os.getcwd())
+    main()
 
 
 def main():
+    from pyplet.server import config
+
     parser = argparse.ArgumentParser(description="Pyplet project initializer")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -89,16 +76,33 @@ def main():
     )
 
     # start command
-    subparsers.add_parser("start", help="Launch pyplet.server.main()")
+    parser_start = subparsers.add_parser("start", help="Launch pyplet.server.main()")
+    for name in config.__all__:
+        parser_start.add_argument(
+            f'--{name.replace("_", "-")}', required=False, default=getattr(config, name)
+        )
 
     args = parser.parse_args()
 
     if args.command == "init":
         create_project(args.project_name)
     elif args.command == "start":
+        for name in config.__all__:
+            value = getattr(args, name, ...)
+            if value is not ...:
+                setattr(config, name, value)
         start_server()
     else:
         parser.print_help()
+
+
+def start_server():
+    """
+    Import pyplet.server.__init__ and run its main() function.
+    """
+    from .web import astart
+
+    asyncio.run(astart())
 
 
 if __name__ == "__main__":

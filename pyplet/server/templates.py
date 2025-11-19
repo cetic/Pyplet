@@ -1,5 +1,6 @@
 from .. import dom as d
 from ..dom import bootstrap as b
+from . import config
 import typing as t
 import collections
 import glob
@@ -71,45 +72,14 @@ def default_navbar(handler):
     )
 
 
-def new_password_confirmation(handler, email):
-    return base_template(
-        title="New password confirmation",
-        navbar=default_navbar(handler),
-        content=[
-            d.p(f"A new password has been sent to your e-mail: {email}."),
-            d.p(f"Please check your spams!"),
-            d.form(action="/", method="post").append(
-                d.input(
-                    type="hidden",
-                    name="email",
-                    label="Your email address",
-                    _class="form-control",
-                    value="email",
-                ),
-                d.input(
-                    type="password",
-                    name="password",
-                    label="You password",
-                    _class="form-control",
-                )
-                | d.label("Password", "row mb-2", "col-sm-2, col-sm-5"),
-                d.input(
-                    type="submit",
-                    value="Login",
-                    _class="btn btn-primary col-sm-5 offset-sm-1",
-                ),
-            ),
-            d.p(d.a("Back to the login page", href="/")),
-        ],
-    )
-
-
 def index_template(handler):
-    applications = ["/" + p[:-10] for p in sorted(glob.glob("apps/*/*_client.py"))]
+    applications = [
+        "/" + p[:-10] for p in sorted(glob.glob("*/*_client.py", root_dir=config.apps))
+    ]
     projects = collections.defaultdict(d.ul)
     for application in applications:
         project, app_name = application.split("/")[-2:]
-        projects[project].append(d.li(d.a(app_name, href=application)))
+        projects[project].append(d.li(d.a(app_name, href=f"apps/{project}/{app_name}")))
     application_list = d.ul(
         *[d.li(project, apps) for project, apps in projects.items()]
     )

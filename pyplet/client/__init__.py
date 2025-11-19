@@ -6,10 +6,6 @@ import asyncio
 
 
 async def bootstrap(project_name, app_name, deps=()):
-    import glob
-
-    # print(glob.glob("**", recursive=True))
-
     if deps:
         import pyodide_js
 
