@@ -9,7 +9,7 @@ A multi-user chat room powered entirely by Pyplet. Messages arrive over WebSocke
 ## Location
 
 - Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
-- Path: `apps/examples/chat_*`
+- Path: `apps/pyplet_examples/chat_*`
 - Client entry point: `chat_client.py`
 - Server loop: `chat_server.py`
 

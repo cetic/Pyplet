@@ -64,6 +64,7 @@ nav:
     - Frontend-only App: tutorials/frontend-only.md
     - WebSocket App: tutorials/websocket-app.md
   - Examples:
+    - Overview: examples/index.md
     - Chat: examples/chat.md
     - Dashboard: examples/dashboard.md
     - Desktop: examples/desktop.md

@@ -9,7 +9,7 @@ A 1D optimization playground that visualizes gradient-based optimizers entirely 
 ## Location
 
 - Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
-- Path: `apps/examples/gradient_descent_playground_*`
+- Path: `apps/pyplet_examples/gradient_descent_playground_*`
 - Client entry point: `gradient_descent_playground_client.py`
 - Server shim: `gradient_descent_playground_server.py`
 

@@ -9,7 +9,7 @@ A live monitoring panel that charts service activity with Matplotlib running in 
 ## Location
 
 - Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
-- Path: `apps/examples/dashboard_*`
+- Path: `apps/pyplet_examples/dashboard_*`
 - Client entry point: `dashboard_client.py`
 - Server loop: `dashboard_server.py`
 

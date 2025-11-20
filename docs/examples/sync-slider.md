@@ -10,7 +10,7 @@ the same value in real time.
 ## Location
 
 - Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
-- Path: `apps/examples/sync_slider_*`
+- Path: `apps/pyplet_examples/sync_slider_*`
 - Client entry point: `sync_slider_client.py`
 - Server loop: `sync_slider_server.py`
 

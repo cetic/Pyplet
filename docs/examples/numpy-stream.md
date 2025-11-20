@@ -9,7 +9,7 @@ Streams random matrices from the server to the browser and visualises them as he
 ## Location
 
 - Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
-- Path: `apps/examples/numpy_*`
+- Path: `apps/pyplet_examples/numpy_*`
 - Client entry point: `numpy_client.py`
 - Server loop: `numpy_server.py`
 
