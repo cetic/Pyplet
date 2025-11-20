@@ -19,42 +19,47 @@ This guide gets you up and running locally with Pyplet.
 ```bash
 uv venv --python 3.13
 source .venv/bin/activate
-pip install -e .
+pip install -e .  # install Pyplet in editable mode
 ```
 
-Optionally install example dependencies used by the official example micro-apps:
+Optionally install example dependencies used by the official example micro-apps (requires cloning the examples repo; see [Examples](examples/index.md) for instructions):
 
 ```bash
 uv sync --group examples
 ```
 
+All server parameters can also be supplied via `PYPLET_*` environment variables (see the [CLI](cli.md) page for details).
+
 ## Pyodide runtime assets
 
-Pyplet serves the Pyodide runtime under `/pyodide/`. Make sure the Pyodide bundle is available under `pyplet/pyodide/` (see project README for the exact steps you use internally). Once present, the server can serve the runtime to clients.
+By default, Pyplet loads Pyodide from a public CDN. You do not need to download the Pyodide bundle manually for local development.
+
+Advanced setups can override the Pyodide URL (for example to point to a self-hosted bundle) via the `--pyodide-url` option documented in the [CLI](cli.md) page or the `PYPLET_PYODIDE` environment variable.
 
 ## Run the server
 
 Start the Tornado server:
 
 ```bash
-python -m pyplet.server
+pyplet start
 ```
 
-Visit http://127.0.0.1:8888 to see the home page with available apps.
+Visit http://127.0.0.1:8080 to see the [home page](index.md) with available apps.
 
-Server settings live in `apps/config.py`:
+Server settings live in `pyplet.server.config` and can be overridden either via CLI flags or environment variables. Refer to the [CLI](cli.md) documentation for the full list of options.
 
-```python
---8<-- "apps/config.py"
+## Create a new app
+
+To scaffold a new micro app under `apps/`, run:
+
+```bash
+pyplet init <project_name>
 ```
 
-- `address`: bind address
-- `port`: listen port
-- `url`: convenience string for logging
-- `debug`: Tornado debug mode
+This creates a generic template under `apps/<project_name>/` that you can adapt to your use case.
 
 ## Explore examples
 
 Open any app by navigating to `/apps/<project>/<name>` where `<project>` is the folder under `apps/` (e.g., `examples`) and `<name>` matches the `_client`/`_server` filename prefix.
 
-The official examples repository lives at `apps/examples` (a Git submodule). Run `git submodule update --init --recursive` to pull it after cloning. Refer to the **Examples** section of the documentation for a full tour of the available micro-apps.
+The official examples repository lives at `git@git.cetic.be:seglab/pyplet_examples.git`. In this project, examples are available under `apps/pyplet_examples/`; if that folder is missing, clone the `pyplet_examples` repository into it. Refer to [Examples](examples/index.md) for cloning instructions and a full tour of the available micro-apps.

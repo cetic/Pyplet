@@ -7,11 +7,12 @@ title: Troubleshooting
 !!! note "Browser support"
     Prefer a Chromium‑based browser (Chrome, Edge, Brave). Other browsers generally work, but some graphics (e.g., canvas/Matplotlib) and behaviors may differ or degrade.
 
-- Pyodide assets not found
-  - Ensure the Pyodide bundle is present under `pyplet/pyodide/` and is accessible by the server
+- Pyodide assets not loading
+  - By default, Pyplet loads Pyodide from a public CDN. Check that your network allows access to the configured `PYPLET_PYODIDE` URL or the value passed via `--pyodide-url`.
+  - If you use a self-hosted Pyodide bundle, ensure it is reachable by the browser and that the `pyodide_url` setting points to the correct location.
 
 - Port already in use
-  - Change `port` in `apps/config.py` or stop the conflicting process
+  - Change `--port` (or `PYPLET_PORT`) or stop the conflicting process
 
 - WebSocket closes immediately
   - Check browser console and server logs

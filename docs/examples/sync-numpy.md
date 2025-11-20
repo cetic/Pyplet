@@ -9,7 +9,7 @@ A broadcast variant of the NumPy stream where every viewer shares the same frame
 ## Location
 
 - Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
-- Path: `apps/examples/sync_numpy_*`
+- Path: `apps/pyplet_examples/sync_numpy_*`
 - Client entry point: `sync_numpy_client.py`
 - Server loop: `sync_numpy_server.py`
 

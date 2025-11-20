@@ -43,4 +43,4 @@ Packaging (`apps/<project>/config.py`):
 
 Any additional Python packages used by the client don’t need pre-installation. Declare them in the server file as `client_libraries`, and Pyodide installs them at runtime.
 
-The **Examples** section of the documentation walks through concrete micro-apps that apply these patterns—real-time chat, dashboards, canvas-based playgrounds, and more. Start there when you want a guided tour of fully working apps.
+The [Examples](examples/index.md) section of the documentation walks through concrete micro-apps that apply these patterns—real-time chat, dashboards, canvas-based playgrounds, and more. Start there when you want a guided tour of fully working apps.

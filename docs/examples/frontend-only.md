@@ -9,7 +9,7 @@ A purely client-side application that still leverages NumPy and Matplotlib throu
 ## Location
 
 - Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
-- Path: `apps/examples/frontend_only_*`
+- Path: `apps/pyplet_examples/frontend_only_*`
 - Client entry point: `frontend_only_client.py`
 - Server shim: `frontend_only_server.py`
 

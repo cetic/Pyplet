@@ -4,7 +4,7 @@ title: WebSocket App
 
 # Tutorial: WebSocket App
 
-Let’s build a real-time app that exchanges messages between browser and server using Pyplet’s WebSocket protocol. We’ll use the chat example as a reference.
+Let’s build a real-time app that exchanges messages between browser and server using Pyplet’s WebSocket protocol. We’ll use the [chat example](../examples/chat.md) as a reference.
 
 ## Client: handling input and messages
 

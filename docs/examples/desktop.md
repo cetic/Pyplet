@@ -9,7 +9,7 @@ Simulates a desktop environment with draggable windows that load external pages.
 ## Location
 
 - Repository: `git@git.cetic.be:seglab/pyplet_examples.git`
-- Path: `apps/examples/desktop_*`
+- Path: `apps/pyplet_examples/desktop_*`
 - Client entry point: `desktop_client.py`
 - Server shim: `desktop_server.py`
 

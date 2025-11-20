@@ -27,6 +27,6 @@ Because this app runs entirely in the browser, the server component just declare
 
 ## Run it
 
-Start the server and navigate to the URL shown on the home page for the “frontend_only” app.
+Start the server and navigate to the URL shown on the [home page](../index.md) for the “frontend_only” app.
 
 That’s it — you’ve built a fully client-side experience entirely in Python.
