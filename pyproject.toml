@@ -26,7 +26,7 @@ packages = ["pyplet"]
 include-package-data = true
 
 [project.scripts]
-pyplet = "pyplet.cli:main"
+pyplet = "pyplet.server.cli:script_main"
 
 [tool.setuptools.package-data]
 # Include apps/examples into pip package
