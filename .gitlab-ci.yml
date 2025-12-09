@@ -10,7 +10,7 @@ test_template:   # This job runs in the test stage.
       - apt update
       - apt install -y chromium
       - pip install -e .
-      - pip install -r ./test/requirements.txt
+      - pip install -r ./tests/requirements.txt
   script:
       - nohup pyplet start > pyplet.log 2>&1 &
       - tail -f pyplet.log
