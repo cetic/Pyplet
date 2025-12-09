@@ -1,0 +1,18 @@
+stages:          # List of stages for jobs, and their order of execution
+  - test
+
+test_template:   # This job runs in the test stage.
+  stage: test    # It only starts when the job in the build stage completes successfully.
+  tags:
+    - docker
+  image: python:3.13
+  before_script:
+      - apt update
+      - apt install -y chromium-browser chromium-chromedriver
+      - pip install -e .
+      - pip install -r ./test/requirements.txt
+  script:
+      - nohup pyplet start > pyplet.log 2>&1 &
+      - tail -f pyplet.log
+      - python3.13 ./tests/test_template.py
+      - pkill -f "pyplet start"
