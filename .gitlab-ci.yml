@@ -13,6 +13,6 @@ test_template:   # This job runs in the test stage.
       - pip install -r ./tests/requirements.txt
   script:
       - nohup pyplet start > pyplet.log 2>&1 &
-      - tail -f pyplet.log
+      - ps -aux | grep pypley
       - python3.13 ./tests/test_template.py
       - pkill -f "pyplet start"
