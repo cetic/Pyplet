@@ -8,7 +8,7 @@ test_template:   # This job runs in the test stage.
   image: python:3.13
   before_script:
       - apt update
-      - apt install -y chromium-browser chromium-chromedriver
+      - apt install -y chromium
       - pip install -e .
       - pip install -r ./test/requirements.txt
   script:
