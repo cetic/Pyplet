@@ -6,12 +6,12 @@ from selenium.webdriver.common.keys import Keys
 import time
 
 options = Options()
-options.binary_location = "/usr/bin/chromium-browser"
+options.binary_location = "/usr/bin/chromium"
 
 options.add_argument("--no-sandbox")
 
 options.add_argument("--headless=new")
-service = Service("/usr/lib/chromium-browser/chromedriver")
+service = Service("/usr/bin/chromedriver")
 
 driver = webdriver.Chrome(service=service, options=options)
 
