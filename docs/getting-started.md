@@ -8,7 +8,7 @@ This guide gets you up and running locally with Pyplet.
 
 ## Prerequisites
 
-- Python 3.13 or newer
+- Python 3.11 or newer
 - A virtual environment tool (e.g., `uv`, `venv`, or `virtualenv`)
 
 !!! note "Browser support"
@@ -17,7 +17,7 @@ This guide gets you up and running locally with Pyplet.
 ## Install Pyplet
 
 ```bash
-uv venv --python 3.13
+uv venv --python 3.11
 source .venv/bin/activate
 pip install -e .  # install Pyplet in editable mode
 ```

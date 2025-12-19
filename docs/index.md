@@ -18,8 +18,8 @@ Key capabilities:
 Get started in minutes:
 
 ```bash
-# Create a virtual environment (Python 3.13+)
-uv venv --python 3.13
+# Create a virtual environment (Python 3.11+)
+uv venv --python 3.11
 source .venv/bin/activate
 
 # Install Pyplet in editable mode

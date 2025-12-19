@@ -3,11 +3,8 @@ name = "pyplet"
 version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
-    "build~=1.2.0",
-    "cython>=3.1.2",
-    "pyodide-build>=0.30.5",
     "python-minifier>=2.11.3",
     "tornado>=6.5.1",
 ]
@@ -20,6 +17,12 @@ packages = ["pyplet"]
 include-package-data = true
 
 [dependency-groups]
+dev = [
+    "build~=1.2.0",
+    "cython>=3.1.2",
+    "pyodide-build>=0.30.5",
+]
+
 examples = [
     "matplotlib>=3.10.5",
     "numpy>=2.3.2",
@@ -42,4 +45,4 @@ pyplet = ["../apps/**/*"]
 
 [tool.black]
 line-length = 88
-target-version = ["py313"]
+target-version = ["py311"]

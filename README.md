@@ -6,12 +6,12 @@ Pyplet is an application server meant to serve interactive web applications enti
 
 ## Installation
 
-Clone the repository and create a Python ≥ 3.13 virtual environment **before** installing Pyplet in editable mode. We recommend using `uv`, but any equivalent tool is fine.
+Clone the repository and create a Python ≥ 3.11 virtual environment **before** installing Pyplet in editable mode. We recommend using `uv`, but any equivalent tool is fine.
 
 ```bash
 git clone git@git.cetic.be:seglab/pyplet.git
 cd pyplet
-uv venv --python 3.13  # or newer
+uv venv --python 3.11  # or newer
 source .venv/bin/activate
 ```
 
