@@ -93,12 +93,21 @@ def make_app():
                 {"path": os.path.join(os.path.dirname(__file__), "../pyodide")},
             ),
             (r"/", LoginHandler),
-            (r"/apps/([a-zA-Z0-9_]+)/([a-zA-Z0-9_]+)\.zip", PackageHandler),
-            (r"/apps/([a-zA-Z0-9_]+)/([a-zA-Z0-9_]+).ws", ServerWebSocket),
-            (r"/apps/([a-zA-Z0-9_]+)/([a-zA-Z0-9_]+)", AppHandler),
+            (
+                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.zip",
+                PackageHandler,
+            ),
+            (
+                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*).ws",
+                ServerWebSocket,
+            ),
+            (
+                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)",
+                AppHandler,
+            ),
             (r"/.*", tornado.web.RedirectHandler, {"url": "/", "permanent": False}),
         ],
-        debug=config.debug,
+        debug=config.debug == "1",
     )
 
 
