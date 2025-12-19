@@ -48,3 +48,4 @@ apps/*
 !apps/template/
 !apps/template/**
 apps/pyplet_examples/
+apps/template/__pycache__/*
