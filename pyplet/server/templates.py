@@ -1,5 +1,5 @@
-from .. import dom as d
-from ..dom import bootstrap as b
+from ..shared import dom as d
+from ..shared.dom import bootstrap as b
 from . import config
 import typing as t
 import collections

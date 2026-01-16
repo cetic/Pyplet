@@ -100,7 +100,7 @@ def start_server():
     """
     Import pyplet.server.__init__ and run its main() function.
     """
-    from .web import astart
+    from ._server import astart
 
     asyncio.run(astart())
 

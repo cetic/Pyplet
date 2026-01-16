@@ -1,11 +1,20 @@
+import asyncio
+from typing import Dict, Tuple
+
 from js import WebSocket
 from pyodide.ffi import create_proxy
-from pyplet.utils import get_import
+from importlib import import_module
+
 import pyplet
-import asyncio
+
+_apps = None
+client_applications: Dict[Tuple[str, str], "ClientApplication"] = {}
 
 
-async def bootstrap(project_name, app_name, deps=()):
+async def bootstrap(prefix, project_name, app_name, deps=()):
+    global _apps
+    _apps = prefix
+
     if deps:
         import pyodide_js
 
@@ -14,15 +23,19 @@ async def bootstrap(project_name, app_name, deps=()):
 
         await micropip.install(deps)
 
-    module = get_import(f"apps.{project_name}.{app_name}_client")
+    import_module(f"{_apps}.{project_name}.{app_name}_client")
+    client_application = client_applications[project_name, app_name]
 
-    if hasattr(module, "client_init"):
-        await module.client_init()
+    if client_application.__class__.client_init is not ClientApplication.client_init:
+        await client_application.client_init()
 
-    if hasattr(module, "websocket_client_loop"):
+    if (
+        client_application.__class__.websocket_client_loop
+        is not ClientApplication.websocket_client_loop
+    ):
         ws = WebSocket.new(f"/apps/{project_name}/{app_name}_ws")
         ws = ClientWebSocket(ws)
-        gen = module.websocket_client_loop(ws)
+        gen = client_application.websocket_client_loop(ws)
         ws.ws.onopen = create_proxy(lambda x: asyncio.create_task(gen))
 
 
@@ -56,3 +69,25 @@ class ClientWebSocket:
             data = await data.arrayBuffer()
             data = data.to_py().tobytes()
         await self.queue.put(data)
+
+
+class ClientApplication:
+    identifier: Tuple[str, str] = None
+
+    async def client_init(self): ...
+    async def websocket_client_loop(self, ws: ClientWebSocket): ...
+
+    def __init_subclass__(cls):
+        if cls.identifier is None:
+            qualname = cls.__module__.split(".")
+            if (
+                qualname[0] == _apps
+                and len(qualname) == 3
+                and qualname[-1].endswith("_client")
+            ):
+                _, project_name, app_name = qualname
+                app_name = app_name.removesuffix("_client")
+                cls.identifier = project_name, app_name
+
+        if cls.identifier is not None:
+            client_applications[cls.identifier] = cls()

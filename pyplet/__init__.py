@@ -1,1 +1,1 @@
-from .websocket import WebSocket
+from .shared.websocket import WebSocket

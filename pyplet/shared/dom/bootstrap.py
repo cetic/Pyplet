@@ -1,4 +1,4 @@
-from .. import dom as d
+from . import _dom as d
 
 
 @d.DomFX
