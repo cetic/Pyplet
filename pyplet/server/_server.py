@@ -125,7 +125,7 @@ async def astart():
 
 class ServerApplication:
     title: str = None
-    deps = ()
+    client_libraries: Tuple[str] = ()
     identifier: Tuple[str, str] = None
 
     def websocket_server_loop(self, websocket: tornado.websocket.WebSocketHandler): ...
@@ -190,7 +190,7 @@ class ServerApplication:
             zip_file = zipfile.ZipFile(io.BytesIO(response), 'r')
             zip_file.extractall()
             from pyplet.client import bootstrap
-            await bootstrap({config.apps!r}, {project!r}, {app!r}, {self.deps!r})
+            await bootstrap({config.apps!r}, {project!r}, {app!r}, {self.client_libraries!r})
             
         import asyncio
         asyncio.create_task(main())
