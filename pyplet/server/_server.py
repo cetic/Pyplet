@@ -79,16 +79,6 @@ def make_app():
                 {"path": os.path.join(os.path.dirname(__file__), "static")},
             ),
             (
-                r"/pyplet/client/(.*)",
-                StaticFileHandler,
-                {"path": os.path.join(os.path.dirname(__file__), "client")},
-            ),
-            (
-                r"/pyplet/common/(.*)",
-                StaticFileHandler,
-                {"path": os.path.join(os.path.dirname(__file__), "common")},
-            ),
-            (
                 r"/pyodide/(.*)",
                 tornado.web.StaticFileHandler,
                 {"path": os.path.join(os.path.dirname(__file__), "../pyodide")},
@@ -99,7 +89,7 @@ def make_app():
                 PackageHandler,
             ),
             (
-                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*).ws",
+                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.ws",
                 ServerWebSocket,
             ),
             (

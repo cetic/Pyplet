@@ -33,7 +33,7 @@ async def bootstrap(prefix, project_name, app_name, deps=()):
         client_application.__class__.websocket_client_loop
         is not ClientApplication.websocket_client_loop
     ):
-        ws = WebSocket.new(f"/apps/{project_name}/{app_name}_ws")
+        ws = WebSocket.new(f"/apps/{project_name}/{app_name}.ws")
         ws = ClientWebSocket(ws)
         gen = client_application.websocket_client_loop(ws)
         ws.ws.onopen = create_proxy(lambda x: asyncio.create_task(gen))
