@@ -72,22 +72,17 @@ class ClientWebSocket:
 
 
 class ClientApplication:
-    identifier: Tuple[str, str] = None
-
     async def client_init(self): ...
     async def websocket_client_loop(self, ws: ClientWebSocket): ...
 
     def __init_subclass__(cls):
-        if cls.identifier is None:
-            qualname = cls.__module__.split(".")
-            if (
-                qualname[0] == _apps
-                and len(qualname) == 3
-                and qualname[-1].endswith("_client")
-            ):
-                _, project_name, app_name = qualname
-                app_name = app_name.removesuffix("_client")
-                cls.identifier = project_name, app_name
+        qualname = cls.__module__.split(".")
+        if (
+            qualname[0] == _apps
+            and len(qualname) == 3
+            and qualname[-1].endswith("_client")
+        ):
+            _, project_name, app_name = qualname
+            app_name = app_name.removesuffix("_client")
 
-        if cls.identifier is not None:
-            client_applications[cls.identifier] = cls()
+            client_applications[project_name, app_name] = cls()

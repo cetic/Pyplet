@@ -205,16 +205,13 @@ class ServerApplication:
         handler.write(d.render_html(tree))
 
     def __init_subclass__(cls):
-        if cls.identifier is None:
-            qualname = cls.__module__.split(".")
-            if (
-                qualname[0] == config.apps
-                and len(qualname) == 3
-                and qualname[-1].endswith("_server")
-            ):
-                _, project_name, app_name = qualname
-                app_name = app_name.removesuffix("_server")
-                cls.identifier = project_name, app_name
+        qualname = cls.__module__.split(".")
+        if (
+            qualname[0] == config.apps
+            and len(qualname) == 3
+            and qualname[-1].endswith("_server")
+        ):
+            _, project_name, app_name = qualname
+            app_name = app_name.removesuffix("_server")
 
-        if cls.identifier is not None:
-            server_applications[cls.identifier] = cls()
+            server_applications[project_name, app_name] = cls()
