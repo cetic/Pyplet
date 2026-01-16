@@ -209,7 +209,7 @@ class ServerApplication:
         if (
             qualname[0] == config.apps
             and len(qualname) == 3
-            and qualname[-1].endswith("_server")
+            and qualname[2].endswith("_server")
         ):
             _, project_name, app_name = qualname
             app_name = app_name.removesuffix("_server")

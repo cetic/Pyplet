@@ -80,7 +80,7 @@ class ClientApplication:
         if (
             qualname[0] == _apps
             and len(qualname) == 3
-            and qualname[-1].endswith("_client")
+            and qualname[2].endswith("_client")
         ):
             _, project_name, app_name = qualname
             app_name = app_name.removesuffix("_client")
