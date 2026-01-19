@@ -5,53 +5,66 @@ import shutil
 from pathlib import Path
 import importlib
 import asyncio
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("pyplet.cli")
 
 
 def create_project(project_name: str):
     """
     Create a new project directory under ./apps/project_name and copy
-    template_client.py, template_server.py, and config.py from ../apps/examples
-    into it.
+    template_client.py and template_server.py from the template directory.
     """
     # Validate project name for Python importability
     if not project_name.isidentifier():
-        print(
-            f"[ERROR] '{project_name}' is not a valid Python's module name . "
+        logger.error(
+            f"'{project_name}' is not a valid Python module name. "
             "Use only letters, numbers and underscores, "
-            "and dont start with a number."
+            "and don't start with a number."
         )
         sys.exit(1)
+
     cwd = Path.cwd()
     pyplet_dir = Path(__file__).resolve().parent.parent
     template_dir = pyplet_dir.parent / "apps" / "template"
 
+    # Verify template directory exists
+    if not template_dir.exists():
+        logger.error(f"Template directory not found: {template_dir}")
+        sys.exit(1)
+
     # Sources
     src_client = template_dir / "template_client.py"
     src_server = template_dir / "template_server.py"
-    src_config = template_dir / "config.py"
 
-    # Create apps dir if it doesn't exist
-    apps_dir = cwd / "apps"
-    if not apps_dir.exists():
-        print(f"[INFO] Creating './apps' directory")
-        apps_dir.mkdir(parents=True, exist_ok=True)
-    else:
-        print(f"[INFO] Apps directory './apps/' already exists, skipping copy")
-
-    # Create project dir if it doesnt exist
-    project_dir = apps_dir / project_name
-    if project_dir.exists():
-        print(f"[ERROR] The directory '{project_dir}' already exists.")
-        sys.exit(1)
-    project_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[OK] Project '{project_name}' created at {project_dir}")
+    # Create apps and project dir if they don't exist
+    project_dir = cwd / "apps" / project_name
+    if not project_dir.exists():
+        project_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Project '{project_name}' created at {project_dir}")
 
     # Copy files
-    shutil.copyfile(src_client, project_dir / f"{project_name}_client.py")
-    shutil.copyfile(src_server, project_dir / f"{project_name}_server.py")
-    shutil.copyfile(src_config, project_dir / "config.py")
+    dest_client = project_dir / f"{project_name}_client.py"
+    dest_server = project_dir / f"{project_name}_server.py"
 
-    print(f"[OK] Files copied: client.py, server.py, config.py")
+    # Verify template directory exists
+    if dest_client.exists() or dest_server.exists():
+        logger.error(f"At least one of {dest_client} and {dest_server} already exists")
+        sys.exit(1)
+
+    shutil.copyfile(src_client, dest_client)
+    shutil.copyfile(src_server, dest_server)
+
+    logger.info(f"Files copied: {dest_client.name}, {dest_server.name}")
+    logger.info(
+        f"Project '{project_name}' is ready! Start the server with: pyplet start"
+    )
 
 
 def script_main():
@@ -69,7 +82,7 @@ def main():
     # init command
     parser_init = subparsers.add_parser(
         "init",
-        help="Create a new project directory with client.py, server.py and config.py under ./apps/",
+        help="Create a new project directory with client and server files under ./apps/",
     )
     parser_init.add_argument(
         "project_name", help="Name of the project directory to create under ./apps/"
@@ -98,11 +111,18 @@ def main():
 
 def start_server():
     """
-    Import pyplet.server.__init__ and run its main() function.
+    Start the Pyplet server.
     """
     from ._server import astart
 
-    asyncio.run(astart())
+    logger.info("Starting Pyplet server...")
+    try:
+        asyncio.run(astart())
+    except KeyboardInterrupt:
+        logger.info("Server stopped by user")
+    except Exception as e:
+        logger.error(f"Server error: {e}", exc_info=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
