@@ -1,11 +1,3 @@
-.PHONY: test
-test:
-	uv run pytest tests/ -v
-
-.PHONY: test-cov
-test-cov:
-	uv run pytest tests/ -v --cov=pyplet --cov-report=html --cov-report=term
-
 ifeq ($(firstword $(MAKECMDGOALS)),sandbox)
 # Remove "sandbox" from the goals before forwarding
 SANDBOX_GOALS := $(filter-out sandbox,$(MAKECMDGOALS))
@@ -19,5 +11,14 @@ $(SANDBOX_GOALS):
 	@:
 else
 sandbox:
+
+test:
+	uv run pytest tests/ -v
+
+test-cov:
+	uv run pytest tests/ -v --cov=pyplet --cov-report=html --cov-report=term
+
+start:
+	uv run -m pyplet start
 	
 endif
