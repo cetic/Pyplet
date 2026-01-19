@@ -116,7 +116,6 @@ async def astart():
 class ServerApplication:
     title: str = None
     client_libraries: Tuple[str] = ()
-    identifier: Tuple[str, str] = None
 
     def websocket_server_loop(self, websocket: tornado.websocket.WebSocketHandler): ...
 

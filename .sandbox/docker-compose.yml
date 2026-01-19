@@ -1,0 +1,8 @@
+services:
+  opencode:
+    build:
+      context: .
+      dockerfile: Dockerfile.opencode
+    command: sleep infinity
+    volumes:
+      - $PWD/..:/workspace

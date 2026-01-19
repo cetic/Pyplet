@@ -1,4 +1,4 @@
-import pyplet.server
+import pyplet
 import logging
 
 
