@@ -5,3 +5,11 @@ pyodide-*
 venv
 dist
 env
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.pyc
+.tox/
+*.log
