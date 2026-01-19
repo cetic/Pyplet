@@ -5,4 +5,5 @@ services:
       dockerfile: Dockerfile.opencode
     command: sleep infinity
     volumes:
-      - $PWD/..:/workspace
+      - ../:/workspace
+      - ./opencode:/home/ubuntu/.config/opencode

@@ -1,4 +1,6 @@
-default: up shell
+.PHONY: opencode
+
+default: up opencode
 
 buildup:
 	docker compose up --build --force-recreate -d opencode
@@ -8,3 +10,6 @@ up:
 
 shell:
 	docker compose exec -ti opencode bash
+
+opencode:
+	docker compose exec -ti opencode /home/ubuntu/.opencode/bin/opencode
