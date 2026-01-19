@@ -13,3 +13,6 @@ shell:
 
 opencode:
 	docker compose exec -ti opencode /home/ubuntu/.opencode/bin/opencode
+
+down:
+	docker compose down

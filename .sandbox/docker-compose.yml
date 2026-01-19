@@ -7,3 +7,7 @@ services:
     volumes:
       - ../:/workspace
       - ./opencode:/home/ubuntu/.config/opencode
+      - share-vol:/home/ubuntu/.local/share/
+
+volumes:
+  share-vol:

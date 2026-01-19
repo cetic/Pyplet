@@ -10,6 +10,8 @@ USER ubuntu
 RUN curl -fsSL https://opencode.ai/install | bash
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
+RUN mkdir -p ~/.local/share
+
 ENV PATH="$PATH:~/.opencode/bin"
 WORKDIR /workspace
 
