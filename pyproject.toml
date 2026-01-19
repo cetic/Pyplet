@@ -15,11 +15,7 @@ authors = [
   {name = "Maxime Istasse", email = "istassem@gmail.com"},
 ]
 
-[dependency-groups]
-examples = [
-    "matplotlib>=3.10.5",
-    "numpy>=2.3.2",
-]
+[project.optional-dependencies]
 test = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",

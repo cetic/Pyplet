@@ -13,12 +13,9 @@ else
 sandbox:
 
 test:
-	uv run pytest tests/ -v
+	uv run --extra test pytest tests/ -v
 
 test-cov:
-	uv run pytest tests/ -v --cov=pyplet --cov-report=html --cov-report=term
+	uv run --extra test pytest tests/ -v --cov=pyplet --cov-report=html --cov-report=term
 
-start:
-	uv run -m pyplet start
-	
 endif
