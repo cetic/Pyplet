@@ -190,7 +190,7 @@ Each app can have a `config.py` file for application-specific settings. Server-w
 
 ## Browser Compatibility
 
-Pyplet works in any modern browser that supports WebAssembly:
+Pyplet should work in any modern browser that supports WebAssembly:
 - Chrome/Edge 57+
 - Firefox 52+
 - Safari 11+
