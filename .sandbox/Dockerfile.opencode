@@ -1,15 +1,15 @@
 FROM ubuntu:24.04
 
 RUN apt-get update && apt-get upgrade -y
-RUN apt-get install -y sudo curl
+RUN apt-get install -y sudo curl git
 
-# Create non-root user with sudo access
-RUN useradd -m user && usermod -aG sudo user
+RUN mkdir /workspace && chown -R ubuntu:ubuntu /workspace
+RUN passwd -d ubuntu
 
-RUN mkdir /workspace && chown -R user:user /workspace
-
-USER user
+USER ubuntu
 RUN curl -fsSL https://opencode.ai/install | bash
 
 ENV PATH="$PATH:~/.opencode/bin"
 WORKDIR /workspace
+
+RUN sudo apt-get install -y wget
