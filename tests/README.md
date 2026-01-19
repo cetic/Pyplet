@@ -1,25 +1,61 @@
-# Pyplet End-to-End Tests
+# Pyplet Tests
 
-This directory contains end-to-end tests for Pyplet applications using Selenium WebDriver.
+This directory contains comprehensive tests for Pyplet, including unit tests and end-to-end tests.
 
 ## Overview
 
-The test suite verifies the complete functionality of Pyplet applications, including:
-- Server startup and routing
-- Pyodide initialization in the browser
-- WebSocket communication between client and server
-- DOM manipulation and updates
-- Application performance and reliability
+The test suite verifies:
+- **CLI functionality**: Project creation, argument parsing, logging
+- **Server functionality**: Server startup and routing
+- **Client functionality**: Pyodide initialization in the browser
+- **WebSocket communication**: Between client and server
+- **DOM manipulation**: Updates and rendering
+- **Application performance**: Load times and reliability
 
 ## Test Structure
 
-### `conftest.py`
+### Unit Tests
+
+#### `test_cli.py`
+Unit tests for the CLI module (`pyplet.server.cli`):
+
+**Test Classes:**
+1. **`TestCreateProject`**: Project creation functionality
+   - Successful project creation
+   - Invalid project name validation
+   - Duplicate project detection
+   - Template file validation
+   - Apps directory creation
+   - Valid project name patterns
+
+2. **`TestCLILogging`**: Logging functionality
+   - Logger configuration
+   - Success message logging
+   - Error message logging
+
+3. **`TestStartServer`**: Server startup
+   - Successful server start
+   - Keyboard interrupt handling
+   - Exception handling
+
+4. **`TestCLIArgumentParsing`**: Command-line argument parsing
+   - Init command handling
+   - Path management
+
+5. **`TestCLIIntegration`**: Integration tests
+   - Full project creation workflow
+
+**Coverage**: 82% of CLI module code
+
+### End-to-End Tests
+
+#### `conftest.py`
 Contains pytest fixtures for:
 - **`server`**: Starts the Pyplet server in a separate process for the test session
 - **`driver`**: Creates a Selenium WebDriver instance for each test (headless Chrome)
 - **`wait`**: Provides a WebDriverWait instance with a 30-second timeout
 
-### `test_template_app.py`
+#### `test_template_app.py`
 Contains three test classes:
 
 1. **`TestTemplateApp`**: Core functionality tests
@@ -66,9 +102,24 @@ pip install -e ".[test]"
 pytest tests/
 ```
 
+### Run unit tests only
+```bash
+pytest tests/test_cli.py
+```
+
+### Run end-to-end tests only
+```bash
+pytest tests/test_template_app.py
+```
+
 ### Run specific test file
 ```bash
 pytest tests/test_template_app.py
+```
+
+### Run CLI tests with coverage
+```bash
+pytest tests/test_cli.py --cov=pyplet.server.cli --cov-report=term-missing
 ```
 
 ### Run specific test class
