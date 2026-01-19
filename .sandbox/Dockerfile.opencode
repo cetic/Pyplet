@@ -8,6 +8,7 @@ RUN passwd -d ubuntu
 
 USER ubuntu
 RUN curl -fsSL https://opencode.ai/install | bash
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ENV PATH="$PATH:~/.opencode/bin"
 WORKDIR /workspace
