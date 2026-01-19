@@ -27,10 +27,17 @@ Pyplet is an application server that lets you create interactive web application
    cd pyplet
    ```
 
-2. **Download Pyodide**
+2. **Download Pyodide** (optional - for local development)
+   
+   Pyplet uses Pyodide from CDN by default. For offline development, download it locally:
    ```bash
-   wget https://github.com/pyodide/pyodide/releases/download/0.28.0/pyodide-0.28.0.tar.bz2
-   tar -xvjf pyodide-0.28.0.tar.bz2
+   wget https://github.com/pyodide/pyodide/releases/download/0.29.0/pyodide-0.29.0.tar.bz2
+   tar -xvjf pyodide-0.29.0.tar.bz2
+   ```
+   
+   Then configure Pyplet to use the local version:
+   ```bash
+   export PYPLET_PYODIDE=/path/to/pyodide/pyodide.js
    ```
 
 3. **Install Pyplet**
@@ -38,12 +45,19 @@ Pyplet is an application server that lets you create interactive web application
    With `uv` (recommended):
    ```bash
    uv venv
-   uv sync --group examples
+   uv sync
    ```
 
    Or with `pip`:
    ```bash
    pip install -e .
+   ```
+   
+   To install with test dependencies:
+   ```bash
+   uv sync --extra test
+   # or with pip
+   pip install -e .[test]
    ```
 
 ### Create Your First App
@@ -52,10 +66,9 @@ Pyplet is an application server that lets you create interactive web application
 pyplet init my_app
 ```
 
-This creates a new project in `apps/my_app/` with three files:
+This creates a new project in `apps/my_app/` with two files:
 - `my_app_client.py` - Python code that runs in the browser
 - `my_app_server.py` - Server-side Python logic
-- `config.py` - Application configuration
 
 ### Run the Server
 
@@ -178,7 +191,7 @@ pyplet init <project_name>
 pyplet start
 
 # Start server with custom options
-pyplet start --port 3000 --host 0.0.0.0
+pyplet start --port 3000 --address 0.0.0.0
 
 # Run server directly with Python
 python -m pyplet.server
@@ -186,7 +199,25 @@ python -m pyplet.server
 
 ## Configuration
 
-Each app can have a `config.py` file for application-specific settings. Server-wide configuration is in `pyplet/server/config.py`.
+Server-wide configuration is managed in `pyplet/server/config.py` and can be set via environment variables or CLI flags:
+
+```bash
+# Using environment variables
+export PYPLET_PORT=3000
+export PYPLET_ADDRESS=0.0.0.0
+pyplet start
+
+# Using CLI flags
+pyplet start --port 3000 --address 0.0.0.0
+```
+
+Available configuration options:
+- `--address` / `PYPLET_ADDR` - Server address (default: `127.0.0.1`)
+- `--port` / `PYPLET_PORT` - Server port (default: `8080`)
+- `--apps` / `PYPLET_APPS` - Apps directory (default: `apps`)
+- `--debug` / `PYPLET_DEBUG` - Debug mode (default: `1`)
+- `--pyodide-url` / `PYPLET_PYODIDE` - Pyodide CDN URL
+- `--url` / `PYPLET_URL` - Custom URL override
 
 ## Browser Compatibility
 
@@ -208,8 +239,8 @@ Pyplet uses:
 ### For server-side code:
 Edit `pyproject.toml` under `[project].dependencies`
 
-### For examples/development:
-Edit `pyproject.toml` under `[dependency-groups].examples`
+### For testing:
+Edit `pyproject.toml` under `[project.optional-dependencies].test`
 
 ## Examples
 
