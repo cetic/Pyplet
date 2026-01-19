@@ -12,12 +12,16 @@ import zipfile
 import glob
 from importlib import import_module
 import runpy
+import logging
 
 from . import templates
 from ..shared import dom as d
 import pyplet
 from pyplet.server import config
 from typing import Dict, Tuple
+
+# Configure logging
+logger = logging.getLogger('pyplet.server')
 
 
 server_applications: Dict[Tuple[str, str], "ServerApplication"] = {}
@@ -105,11 +109,21 @@ def make_app():
 async def astart():
     app = make_app()
     app.listen(config.port, config.address)
-    for path in glob.glob(f"{config.apps}/*/*_server.py"):
+    
+    # Load all server applications
+    server_modules = glob.glob(f"{config.apps}/*/*_server.py")
+    for path in server_modules:
         module_name = path[:-3].replace("/", ".")
-        import_module(module_name)
-    print(f"Listening to {config.url or f'http://{config.address}:{config.port}'}")
-
+        try:
+            import_module(module_name)
+            logger.debug(f"Loaded module: {module_name}")
+        except Exception as e:
+            logger.error(f"Failed to load module {module_name}: {e}", exc_info=True)
+    
+    url = config.url or f'http://{config.address}:{config.port}'
+    logger.info(f"Pyplet server started on {url}")
+    logger.info(f"Loaded {len(server_applications)} application(s)")
+    
     await asyncio.Event().wait()
 
 
