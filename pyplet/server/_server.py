@@ -21,7 +21,7 @@ from pyplet.server import config
 from typing import Dict, Tuple
 
 # Configure logging
-logger = logging.getLogger('pyplet.server')
+logger = logging.getLogger("pyplet.server")
 
 
 server_applications: Dict[Tuple[str, str], "ServerApplication"] = {}
@@ -74,42 +74,41 @@ class ServerWebSocket(tornado.websocket.WebSocketHandler):
         await self.queue.put(self.closing_message)
 
 
-def make_app():
-    return tornado.web.Application(
-        [
-            (
-                r"/static/(.*)",
-                tornado.web.StaticFileHandler,
-                {"path": os.path.join(os.path.dirname(__file__), "static")},
-            ),
-            (
-                r"/pyodide/(.*)",
-                tornado.web.StaticFileHandler,
-                {"path": os.path.join(os.path.dirname(__file__), "../pyodide")},
-            ),
-            (r"/", LoginHandler),
-            (
-                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.zip",
-                PackageHandler,
-            ),
-            (
-                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.ws",
-                ServerWebSocket,
-            ),
-            (
-                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)",
-                AppHandler,
-            ),
-            (r"/.*", tornado.web.RedirectHandler, {"url": "/", "permanent": False}),
-        ],
-        debug=config.debug == "1",
-    )
+_app_spec = {
+    "handlers": [
+        (
+            r"/static/(.*)",
+            tornado.web.StaticFileHandler,
+            {"path": os.path.join(os.path.dirname(__file__), "static")},
+        ),
+        (
+            r"/pyodide/(.*)",
+            tornado.web.StaticFileHandler,
+            {"path": os.path.join(os.path.dirname(__file__), "../pyodide")},
+        ),
+        (r"/", LoginHandler),
+        (
+            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.zip",
+            PackageHandler,
+        ),
+        (
+            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.ws",
+            ServerWebSocket,
+        ),
+        (
+            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)",
+            AppHandler,
+        ),
+        (r"/.*", tornado.web.RedirectHandler, {"url": "/", "permanent": False}),
+    ],
+    "debug": config.debug == "1",
+}
 
 
 async def astart():
-    app = make_app()
+    app = tornado.web.Application(**_app_spec)
     app.listen(config.port, config.address)
-    
+
     # Load all server applications
     server_modules = glob.glob(f"{config.apps}/*/*_server.py")
     for path in server_modules:
@@ -119,11 +118,11 @@ async def astart():
             logger.debug(f"Loaded module: {module_name}")
         except Exception as e:
             logger.error(f"Failed to load module {module_name}: {e}", exc_info=True)
-    
-    url = config.url or f'http://{config.address}:{config.port}'
+
+    url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")
     logger.info(f"Loaded {len(server_applications)} application(s)")
-    
+
     await asyncio.Event().wait()
 
 
