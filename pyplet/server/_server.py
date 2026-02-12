@@ -129,6 +129,7 @@ async def astart():
 class ServerApplication:
     title: str = None
     client_libraries: Tuple[str] = ()
+    mcp_tools = ()
 
     def websocket_server_loop(self, websocket: tornado.websocket.WebSocketHandler): ...
 
