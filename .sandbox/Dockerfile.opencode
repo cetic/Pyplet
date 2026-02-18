@@ -1,0 +1,25 @@
+FROM ubuntu:24.04
+
+# Install dependencies for Chrome
+RUN apt-get update && apt-get install -y \
+    curl \
+    sudo \
+    git \
+    wget
+
+# Download and install Google Chrome
+RUN curl -L -o /tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get install -y /tmp/google-chrome.deb && \
+    rm /tmp/google-chrome.deb
+
+RUN mkdir /workspace && chown -R ubuntu:ubuntu /workspace
+RUN passwd -d ubuntu
+USER ubuntu
+
+RUN curl -fsSL https://opencode.ai/install | bash
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+RUN mkdir -p ~/.local/share
+
+ENV PATH="$PATH:~/.opencode/bin:~/.local/bin"
+WORKDIR /workspace

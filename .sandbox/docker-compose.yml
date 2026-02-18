@@ -1,0 +1,13 @@
+services:
+  opencode:
+    build:
+      context: .
+      dockerfile: Dockerfile.opencode
+    command: sleep infinity
+    volumes:
+      - ../:/workspace
+      - ./opencode:/home/ubuntu/.config/opencode
+      - share-vol:/home/ubuntu/.local/share/
+
+volumes:
+  share-vol:
