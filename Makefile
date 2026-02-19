@@ -4,10 +4,10 @@ ifeq ($(firstword $(MAKECMDGOALS)),sandbox)
 SANDBOX_GOALS := $(filter-out sandbox,$(MAKECMDGOALS))
 .PHONY: sandbox
 sandbox:
-       cd .sandbox && $(MAKE) $(SANDBOX_GOALS)
+	cd .sandbox && $(MAKE) $(SANDBOX_GOALS)
 # Prevent "No rule to make target" errors for forwarded goals
 $(SANDBOX_GOALS):
-       @:
+	@:
 
 else ifeq ($(firstword $(MAKECMDGOALS)),new-tree)
 
