@@ -181,7 +181,7 @@ _SESSION_MAX_AGE_DAYS = 1  # 24 hours
 def set_session(handler, user_info: dict) -> None:
     """Write a signed session cookie containing *user_info*."""
     payload = json.dumps({**user_info, "_ts": int(time.time())})
-    handler.set_secure_cookie(
+    handler.set_signed_cookie(
         SESSION_COOKIE,
         payload,
         expires_days=_SESSION_MAX_AGE_DAYS,
@@ -192,7 +192,7 @@ def set_session(handler, user_info: dict) -> None:
 
 def get_session(handler) -> dict | None:
     """Return the user dict from the signed cookie, or ``None``."""
-    raw = handler.get_secure_cookie(SESSION_COOKIE, max_age_days=_SESSION_MAX_AGE_DAYS)
+    raw = handler.get_signed_cookie(SESSION_COOKIE, max_age_days=_SESSION_MAX_AGE_DAYS)
     if raw is None:
         return None
     try:
@@ -331,7 +331,7 @@ async def start_login(handler, provider: str) -> None:
     state = secrets.token_urlsafe(16)
     next_url = handler.get_argument("next", "/")
 
-    handler.set_secure_cookie(
+    handler.set_signed_cookie(
         _STATE_COOKIE,
         json.dumps({"state": state, "next": next_url, "provider": provider}),
         httponly=True,
@@ -362,7 +362,7 @@ async def handle_callback(handler) -> None:
     Called by ``OAuthCallbackHandler`` in ``_server.py``.
     """
     # --- Validate CSRF state ---
-    raw_state = handler.get_secure_cookie(_STATE_COOKIE)
+    raw_state = handler.get_signed_cookie(_STATE_COOKIE)
     if not raw_state:
         _error(handler, 400, "OAuth state cookie is missing. Please try again.")
         return

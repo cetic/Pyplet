@@ -54,6 +54,7 @@ oauth.register_auth_check(lambda: enabled())
 # Enable check
 # ---------------------------------------------------------------------------
 
+
 def enabled() -> bool:
     """True when all required SMTP config vars are set."""
     return bool(
@@ -81,7 +82,9 @@ def _purge_expired() -> None:
         del _tokens[t]
     # Hard cap — evict oldest if store is still too large
     if len(_tokens) > _MAX_STORE:
-        oldest = sorted(_tokens, key=lambda t: _tokens[t]["exp"])[: len(_tokens) - _MAX_STORE]
+        oldest = sorted(_tokens, key=lambda t: _tokens[t]["exp"])[
+            : len(_tokens) - _MAX_STORE
+        ]
         for t in oldest:
             del _tokens[t]
 
@@ -122,13 +125,14 @@ def _consume_token(token: str) -> dict | None:
 # E-mail delivery (blocking SMTP — run in a thread so we don't block the loop)
 # ---------------------------------------------------------------------------
 
-def _send_email_sync(to_addr: str, magic_url: str) -> None:
+
+def _send_email_sync(to_addr: str, base: str, magic_url: str) -> None:
     """Send the magic-link e-mail synchronously (called from a thread)."""
     ttl_min = config.magiclink_token_ttl // 60
 
     msg = email.mime.multipart.MIMEMultipart("alternative")
     msg["Subject"] = "Your Pyplet sign-in link"
-    msg["From"] = config.magiclink_from or config.magiclink_smtp_user
+    msg["From"] = base
     msg["To"] = to_addr
 
     plain = (
@@ -176,15 +180,16 @@ def _send_email_sync(to_addr: str, magic_url: str) -> None:
         smtp.quit()
 
 
-async def _send_email(to_addr: str, magic_url: str) -> None:
+async def _send_email(to_addr: str, base: str, magic_url: str) -> None:
     """Async wrapper — runs the blocking SMTP call in a thread pool."""
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, _send_email_sync, to_addr, magic_url)
+    await loop.run_in_executor(None, _send_email_sync, to_addr, base, magic_url)
 
 
 # ---------------------------------------------------------------------------
 # Request handlers (called from _server.py)
 # ---------------------------------------------------------------------------
+
 
 async def handle_request(handler) -> None:
     """
@@ -206,7 +211,7 @@ async def handle_request(handler) -> None:
     magic_url = urljoin(base, f"/auth/verify?token={token}")
 
     try:
-        await _send_email(email_addr, magic_url)
+        await _send_email(email_addr, base, magic_url)
     except Exception as exc:
         logger.error("Failed to send magic-link to %s: %s", email_addr, exc)
         oauth._error(
@@ -219,6 +224,7 @@ async def handle_request(handler) -> None:
     # Show confirmation — don't reveal whether the address exists in any ACL.
     from . import templates
     from ..shared import dom as d
+
     handler.write(d.render_html(templates.magiclink_sent_template(handler, email_addr)))
 
 

@@ -146,7 +146,7 @@ class LogoutHandler(tornado.web.RequestHandler):
         self.redirect("/")
 
 
-class OAuthLoginHandler(_AuthMixin, tornado.web.RequestHandler):
+class OAuthLoginHandler(tornado.web.RequestHandler):
     """
     GET  /oauth/login?provider=<name>  — kick off the OAuth flow.
     """
