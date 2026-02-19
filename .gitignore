@@ -6,6 +6,11 @@ venv
 dist
 env
 
+# Local dev environment files (may contain secrets)
+dev.env
+.env
+*.env
+
 # Test artifacts
 .pytest_cache/
 .coverage

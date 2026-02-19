@@ -144,6 +144,94 @@ pyplet/
 └── README.md          # You are here
 ```
 
+## Authentication
+
+Pyplet supports platform-level OAuth2 / OIDC authentication via Google and Microsoft. When enabled, all pages and WebSocket connections are gated behind a login screen. Auth is **opt-in**: if no provider is configured the platform runs with no login, exactly as before.
+
+### Setup
+
+**1. Register an OAuth app** with your provider and obtain a client ID and secret. Set the callback URL to:
+```
+http://<your-host>/oauth/callback
+```
+
+**2. Set environment variables:**
+
+```bash
+# Required to sign session cookies (generate once and keep it stable):
+export PYPLET_COOKIE_SECRET=$(python -c "import secrets; print(secrets.token_hex(32))")
+
+# Google
+export OAUTH_GOOGLE_CLIENT_ID=your-client-id
+export OAUTH_GOOGLE_CLIENT_SECRET=your-client-secret
+
+# Microsoft / Entra ID (can be set alongside Google)
+export OAUTH_MICROSOFT_CLIENT_ID=your-client-id
+export OAUTH_MICROSOFT_CLIENT_SECRET=your-client-secret
+export OAUTH_MICROSOFT_TENANT=common  # or your tenant ID
+```
+
+**3. Start the server** — a login page with provider buttons appears automatically.
+
+### Access control (ACL)
+
+By default every authenticated user can see all apps. To restrict access, create `apps/auth_rules.json` — a JSON array of `["project/app regex", "email regex"]` pairs:
+
+```json
+[
+    [".*",           "@mycompany\\.com$"],
+    ["public/demo",  ".*"]
+]
+```
+
+Rules are evaluated in order; the **first matching rule** grants access. The first regex is matched against the combined `"project/app"` string; the second against the user's email address. If no rule matches, access is denied.
+
+Override the rules file path with `PYPLET_AUTH_RULES_FILE`.
+
+### Magic-link e-mail authentication
+
+As an alternative (or complement) to OAuth, users can sign in by entering their e-mail address and clicking a single-use link delivered to their inbox — no password required.
+
+Configure an SMTP server to enable it:
+
+```bash
+export MAGICLINK_SMTP_HOST=smtp.example.com
+export MAGICLINK_SMTP_PORT=587          # default
+export MAGICLINK_SMTP_USER=noreply@example.com
+export MAGICLINK_SMTP_PASSWORD=secret
+export MAGICLINK_FROM=noreply@example.com   # optional, defaults to SMTP_USER
+export MAGICLINK_TOKEN_TTL=900              # seconds (default: 15 min)
+# Set to "0" to disable STARTTLS (not recommended):
+# export MAGICLINK_SMTP_TLS=0
+```
+
+Magic-link and OAuth providers can be active simultaneously — the login page shows all available methods.
+
+The ACL rules file applies to magic-link logins exactly the same way it does for OAuth: the user's e-mail address is matched against the `email_regex` column of each rule.
+
+### Configuration reference
+
+| Variable | Description |
+|---|---|
+| `PYPLET_COOKIE_SECRET` | Secret for signing session cookies |
+| **OAuth — Google** | |
+| `OAUTH_GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
+| `OAUTH_GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
+| **OAuth — Microsoft** | |
+| `OAUTH_MICROSOFT_CLIENT_ID` | Microsoft / Entra ID client ID |
+| `OAUTH_MICROSOFT_CLIENT_SECRET` | Microsoft / Entra ID client secret |
+| `OAUTH_MICROSOFT_TENANT` | Tenant ID or `common` (default: `common`) |
+| **Magic-link** | |
+| `MAGICLINK_SMTP_HOST` | SMTP server hostname (required to enable magic-link) |
+| `MAGICLINK_SMTP_PORT` | SMTP port (default: `587`) |
+| `MAGICLINK_SMTP_USER` | SMTP login username |
+| `MAGICLINK_SMTP_PASSWORD` | SMTP login password |
+| `MAGICLINK_SMTP_TLS` | Use STARTTLS: `1` (default) or `0` for plain SMTP |
+| `MAGICLINK_FROM` | Sender address (defaults to `MAGICLINK_SMTP_USER`) |
+| `MAGICLINK_TOKEN_TTL` | Token validity in seconds (default: `900` = 15 min) |
+| **ACL** | |
+| `PYPLET_AUTH_RULES_FILE` | Path to ACL rules JSON file (default: `apps/auth_rules.json`) |
+
 ## Advanced Features
 
 ### DOM Manipulation
@@ -218,6 +306,8 @@ Available configuration options:
 - `--debug` / `PYPLET_DEBUG` - Debug mode (default: `1`)
 - `--pyodide-url` / `PYPLET_PYODIDE` - Pyodide CDN URL
 - `--url` / `PYPLET_URL` - Custom URL override
+
+See the [Authentication](#authentication) section for OAuth-related variables.
 
 ## Browser Compatibility
 

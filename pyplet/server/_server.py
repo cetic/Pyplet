@@ -5,6 +5,7 @@ import tornado.websocket
 import os
 import asyncio
 import json
+import secrets
 import sys
 from pathlib import Path
 import io
@@ -15,6 +16,8 @@ import runpy
 import logging
 
 from . import templates
+from . import oauth
+from . import magiclink
 from ..shared import dom as d
 import pyplet
 from pyplet.server import config
@@ -27,34 +30,183 @@ logger = logging.getLogger("pyplet.server")
 server_applications: Dict[Tuple[str, str], "ServerApplication"] = {}
 
 
+# ---------------------------------------------------------------------------
+# Auth gate mixin
+# ---------------------------------------------------------------------------
+
+
+class _AuthMixin:
+    """
+    Tornado handler mixin that enforces platform-level authentication.
+
+    When auth is disabled (no OAuth provider configured) every request
+    passes through unchanged.  When auth is enabled:
+
+    * Unauthenticated requests to HTML pages → redirect to /login.
+    * Unauthenticated requests to other resources (zip, ws) → 401.
+    * Authenticated but unauthorised → 403.
+    """
+
+    # Sub-classes set this to True for WebSocket handlers where redirects
+    # are not meaningful.
+    _is_ws: bool = False
+
+    def get_current_user(self):
+        if not oauth.auth_enabled():
+            # Return a sentinel so Tornado's @authenticated decorator works.
+            return {"email": "", "name": "anonymous", "provider": None}
+        return oauth.get_session(self)
+
+    def _require_auth(self, project: str | None = None, app: str | None = None):
+        """
+        Enforce auth + ACL.  Returns the user dict on success, or None if
+        the request has already been terminated (redirect / error written).
+        """
+        if not oauth.auth_enabled():
+            return {"email": "", "name": "anonymous", "provider": None}
+
+        user = oauth.get_session(self)
+        if user is None:
+            if self._is_ws:
+                self.set_status(401)
+                self.write("Unauthenticated")
+                self.finish()
+            else:
+                next_url = self.request.uri
+                self.redirect(f"/login?next={next_url}")
+            return None
+
+        if project is not None and app is not None:
+            if not oauth.is_app_permitted(project, app, user["email"]):
+                self.set_status(403)
+                self.finish(
+                    f"<html><body><h3>403 Forbidden</h3>"
+                    f"<p>Your account ({user['email']}) is not permitted "
+                    f"to access {project}/{app}.</p>"
+                    f'<p><a href="/">Back to home</a></p>'
+                    f"</body></html>"
+                )
+                return None
+
+        return user
+
+
+# ---------------------------------------------------------------------------
+# Static file handler (no auth required)
+# ---------------------------------------------------------------------------
+
+
 class StaticFileHandler(tornado.web.StaticFileHandler):
     def set_extra_headers(self, path):
         self.set_header("Cache-Control", "no-cache")
 
 
-class PackageHandler(tornado.web.RequestHandler):
+# ---------------------------------------------------------------------------
+# Application handlers
+# ---------------------------------------------------------------------------
+
+
+class PackageHandler(_AuthMixin, tornado.web.RequestHandler):
     async def get(self, project_name, app_name):
+        user = self._require_auth(project_name, app_name)
+        if user is None:
+            return
         application = server_applications[project_name, app_name]
         application.package(self)
 
 
-class LoginHandler(tornado.web.RequestHandler):
+class LoginHandler(_AuthMixin, tornado.web.RequestHandler):
+    """
+    GET  /login  — show login page (provider buttons) or redirect to / if
+                   already authenticated.
+    """
+
     async def get(self):
-        self.write(d.render_html(templates.index_template(self)))
+        if oauth.auth_enabled() and oauth.get_session(self) is not None:
+            self.redirect("/")
+            return
+        self.write(d.render_html(templates.login_template(self)))
 
 
-class AppHandler(tornado.web.RequestHandler):
+class IndexHandler(_AuthMixin, tornado.web.RequestHandler):
+    """
+    GET  /  — show the index page with the apps the user is allowed to see.
+    """
+
+    async def get(self):
+        user = self._require_auth()
+        if user is None:
+            return
+        self.write(d.render_html(templates.index_template(self, user)))
+
+
+class LogoutHandler(tornado.web.RequestHandler):
+    async def get(self):
+        oauth.clear_session(self)
+        self.redirect("/")
+
+
+class OAuthLoginHandler(_AuthMixin, tornado.web.RequestHandler):
+    """
+    GET  /oauth/login?provider=<name>  — kick off the OAuth flow.
+    """
+
+    async def get(self):
+        provider = self.get_argument("provider", None)
+        if provider not in oauth.enabled_providers():
+            self.set_status(400)
+            self.write(f"Unknown or unconfigured provider: {provider!r}")
+            return
+        await oauth.start_login(self, provider)
+
+
+class OAuthCallbackHandler(tornado.web.RequestHandler):
+    """
+    GET  /oauth/callback  — OAuth provider redirects here with ?code=…&state=…
+    """
+
+    async def get(self):
+        await oauth.handle_callback(self)
+
+
+class MagicLinkRequestHandler(tornado.web.RequestHandler):
+    """
+    POST /auth/email  — accepts an e-mail address, sends a magic link.
+    """
+
+    async def post(self):
+        await magiclink.handle_request(self)
+
+
+class MagicLinkVerifyHandler(tornado.web.RequestHandler):
+    """
+    GET  /auth/verify?token=<token>  — validates the token and logs the user in.
+    """
+
+    async def get(self):
+        await magiclink.handle_verify(self)
+
+
+class AppHandler(_AuthMixin, tornado.web.RequestHandler):
     async def get(self, project_name, app_name):
+        user = self._require_auth(project_name, app_name)
+        if user is None:
+            return
         application = server_applications[project_name, app_name]
         application.serve(self)
 
 
-class ServerWebSocket(tornado.websocket.WebSocketHandler):
+class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
     closing_message = pyplet.WebSocket.closing_message
+    _is_ws = True
 
     async def open(self, project_name, app_name):
-        application = server_applications[project_name, app_name]
+        user = self._require_auth(project_name, app_name)
+        if user is None:
+            self.close(1008, "Unauthorized")
+            return
 
+        application = server_applications[project_name, app_name]
         self.queue = asyncio.Queue()
         asyncio.create_task(application.websocket_server_loop(self))
 
@@ -74,6 +226,10 @@ class ServerWebSocket(tornado.websocket.WebSocketHandler):
         await self.queue.put(self.closing_message)
 
 
+# ---------------------------------------------------------------------------
+# Tornado application spec
+# ---------------------------------------------------------------------------
+
 _app_spec = {
     "handlers": [
         (
@@ -86,7 +242,13 @@ _app_spec = {
             tornado.web.StaticFileHandler,
             {"path": os.path.join(os.path.dirname(__file__), "../pyodide")},
         ),
-        (r"/", LoginHandler),
+        (r"/", IndexHandler),
+        (r"/login", LoginHandler),
+        (r"/logout", LogoutHandler),
+        (r"/oauth/login", OAuthLoginHandler),
+        (r"/oauth/callback", OAuthCallbackHandler),
+        (r"/auth/email", MagicLinkRequestHandler),
+        (r"/auth/verify", MagicLinkVerifyHandler),
         (
             r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.zip",
             PackageHandler,
@@ -102,6 +264,9 @@ _app_spec = {
         (r"/.*", tornado.web.RedirectHandler, {"url": "/", "permanent": False}),
     ],
     "debug": config.debug == "1",
+    # Signs session cookies.  Falls back to a per-process random value so the
+    # server still works without PYPLET_COOKIE_SECRET (sessions lost on restart).
+    "cookie_secret": config.oauth_cookie_secret or secrets.token_hex(32),
 }
 
 
@@ -122,8 +287,20 @@ async def astart():
     url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")
     logger.info(f"Loaded {len(server_applications)} application(s)")
+    methods = oauth.enabled_providers()
+    if magiclink.enabled():
+        methods.append("magic-link")
+    if methods:
+        logger.info("Authentication enabled via: %s", ", ".join(methods))
+    else:
+        logger.info("Authentication disabled (no provider configured)")
 
     await asyncio.Event().wait()
+
+
+# ---------------------------------------------------------------------------
+# Base class for user applications
+# ---------------------------------------------------------------------------
 
 
 class ServerApplication:
