@@ -97,7 +97,8 @@ def make_app():
             ),
             (r"/", LoginHandler),
             (
-                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.zip",
+                r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/"
+                r"([a-zA-Z_][a-zA-Z0-9_]*)\.zip",
                 PackageHandler,
             ),
             (
@@ -122,6 +123,7 @@ async def astart():
     app = make_app()
     app.listen(config.port, config.address)
     print(
-        f"Listening to {config.url or f'http://{config.address}:{config.port}'}"
+        "Listening to "
+        f"{config.url or f'http://{config.address}:{config.port}'}"
     )
     await asyncio.Event().wait()

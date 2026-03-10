@@ -65,7 +65,7 @@ exclude = '''
 [tool.ruff]
 builtins = ["_"]
 # cache-dir = "~/.cache/ruff"
-exclude = [".venv"]
+exclude = [".venv", "**/build"]
 line-length = 79
 fix = true
 indent-width = 4

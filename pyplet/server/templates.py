@@ -1,9 +1,12 @@
 import collections
+import datetime
 import glob
 
 from .. import dom as d
 from ..dom import bootstrap as b
 from . import config
+
+current_year = datetime.datetime.now().year
 
 
 def base_template(
@@ -41,7 +44,8 @@ def base_template(
                 d.footer(_class="footer mt-auto py-3 bg-light").append(
                     d.div(_class="container").append(
                         d.span(_class="text-muted").append(
-                            "&copy; Copyright CETIC 2024 - 2025. All rights reserved",
+                            "&copy; Copyright CETIC 2024 - "
+                            f"{current_year}. All rights reserved",
                         )
                     )
                 )
@@ -113,8 +117,10 @@ def about_template(handler):
                     " to develop web applications.",
                 ),
                 d.p(
-                    "Its applications can be written entirely in Python while leveraging two of the most vibrant programming "
-                    "communities in the world: the JavaScript and Python ecosystems."
+                    "Its applications can be written entirely in Python while"
+                    " leveraging two of the most vibrant programming "
+                    "communities in the world: the JavaScript and Python "
+                    "ecosystems."
                 ),
             ),
         ],
@@ -127,6 +133,7 @@ def application_template(title, handler, content: d.Node):
     if content and getattr(content[0], "tag", None) == "head":
         additional_head = content[0].children
         content = content[1:]
+
     if content and getattr(content[0], "tag", None) == "body":
         kwargs["contain_in"] = None
         content = content[0].children
