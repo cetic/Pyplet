@@ -1,7 +1,5 @@
 import collections
 import glob
-import typing as t
-from dataclasses import dataclass
 
 from .. import dom as d
 from ..dom import bootstrap as b
@@ -93,8 +91,8 @@ def index_template(handler):
         title="Index",
         navbar=default_navbar(handler),
         content=[
-            d.p(f"Welcome to Pyplet!"),
-            d.p(f"The following applications are available:"),
+            d.p("Welcome to Pyplet!"),
+            d.p("The following applications are available:"),
             application_list,
         ],
     )

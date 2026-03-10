@@ -8,7 +8,7 @@ Docstring style: Google.
 
 import warnings
 
-from js import Object, console, document, window
+from js import Object, document
 from pyodide.ffi import create_proxy, to_js
 
 
