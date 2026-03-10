@@ -12,7 +12,7 @@ from .. import dom as d
 from ..utils import get_import
 from . import templates
 
-__all__ = ["main"]
+__all__ = ["main"]  # noqa: F822
 
 
 class StaticFileHandler(tornado.web.StaticFileHandler):

@@ -18,7 +18,8 @@ def create_proxy_with_this(callable):
 
 
 def to_js_obj(kwargs):
-    """Convert a Python mapping to a JS ``Object`` preserving keys and values."""
+    """Convert a Python mapping to a JS ``Object``
+    preserving keys and values."""
     return Object.fromEntries(to_js(kwargs))
 
 
@@ -27,6 +28,7 @@ try:
 
     with warnings.catch_warnings(action="ignore"):
         plt.rcParams["toolbar"] = "toolmanager"
+
 except ImportError:
     pass
 

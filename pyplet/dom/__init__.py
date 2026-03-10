@@ -3,7 +3,8 @@
 This module provides a tiny DOM DSL for both server-side HTML generation and
 client-side DOM creation in Pyodide. It exposes:
 
-- ``Node``: a data structure representing elements, attributes, children and event listeners
+- ``Node``: a data structure representing elements,
+  attributes, children and event listeners
 - HTML/SVG element factories (e.g., ``div``, ``span``, ``svg``)
 - ``render_html``: serialize a tree to HTML
 - ``render_dom``: create live DOM nodes in the browser
@@ -35,7 +36,8 @@ class Node:
         tag: Tag name, e.g. ``"div"``.
         props: Sequence of key/value attributes.
         children: Sequence of strings or :class:`Node` children.
-        event_listeners: Sequence of ``(event_name, handler)`` pairs (browser-only).
+        event_listeners: Sequence of ``(event_name, handler)``
+        pairs (browser-only).
         ns: Optional XML namespace (used for SVG elements).
     """
 
