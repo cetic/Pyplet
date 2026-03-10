@@ -1,3 +1,5 @@
+"""Pyplet server web module."""
+
 import asyncio
 import os
 
@@ -16,23 +18,56 @@ __all__ = ["main"]  # noqa: F822
 
 
 class StaticFileHandler(tornado.web.StaticFileHandler):
-    def set_extra_headers(self, path):
+    """
+    A static file handler that sets the Cache-Control header to no-cache.
+    """
+
+    def set_extra_headers(self, path: str) -> None:
+        """Sets the Cache-Control header to no-cache.
+
+        Args:
+            path (str): The path of the requested resource.
+        """
         self.set_header("Cache-Control", "no-cache")
 
 
 class PackageHandler(tornado.web.RequestHandler):
-    async def get(self, project_name, app_name):
+    """A handler for serving package resources."""
+
+    async def get(self, project_name: str, app_name: str) -> None:
+        """Serves a package resource for the given project and app.
+
+        Args:
+            project_name (str): The name of the project.
+            app_name (str): The name of the app.
+        """
         app_config = get_import(f"{config.apps}.{project_name}.config")
         app_config.package(self)
 
 
 class LoginHandler(tornado.web.RequestHandler):
+    """A handler for serving the login page."""
+
     async def get(self):
+        """Serves the login page.
+
+        Args:
+            project_name (str): The name of the project.
+            app_name (str): The name of the app.
+        """
         self.write(d.render_html(templates.index_template(self)))
 
 
 class AppHandler(tornado.web.RequestHandler):
-    async def get(self, project_name, app_name):
+    """A handler for serving the app page."""
+
+    async def get(self, project_name: str, app_name: str):
+        """Serves the app page.
+
+        Args:
+            project_name (str): The name of the project.
+            app_name (str): The name of the app.
+        """
         app_config = get_import(f"{config.apps}.{project_name}.config")
         content = app_config.serve(self)
         dom = templates.application_template(
@@ -44,27 +79,33 @@ class AppHandler(tornado.web.RequestHandler):
 class ServerWebSocket(tornado.websocket.WebSocketHandler):
     closing_message = pyplet.WebSocket.closing_message
 
-    async def open(self, project_name, app_name):
+    async def open(self, project_name: str, app_name: str):
+        """Opens the WebSocket connection."""
         server = get_import(f"{config.apps}.{project_name}.{app_name}_server")
 
         self.queue = asyncio.Queue()
         asyncio.create_task(server.websocket_server_loop(self))
 
     async def on_message(self, message):
+        """Receives a message from the client."""
         await self.queue.put(message)
 
     async def receive(self):
+        """Receives a message from the client."""
         return await self.queue.get()
 
     async def send(self, message):
+        """Sends the given message to the client of this Web Socket."""
         await super().write_message(
             message, binary=not isinstance(message, str)
         )
 
     def on_close(self):
+        """Closes the WebSocket by sending the closing message."""
         asyncio.get_running_loop().create_task(self.aclose())
 
     async def aclose(self):
+        """Closes the WebSocket by sending the closing message."""
         await self.queue.put(self.closing_message)
 
 

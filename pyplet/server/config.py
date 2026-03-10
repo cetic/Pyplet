@@ -1,12 +1,10 @@
 import os
 
-__all__ = [
-    "address",
-    "apps",
-    "debug",
-    "port",
-    "pyodide_url",
-    "url",
+# Generate params dynamically from the module's attributes
+params = [
+    name
+    for name, _ in globals().items()
+    if not name.startswith("_") and name != "params"
 ]
 
 address = os.environ.get("PYPLET_ADDR", "127.0.0.1")
