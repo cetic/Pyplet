@@ -17,11 +17,12 @@ def label(node, text, row_class, col_classes=None):
         node: Target control node.
         text: Label text.
         row_class: Row container classes.
-        col_classes: Optional comma-separated classes ``"label_col,control_col"``.
+        col_classes: Optional comma-separated classes
+        ``"label_col,control_col"``.
     """
     if node.id is None:
         node.append(id=d.gen_id())
-    label_node = label(text, _for=node.id, _class="form-label")
+    label_node = d.label(text, _for=node.id, _class="form-label")
     if col_classes is not None:
         a, b = col_classes.split(",")
         label_node.append_class(a)

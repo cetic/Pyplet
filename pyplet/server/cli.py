@@ -68,7 +68,8 @@ def main():
     # init command
     parser_init = subparsers.add_parser(
         "init",
-        help="Create a new project directory with client.py, server.py and config.py under ./apps/",
+        help="Create a new project directory with client.py, "
+        "server.py and config.py under ./apps/",
     )
     parser_init.add_argument(
         "project_name",

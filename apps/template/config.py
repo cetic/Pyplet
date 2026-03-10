@@ -35,7 +35,7 @@ def package(handler: pyplet.server.web.PackageHandler):
 def serve(handler: pyplet.server.web.AppHandler):
     project, app = handler.path_args
 
-    server = f"{handler.request.protocol}://{handler.request.host}"
+    server = f"{handler.request.protocol}://{handler.request.host}"  # noqa: E501, F841
     app_package = f"/apps/{project}/{app}.zip"
 
     client_libraries = getattr(
@@ -51,7 +51,7 @@ def serve(handler: pyplet.server.web.AppHandler):
             ),
             d.link(
                 rel="stylesheet",
-                href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",
+                href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",  # noqa: E501
             ),
             d.script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
             d.script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
@@ -75,7 +75,11 @@ def serve(handler: pyplet.server.web.AppHandler):
                         zip_file = zipfile.ZipFile(io.BytesIO(response), 'r')
                         zip_file.extractall()
                         from pyplet.client import bootstrap
-                        await bootstrap({project!r}, {app!r}, {client_libraries!r})
+                        await bootstrap(
+                            {project!r},
+                            {app!r},
+                            {client_libraries!r},
+                        )
 
                     import asyncio
                     asyncio.create_task(main())
