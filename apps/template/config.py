@@ -47,7 +47,7 @@ def serve(handler: pyplet.server.web.AppHandler):
     return [
         d.head(
             d.script(
-                src=f"https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"
+                src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"
             ),
             d.link(
                 rel="stylesheet",

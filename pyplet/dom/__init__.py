@@ -12,7 +12,6 @@ client-side DOM creation in Pyodide. It exposes:
 Docstring style: Google.
 """
 
-import re
 import typing as T
 
 skip = object()

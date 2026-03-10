@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import importlib
 import os
 import shutil
 import sys
@@ -33,10 +32,10 @@ def create_project(project_name: str):
     # Create apps dir if it doesn't exist
     apps_dir = cwd / "apps"
     if not apps_dir.exists():
-        print(f"[INFO] Creating './apps' directory")
+        print("[INFO] Creating './apps' directory")
         apps_dir.mkdir(parents=True, exist_ok=True)
     else:
-        print(f"[INFO] Apps directory './apps/' already exists, skipping copy")
+        print("[INFO] Apps directory './apps/' already exists, skipping copy")
 
     # Create project dir if it doesnt exist
     project_dir = apps_dir / project_name
@@ -51,7 +50,7 @@ def create_project(project_name: str):
     shutil.copyfile(src_server, project_dir / f"{project_name}_server.py")
     shutil.copyfile(src_config, project_dir / "config.py")
 
-    print(f"[OK] Files copied: client.py, server.py, config.py")
+    print("[OK] Files copied: client.py, server.py, config.py")
 
 
 def script_main():

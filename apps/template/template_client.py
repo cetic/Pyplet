@@ -1,7 +1,7 @@
 # The template file must be written i used chat_client example temporarly
 import json
 
-from js import console, document
+from js import document
 from pyodide.ffi import create_proxy
 
 import pyplet
@@ -45,4 +45,4 @@ async def websocket_client_loop(ws: pyplet.WebSocket):
             break
         msg = decode(msg)
         render(f"<b>{msg['name']}</b>: {msg['message']}")
-    render(f"<b>Server disconnected</b>")
+    render("<b>Server disconnected</b>")
