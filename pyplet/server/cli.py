@@ -1,23 +1,30 @@
 import argparse
 import asyncio
+import logging
 import os
 import shutil
 import sys
 from pathlib import Path
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-def create_project(project_name: str):
+
+def create_project(project_name: str) -> None:
     """
     Create a new project directory under ./apps/project_name and copy
     template_client.py, template_server.py, and config.py from ../apps/examples
     into it.
+
+    Args:
+        project_name (str): The name of the project to create.
     """
     # Validate project name for Python importability
     if not project_name.isidentifier():
-        print(
-            f"[ERROR] '{project_name}' is not a valid Python's module name . "
+        logger.error(
+            "%s is not a valid Python's module name."
             "Use only letters, numbers and underscores, "
-            "and dont start with a number."
+            "and dont start with a number." % project_name
         )
         sys.exit(1)
     cwd = Path.cwd()
@@ -31,35 +38,39 @@ def create_project(project_name: str):
 
     # Create apps dir if it doesn't exist
     apps_dir = cwd / "apps"
-    if not apps_dir.exists():
-        print("[INFO] Creating './apps' directory")
-        apps_dir.mkdir(parents=True, exist_ok=True)
-    else:
-        print("[INFO] Apps directory './apps/' already exists, skipping copy")
 
-    # Create project dir if it doesnt exist
+    if not apps_dir.exists():
+        logger.info("Creating './apps' directory")
+        apps_dir.mkdir(parents=True, exist_ok=True)
+
+    else:
+        logger.info("Apps directory './apps/' already exists, skipping copy")
+
+    # Create project dir if it doesn't exist
     project_dir = apps_dir / project_name
     if project_dir.exists():
-        print(f"[ERROR] The directory '{project_dir}' already exists.")
+        logger.warning("The directory '%s' already exists.", project_name)
         sys.exit(1)
+
     project_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[OK] Project '{project_name}' created at {project_dir}")
+    logger.info("Project '%s' created at %s", project_name, project_dir)
 
     # Copy files
     shutil.copyfile(src_client, project_dir / f"{project_name}_client.py")
     shutil.copyfile(src_server, project_dir / f"{project_name}_server.py")
     shutil.copyfile(src_config, project_dir / "config.py")
 
-    print("[OK] Files copied: client.py, server.py, config.py")
+    logger.info("[OK] Files copied: client.py, server.py, config.py")
 
 
-def script_main():
+def script_main() -> None:
+    """Run the Pyplet server CLI script."""
     if os.getcwd() not in sys.path:
         sys.path.append(os.getcwd())
     main()
 
 
-def main():
+def main() -> None:
     from pyplet.server import config
 
     parser = argparse.ArgumentParser(description="Pyplet project initializer")
@@ -80,7 +91,7 @@ def main():
     parser_start = subparsers.add_parser(
         "start", help="Launch pyplet.server.main()"
     )
-    for name in config.__all__:
+    for name in config.params:
         parser_start.add_argument(
             f"--{name.replace('_', '-')}",
             required=False,
@@ -91,17 +102,20 @@ def main():
 
     if args.command == "init":
         create_project(args.project_name)
+
     elif args.command == "start":
-        for name in config.__all__:
+        for name in config.params:
             value = getattr(args, name, ...)
             if value is not ...:
                 setattr(config, name, value)
+
         start_server()
+
     else:
         parser.print_help()
 
 
-def start_server():
+def start_server() -> None:
     """
     Import pyplet.server.__init__ and run its main() function.
     """

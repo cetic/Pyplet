@@ -1,9 +1,11 @@
 import collections
 import datetime
 import glob
+from typing import Optional
+
+from tornado.web import RequestHandler
 
 from .. import dom as d
-from ..dom import bootstrap as b
 from . import config
 
 current_year = datetime.datetime.now().year
@@ -11,15 +13,26 @@ current_year = datetime.datetime.now().year
 
 def base_template(
     *,
-    title=None,
-    navbar,
-    content,
+    title: Optional[str] = None,
+    navbar: d.Node,
+    content: list | d.Node,
     additional_head=(),
-    contain_in="container mt-2",
-    footer=True,
+    contain_in: str | None = "container mt-2",
+    footer: bool = True,
 ):
+    """Base template for Pyplet web pages.
+
+    Args:
+        title (str): Page title.
+        navbar (Node): Navbar content.
+        content (Node): Page content.
+        additional_head (tuple): Additional head elements.
+        contain_in (str): Container class.
+        footer (bool): Whether to show the footer.
+    """
     if contain_in is not None:
         content = (d.div(_class=contain_in).append(*content),)
+
     return d.html("<!doctype html>", lang="en", _class="h-100").append(
         d.head(
             d.meta(charset="utf-8"),
@@ -61,8 +74,16 @@ def base_template(
     )
 
 
-def default_navbar(handler):
-    return b.nav(_class="navbar navbar-expand-sm bg-body-tertiary").append(
+def default_navbar(handler: RequestHandler) -> d.Node:
+    """Default navbar for Pyplet web pages.
+
+    Args:
+        handler (RequestHandler): Request handler.
+
+    Returns:
+        Node: Navbar content.
+    """
+    return d.nav(_class="navbar navbar-expand-sm bg-body-tertiary").append(
         d.div(_class="container").append(
             # Brand
             d.a("Pyplet", _class="navbar-brand", href="/"),
@@ -77,7 +98,15 @@ def default_navbar(handler):
     )
 
 
-def index_template(handler):
+def index_template(handler: RequestHandler) -> d.Node:
+    """Index template for Pyplet web pages.
+
+    Args:
+        handler (RequestHandler): Request handler.
+
+    Returns:
+        Node: Index content.
+    """
     applications = [
         "/" + p[:-10]
         for p in sorted(glob.glob("*/*_client.py", root_dir=config.apps))
@@ -102,7 +131,15 @@ def index_template(handler):
     )
 
 
-def about_template(handler):
+def about_template(handler: RequestHandler) -> d.Node:
+    """About template for Pyplet web pages.
+
+    Args:
+        handler (RequestHandler): Request handler.
+
+    Returns:
+        Node: About content.
+    """
     return base_template(
         title="About",
         navbar=default_navbar(handler),
@@ -127,7 +164,19 @@ def about_template(handler):
     )
 
 
-def application_template(title, handler, content: d.Node):
+def application_template(
+    title: str, handler: RequestHandler, content: d.Node | list
+) -> d.Node:
+    """Returns the application template for the given title and content.
+
+    Args:
+        title (str): The title of the page.
+        handler (RequestHandler): The request handler.
+        content (d.Node | list): The content of the page.
+
+    Returns:
+        Node: The application template.
+    """
     additional_head = ()
     kwargs = {}
     if content and getattr(content[0], "tag", None) == "head":
