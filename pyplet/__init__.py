@@ -4,4 +4,4 @@ Exports the WebSocket protocol used across client
 and server layers.
 """
 
-from .websocket import WebSocket
+from .websocket import WebSocket as WebSocket
