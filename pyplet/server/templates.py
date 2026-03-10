@@ -1,10 +1,11 @@
+import collections
+import glob
+import typing as t
+from dataclasses import dataclass
+
 from .. import dom as d
 from ..dom import bootstrap as b
 from . import config
-import typing as t
-import collections
-import glob
-from dataclasses import dataclass
 
 
 def base_template(
@@ -21,7 +22,9 @@ def base_template(
     return d.html("<!doctype html>", lang="en", _class="h-100").append(
         d.head(
             d.meta(charset="utf-8"),
-            d.meta(name="viewport", content="width=device-width, initial-scale=1"),
+            d.meta(
+                name="viewport", content="width=device-width, initial-scale=1"
+            ),
             d.title(f"{title} - Pyplet" if title else "Pyplet"),
             d.link(
                 href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
@@ -74,12 +77,15 @@ def default_navbar(handler):
 
 def index_template(handler):
     applications = [
-        "/" + p[:-10] for p in sorted(glob.glob("*/*_client.py", root_dir=config.apps))
+        "/" + p[:-10]
+        for p in sorted(glob.glob("*/*_client.py", root_dir=config.apps))
     ]
     projects = collections.defaultdict(d.ul)
     for application in applications:
         project, app_name = application.split("/")[-2:]
-        projects[project].append(d.li(d.a(app_name, href=f"apps/{project}/{app_name}")))
+        projects[project].append(
+            d.li(d.a(app_name, href=f"apps/{project}/{app_name}"))
+        )
     application_list = d.ul(
         *[d.li(project, apps) for project, apps in projects.items()]
     )
@@ -103,7 +109,9 @@ def about_template(handler):
                 d.p("Pyplet is a full-Python application server."),
                 d.p(
                     "It is developed at the ",
-                    d.a("CETIC", href="https://www.cetic.be/", target="_blank"),
+                    d.a(
+                        "CETIC", href="https://www.cetic.be/", target="_blank"
+                    ),
                     " to develop web applications.",
                 ),
                 d.p(

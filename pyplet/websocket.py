@@ -6,7 +6,7 @@ including a sentinel value used to signal that the connection has closed.
 Docstring style: Google.
 """
 
-from typing import Union, Protocol
+from typing import Protocol, Union
 
 
 class _ClosingMessageType:

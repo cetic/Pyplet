@@ -1,8 +1,10 @@
 # The template file must be written i used chat_client example temporarly
-from js import document, console
-from pyodide.ffi import create_proxy
-import pyplet
 import json
+
+from js import console, document
+from pyodide.ffi import create_proxy
+
+import pyplet
 
 container = document.getElementById("container")
 input = document.createElement("input")

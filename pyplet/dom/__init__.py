@@ -40,7 +40,9 @@ class Node:
         ns: Optional XML namespace (used for SVG elements).
     """
 
-    def __init__(self, tag=None, *, props=(), children=(), event_listeners=(), ns=None):
+    def __init__(
+        self, tag=None, *, props=(), children=(), event_listeners=(), ns=None
+    ):
         self.tag = tag
         self.props = dict(props)
         self.children = list(children)
@@ -69,14 +71,14 @@ class Node:
     def append_class(self, cls):
         """Append a CSS class to the ``class`` attribute."""
         if "class" in self.props:
-            cls = f'{self.props["class"]} {cls}'
+            cls = f"{self.props['class']} {cls}"
         self.props["class"] = cls
         return self
 
     def append_style(self, style):
         """Append a CSS style declaration to the ``style`` attribute."""
         if "style" in self.props:
-            style = f'{self.props["style"]};{style}'
+            style = f"{self.props['style']};{style}"
         self.props["style"] = style
         return self
 
@@ -93,6 +95,7 @@ class Node:
     @staticmethod
     def _new_factory(type, ns=None):
         """Create a simple element factory for a given tag/namespace."""
+
         def factory(*children, **props):
             return Node(
                 type,
@@ -127,6 +130,7 @@ def render_html(node):
     Returns:
         The HTML string.
     """
+
     def _render_html(node, lst):
         assert not node.event_listeners
         tag = node.tag
@@ -268,7 +272,7 @@ text = Node._new_factory("text", _SVG_NS)
 def append_classes(node, classes):
     """Append CSS classes to a node."""
     if "class" in node.props:
-        classes = f'{node.props["class"]} {classes}'
+        classes = f"{node.props['class']} {classes}"
     node.props["class"] = classes
 
 

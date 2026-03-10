@@ -1,13 +1,13 @@
-import pyplet.dom as d
-from pyplet.utils import get_import
-import pyplet.server
-from pyplet.server import config
-
-import zipfile
 import glob
 import io
 import os
+import zipfile
 from pathlib import Path
+
+import pyplet.dom as d
+import pyplet.server
+from pyplet.server import config
+from pyplet.utils import get_import
 
 
 def package(handler: pyplet.server.web.PackageHandler):
@@ -24,7 +24,9 @@ def package(handler: pyplet.server.web.PackageHandler):
         ]
         for root_dir, pattern, prefix in files:
             for file in glob.glob(pattern, root_dir=root_dir, recursive=True):
-                zip_file.write(os.path.join(root_dir, file), os.path.join(prefix, file))
+                zip_file.write(
+                    os.path.join(root_dir, file), os.path.join(prefix, file)
+                )
 
     handler.set_header("Content-Type", "application/octet-stream")
     handler.write(zip_bytes.getvalue())
@@ -37,12 +39,16 @@ def serve(handler: pyplet.server.web.AppHandler):
     app_package = f"/apps/{project}/{app}.zip"
 
     client_libraries = getattr(
-        get_import(f"{config.apps}.{project}.{app}_server"), "client_libraries", ()
+        get_import(f"{config.apps}.{project}.{app}_server"),
+        "client_libraries",
+        (),
     )
 
     return [
         d.head(
-            d.script(src=f"https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"),
+            d.script(
+                src=f"https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"
+            ),
             d.link(
                 rel="stylesheet",
                 href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",
@@ -70,7 +76,7 @@ def serve(handler: pyplet.server.web.AppHandler):
                         zip_file.extractall()
                         from pyplet.client import bootstrap
                         await bootstrap({project!r}, {app!r}, {client_libraries!r})
-                        
+
                     import asyncio
                     asyncio.create_task(main())
                 `)

@@ -1,0 +1,125 @@
+---
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+# Run `pre-commit install` to install pre-commit into your git hooks
+# Run `pre-commit autoupdate` to automatically update this file
+# Run `pre-commit run --a` to run all hooks on all files
+
+# You may want to exclude some files using regex, also exclude some directories
+# src/webapp/static/css/bulma and src/webapp/static/fontawesome
+exclude: (?x)^(.*\/.vscode\/.*|.vscode\/settings.json|src/webapp/static/css/bulma/.*|src/webapp/static/fontawesome/.*|src/webapp/static/js/plotly-strict.min.js)$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: fix-byte-order-marker
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-json
+      - id: pretty-format-json
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-vcs-permalinks
+      - id: check-xml
+      - id: check-yaml
+      - id: debug-statements
+      # - id: detect-aws-credentials
+      - id: detect-private-key
+      # - id: double-quote-string-fixer
+      - id: end-of-file-fixer
+      - id: file-contents-sorter
+      # - id: fix-encoding-pragma
+      - id: forbid-new-submodules
+      - id: mixed-line-ending
+      - id: name-tests-test
+      # - id: no-commit-to-branch
+      - id: requirements-txt-fixer
+      - id: sort-simple-yaml
+      - id: trailing-whitespace
+
+  - repo: https://github.com/asottile/seed-isort-config
+    rev: v2.2.0
+    hooks:
+      - id: seed-isort-config
+
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.10.1
+    hooks:
+      - id: isort
+
+  # - repo: https://github.com/psf/black
+  #   rev: 25.1.0
+  #   hooks:
+  #     - id: black
+  #       language_version: python3.12
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.2.0
+    hooks:
+      - id: flake8
+
+  # Not directly compatible with black
+  # - repo: https://github.com/pre-commit/mirrors-autopep8
+  #   rev: v2.0.2 # Use the sha / tag you want to point at
+  #   hooks:
+  #     - id: autopep8
+
+  # - repo: https://github.com/pre-commit/mirrors-scss-lint
+  #   rev: v0.60.0 # Use the sha / tag you want to point at
+  #   hooks:
+  #     - id: scss-lint
+
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.4.1 # Use the sha / tag you want to point at
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies: [setuptools>=, types-PyYAML]
+
+  # Removes encoding programma... added before
+  # - repo: https://github.com/asottile/pyupgrade
+  #   rev: v3.9.0
+  #   hooks:
+  #     - id: pyupgrade
+
+  - repo: https://github.com/asottile/setup-cfg-fmt
+    rev: v2.8.0
+    hooks:
+      - id: setup-cfg-fmt
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.11.11
+    hooks:
+      # Run the linter.
+      # - id: ruff-check
+      #   args: [--select, I, --fix]
+      # Run the formatter.
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy-check
+        name: mypy-check
+        entry: mypy .
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.19.1
+    hooks:
+      - id: pyupgrade
+  # - repo: local
+  #   hooks:
+  #     - id: coverage-check
+  #       name: coverage-check (pytest)
+  #       entry: coverage run -m pytest
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+

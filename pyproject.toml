@@ -44,5 +44,44 @@ pyplet = "pyplet.server.cli:script_main"
 pyplet = ["../apps/**/*"]
 
 [tool.black]
-line-length = 88
-target-version = ["py311"]
+verbose = true
+line-length = 79
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311', 'py312']
+include = '.pyi?$'
+exclude = '''
+/(
+    .git
+    | .hg
+    | .mypy_cache
+    | .tox
+    | .venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
+
+[tool.ruff]
+builtins = ["_"]
+# cache-dir = "~/.cache/ruff"
+exclude = [".venv"]
+line-length = 79
+fix = true
+indent-width = 4
+respect-gitignore = false
+show-fixes = true
+src = ["src"]
+target-version = "py312"
+unsafe-fixes = false
+
+[tool.ruff.analyze]
+detect-string-imports = true
+
+[tool.ruff.format]
+# Enable reformatting of code snippets in docstrings.
+docstring-code-format = true
+docstring-code-line-length = 79
+# Enable reformatting of code snippets in comments.
+indent-style = "space"
+line-ending = "lf"
