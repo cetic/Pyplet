@@ -76,6 +76,15 @@ class AppHandler(tornado.web.RequestHandler):
         self.write(d.render_html(dom))
 
 
+class AboutHandler(tornado.web.RequestHandler):
+    """A handler for serving the about page."""
+
+    async def get(self):
+        """Serves the about page."""
+        dom = templates.about_template(self)
+        self.write(d.render_html(dom))
+
+
 class ServerWebSocket(tornado.websocket.WebSocketHandler):
     closing_message = pyplet.WebSocket.closing_message
 
@@ -149,6 +158,10 @@ def make_app():
             (
                 r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)",
                 AppHandler,
+            ),
+            (
+                r"/about",
+                AboutHandler,
             ),
             (
                 r"/.*",
