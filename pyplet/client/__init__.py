@@ -7,11 +7,13 @@ real-time communication with the server.
 Docstring style: Google.
 """
 
+import asyncio
+
 from js import WebSocket
 from pyodide.ffi import create_proxy
-from pyplet.utils import get_import
+
 import pyplet
-import asyncio
+from pyplet.utils import get_import
 
 
 async def bootstrap(project_name, app_name, deps=()):
@@ -57,7 +59,6 @@ class ClientWebSocket:
     closing_message = pyplet.WebSocket.closing_message
 
     def __init__(self, javascript_websocket):
-
         self.ws = javascript_websocket
         self.queue = asyncio.Queue()
 

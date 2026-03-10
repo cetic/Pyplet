@@ -1,19 +1,19 @@
 import asyncio
-import tornado
-import tornado.web
-import tornado.websocket
-import os
-import asyncio
 import json
+import os
 import sys
 from importlib import import_module
 
-from ..utils import get_import
-from . import templates
-from .. import dom as d
+import tornado
+import tornado.web
+import tornado.websocket
+
 import pyplet
 from pyplet.server import config
 
+from .. import dom as d
+from ..utils import get_import
+from . import templates
 
 __all__ = ["main"]
 
@@ -60,7 +60,9 @@ class ServerWebSocket(tornado.websocket.WebSocketHandler):
         return await self.queue.get()
 
     async def send(self, message):
-        await super().write_message(message, binary=not isinstance(message, str))
+        await super().write_message(
+            message, binary=not isinstance(message, str)
+        )
 
     def on_close(self):
         asyncio.get_running_loop().create_task(self.aclose())
@@ -90,7 +92,11 @@ def make_app():
             (
                 r"/pyodide/(.*)",
                 tornado.web.StaticFileHandler,
-                {"path": os.path.join(os.path.dirname(__file__), "../pyodide")},
+                {
+                    "path": os.path.join(
+                        os.path.dirname(__file__), "../pyodide"
+                    )
+                },
             ),
             (r"/", LoginHandler),
             (
@@ -105,7 +111,11 @@ def make_app():
                 r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)",
                 AppHandler,
             ),
-            (r"/.*", tornado.web.RedirectHandler, {"url": "/", "permanent": False}),
+            (
+                r"/.*",
+                tornado.web.RedirectHandler,
+                {"url": "/", "permanent": False},
+            ),
         ],
         debug=config.debug == "1",
     )
@@ -114,5 +124,7 @@ def make_app():
 async def astart():
     app = make_app()
     app.listen(config.port, config.address)
-    print(f"Listening to {config.url or f'http://{config.address}:{config.port}'}")
+    print(
+        f"Listening to {config.url or f'http://{config.address}:{config.port}'}"
+    )
     await asyncio.Event().wait()
