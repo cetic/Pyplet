@@ -95,7 +95,7 @@ class ServerWebSocket(tornado.websocket.WebSocketHandler):
         asyncio.create_task(server.websocket_server_loop(self))
 
     async def on_message(self, message):
-        """Receives a message from the client."""
+        """Receives a message from the client (callback)."""
         await self.queue.put(message)
 
     async def receive(self):
