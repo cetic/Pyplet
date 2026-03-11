@@ -10,7 +10,6 @@ import tornado.websocket
 import pyplet
 from pyplet.server import config
 
-from .. import dom as d
 from ..utils import get_import
 from . import templates
 
@@ -55,7 +54,7 @@ class LoginHandler(tornado.web.RequestHandler):
             project_name (str): The name of the project.
             app_name (str): The name of the app.
         """
-        self.write(d.render_html(templates.index_template(self)))
+        self.write(str(templates.index_template(self)).encode("utf-8"))
 
 
 class AppHandler(tornado.web.RequestHandler):
@@ -73,7 +72,7 @@ class AppHandler(tornado.web.RequestHandler):
         dom = templates.application_template(
             f"{project_name}/{app_name}", self, content=content
         )
-        self.write(d.render_html(dom))
+        self.write(str(dom).encode("utf-8"))
 
 
 class AboutHandler(tornado.web.RequestHandler):
@@ -82,7 +81,7 @@ class AboutHandler(tornado.web.RequestHandler):
     async def get(self):
         """Serves the about page."""
         dom = templates.about_template(self)
-        self.write(d.render_html(dom))
+        self.write(str(dom).encode("utf-8"))
 
 
 class ServerWebSocket(tornado.websocket.WebSocketHandler):

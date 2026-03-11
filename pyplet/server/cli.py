@@ -82,6 +82,7 @@ def main() -> None:
         help="Create a new project directory with client.py, "
         "server.py and config.py under ./apps/",
     )
+
     parser_init.add_argument(
         "project_name",
         help="Name of the project directory to create under ./apps/",
@@ -89,8 +90,9 @@ def main() -> None:
 
     # start command
     parser_start = subparsers.add_parser(
-        "start", help="Launch pyplet.server.main()"
+        "start", aliases=["run", "server"], help="Launch pyplet.server.main()"
     )
+
     for name in config.params:
         parser_start.add_argument(
             f"--{name.replace('_', '-')}",
@@ -100,10 +102,15 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # If no command is provided, print help and exit
+    if args.command is None:
+        parser.print_help()
+        return
+
     if args.command == "init":
         create_project(args.project_name)
 
-    elif args.command == "start":
+    elif args.command in ("start", "run", "server"):
         for name in config.params:
             value = getattr(args, name, ...)
             if value is not ...:

@@ -4,8 +4,8 @@ import os
 import zipfile
 from pathlib import Path
 
-import pyplet.dom as d
 import pyplet.server
+from pyplet.dom import body, div, head, link, script
 from pyplet.server import config
 from pyplet.utils import get_import
 
@@ -45,20 +45,20 @@ def serve(handler: pyplet.server.web.AppHandler):
     )
 
     return [
-        d.head(
-            d.script(
+        head[
+            script(
                 src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"
             ),
-            d.link(
+            link(
                 rel="stylesheet",
                 href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",  # noqa: E501
             ),
-            d.script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
-            d.script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
-        ),
-        d.body(
-            d.div(id="container"),
-            d.script(type="text/javascript").append(
+            script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
+            script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
+        ],
+        body[
+            div(id="container"),
+            script(type="text/javascript")[
                 f"""
             (async function() {{
                 let pyodide = await loadPyodide({{
@@ -86,6 +86,6 @@ def serve(handler: pyplet.server.web.AppHandler):
                 `)
             }})();
             """
-            ),
-        ),
+            ],
+        ],
     ]
