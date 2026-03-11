@@ -49,3 +49,5 @@ apps/*
 !apps/template/**
 apps/pyplet_examples/
 apps/template/__pycache__/*
+
+.*/.zed/
