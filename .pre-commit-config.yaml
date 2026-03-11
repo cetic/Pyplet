@@ -7,7 +7,8 @@
 
 # You may want to exclude some files using regex, also exclude some directories
 # src/webapp/static/css/bulma and src/webapp/static/fontawesome
-exclude: (?x)^(.*\/.vscode\/.*|.vscode\/settings.json|src/webapp/static/css/bulma/.*|src/webapp/static/fontawesome/.*|src/webapp/static/js/plotly-strict.min.js)$
+
+exclude: (?x)^(.*\/.vscode\/.*|.vscode\/settings.json|.*\/.zed\/.*|.*\/.zed\/debug.json)$
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

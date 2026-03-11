@@ -4,17 +4,21 @@ import os
 import zipfile
 from pathlib import Path
 
+from markupsafe import Markup
+
 import pyplet.server
-from pyplet.dom import body, div, head, link, script
+from pyplet.dom import div, link, script
 from pyplet.server import config
 from pyplet.utils import get_import
 
 
 def package(handler: pyplet.server.web.PackageHandler):
+    """Package the app before serving it"""
     project, app = handler.path_args
 
     zip_bytes = io.BytesIO()
     pyplet_root = str(Path(pyplet.__file__).parent.parent)
+
     with zipfile.ZipFile(zip_bytes, "w") as zip_file:
         files = [
             (pyplet_root, "pyplet/client/**", ""),
@@ -22,6 +26,7 @@ def package(handler: pyplet.server.web.PackageHandler):
             (pyplet_root, "pyplet/*.py", ""),
             (config.apps, f"{project}/**", "apps/"),
         ]
+
         for root_dir, pattern, prefix in files:
             for file in glob.glob(pattern, root_dir=root_dir, recursive=True):
                 zip_file.write(
@@ -44,8 +49,8 @@ def serve(handler: pyplet.server.web.AppHandler):
         (),
     )
 
-    return [
-        head[
+    return {
+        "head": [
             script(
                 src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"
             ),
@@ -56,10 +61,10 @@ def serve(handler: pyplet.server.web.AppHandler):
             script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
             script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
         ],
-        body[
+        "body": [
             div(id="container"),
             script(type="text/javascript")[
-                f"""
+                Markup(f"""
             (async function() {{
                 let pyodide = await loadPyodide({{
                 }});
@@ -67,7 +72,7 @@ def serve(handler: pyplet.server.web.AppHandler):
                     async def main():
                         from js import fetch
 
-                        response = await fetch({app_package!r})
+                        response = await fetch('{app_package}')
                         response = await response.arrayBuffer()
                         response = response.to_py().tobytes()
 
@@ -76,16 +81,16 @@ def serve(handler: pyplet.server.web.AppHandler):
                         zip_file.extractall()
                         from pyplet.client import bootstrap
                         await bootstrap(
-                            {project!r},
-                            {app!r},
-                            {client_libraries!r},
+                            '{project}',
+                            '{app}',
+                            {client_libraries},
                         )
 
                     import asyncio
                     asyncio.create_task(main())
                 `)
             }})();
-            """
+            """)
             ],
         ],
-    ]
+    }

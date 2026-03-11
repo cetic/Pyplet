@@ -33,19 +33,19 @@ def base_template(
     page_title: Optional[str] = None,
     navbar: Node,
     content: list | Node,
-    additional_head=(),
+    additional_head_node: Optional[Node] = None,
     contain_in: str | None = "container mt-2",
     page_footer: bool = True,
 ):
     """Base template for Pyplet web pages.
 
     Args:
-        title (str): Page title.
+        page_title (str): Page title.
         navbar (Node): Navbar content.
         content (Node): Page content.
-        additional_head (tuple): Additional head elements.
+        additional_head_node (Node): Additional head elements.
         contain_in (str): Container class.
-        footer (bool): Whether to show the footer.
+        page_footer (bool): Whether to show the footer.
     """
     if not isinstance(content, list):
         content = [content]
@@ -66,7 +66,7 @@ def base_template(
                 integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",  # noqa: E501
                 crossorigin="anonymous",
             ),
-            *additional_head,
+            additional_head_node,
         ],
         body(".d-flex.flex-column.h-100")[
             main(".flex-fill")[
@@ -204,33 +204,47 @@ def about_template(handler: RequestHandler) -> Node:
 
 
 def application_template(
-    title: str, handler: RequestHandler, content: Node | list
+    title: str, handler: "RequestHandler", content: dict | Node | list
 ) -> Node:
     """Returns the application template for the given title and content.
 
     Args:
         title (str): The title of the page.
         handler (RequestHandler): The request handler.
-        content (d.Node | list): The content of the page.
+        content (dict | Node | list): A dictionary with 'head' and
+                                      'body' keys, or a standard
+                                      Node/list of Nodes for the body.
 
     Returns:
         Node: The application template.
     """
-    additional_head = ()
+    additional_head = []
+    body_content = []
     kwargs = {}
-    if content and getattr(content[0], "tag", None) == "head":
-        additional_head = content[0].children
-        content = content[1:]
 
-    if content and getattr(content[0], "tag", None) == "body":
-        kwargs["contain_in"] = None
-        content = content[0].children
+    # 1. Handle the new dictionary structure
+    if isinstance(content, dict):
+        additional_head = content.get("head", [])
+        body_content = content.get("body", [])
+
+        # Mirroring your previous logic:
+        # if there's explicit body content defined
+        # this way, adjust the container kwargs
+        if body_content:
+            kwargs["contain_in"] = None
+
+    # 2. Handle a standard htpy Node or a list of Nodes
+    else:
+        if isinstance(content, list):
+            body_content = content
+        else:
+            body_content = [content]
 
     return base_template(
         page_title=title,
         navbar=default_navbar(handler),
-        content=content,
-        additional_head=additional_head,
+        content=body_content,
+        additional_head_node=additional_head,
         page_footer=False,
         **kwargs,
     )

@@ -128,7 +128,12 @@ def start_server() -> None:
     """
     from .web import astart
 
-    asyncio.run(astart())
+    try:
+        asyncio.run(astart())
+
+    except KeyboardInterrupt:
+        logger.info("Server killed by the user.")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
