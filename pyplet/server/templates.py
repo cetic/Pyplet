@@ -53,47 +53,6 @@ def base_template(
     if contain_in is not None:
         content = [div(f".{contain_in.replace(' ', '.')}")[*content]]
 
-    # return d.html("<!doctype html>", lang="en", _class="h-100").append(
-    #     d.head(
-    #         d.meta(charset="utf-8"),
-    #         d.meta(
-    #             name="viewport",
-    # content="width=device-width, initial-scale=1"
-    #         ),
-    #         d.title(f"{title} - Pyplet" if title else "Pyplet"),
-    #         d.link(
-    #             href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",  # noqa: E501
-    #             rel="stylesheet",
-    #             integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",  # noqa: E501
-    #             crossorigin="anonymous",
-    #         ),
-    #         *additional_head,
-    #     ),
-    #     d.body(_class="d-flex flex-column h-100").append(
-    #         d.main(_class="flex-fill").append(
-    #             navbar,
-    #             *content,
-    #         ),
-    #         (
-    #             d.footer(_class="footer mt-auto py-3 bg-light").append(
-    #                 d.div(_class="container").append(
-    #                     d.span(_class="text-muted").append(
-    #                         "&copy; Copyright CETIC 2024 - "
-    #                         f"{current_year}. All rights reserved",
-    #                     )
-    #                 )
-    #             )
-    #             if footer
-    #             else d.footer(_class="footer mt-auto")
-    #         ),
-    #         d.script(
-    #             src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",  # noqa: E501
-    #             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz",  # noqa: E501
-    #             crossorigin="anonymous",
-    #         ),
-    #     ),
-    # )
-
     return html(".h-100", lang="en")[
         head[
             meta(charset="utf-8"),
@@ -144,19 +103,6 @@ def default_navbar(handler: RequestHandler) -> Node:
     Returns:
         Node: Navbar content.
     """
-    # return d.nav(_class="navbar navbar-expand-sm bg-body-tertiary").append(
-    #     d.div(_class="container").append(
-    #         # Brand
-    #         d.a("Pyplet", _class="navbar-brand", href="/"),
-    #         # Right menu
-    #         d.ul(_class="navbar-nav ms-auto").append(
-    #             # About
-    #             d.li(_class="nav-item").append(
-    #                 d.a("About Pyplet", href="/about", _class="nav-link"),
-    #             ),
-    #         ),
-    #     )
-    # )
     return nav(".navbar.navbar-expand-sm.bg-body-tertiary")[
         div(".container")[
             # Brand
@@ -181,24 +127,6 @@ def index_template(handler: RequestHandler) -> Node:
     Returns:
         Node: Index content.
     """
-    # applications = [
-    #     "/" + paragraph[:-10]
-    #     for paragraph in sorted(
-    #         glob.glob("*/*_client.py", root_dir=config.apps)
-    #     )
-    # ]
-    # projects = collections.defaultdict(ul)
-    # for application in applications:
-    #     project, app_name = application.split("/")[-2:]
-    #     projects[project].append(
-    #         li[a(href=f"apps/{project}/{app_name}")[app_name]]
-    #     )
-    # application_list = ul[
-    #     *[
-    #         li[a(href=f"apps/{project}/{app_name}")[app_name]]
-    #         for project, apps in projects.items()
-    #     ]
-    # ]
 
     # Rewrite using htpy components
     applications = sorted(
@@ -210,10 +138,25 @@ def index_template(handler: RequestHandler) -> Node:
         ]
     )
 
-    # Build the project/apps tree
     complete_tree = ul[
         *[
-            li[a(href=f"apps/{project}/{app_name}")[app_name]]
+            li[
+                app_name,
+                ul[
+                    *[
+                        li[
+                            a(href=f"apps/{project}/{app_name}")[
+                                app_subname.removesuffix("_client.py").split(
+                                    "/"
+                                )[-1]
+                            ]
+                        ]
+                        for app_subname in glob.glob(
+                            f"{project}/*_client.py", root_dir=config.apps
+                        )
+                    ]
+                ],
+            ]
             for project, app_name in applications
         ]
     ]
@@ -242,25 +185,6 @@ def about_template(handler: RequestHandler) -> Node:
         page_title="About",
         navbar=default_navbar(handler),
         content=[
-            # d.div(_class="col-sm-8 mx-auto").append(
-            #     d.p("Pyplet is a full-Python application server."),
-            #     d.p(
-            #         "It is developed at the ",
-            #         d.a(
-            #             "CETIC", href="https://www.cetic.be/",
-            #  target="_blank"
-            #         ),
-            #         " to develop web applications.",
-            #     ),
-            #     d.p(
-            #         "Its applications can be written
-            #  entirely in Python while"
-            #         " leveraging two of the most vibrant programming "
-            #         "communities in the world: the JavaScript and Python "
-            #         "ecosystems."
-            #     ),
-            # ),
-            # Rewrite using htpy
             div(".col-sm-8.mx-auto")[
                 p["Pyplet is a full-Python application server."],
                 p[
