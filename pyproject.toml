@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "python-minifier>=2.11.3",
     "tornado>=6.5.1",
+    "htpy",
 ]
 authors = [
   {name = "Maxime Istasse", email = "istassem@gmail.com"},
@@ -46,7 +47,7 @@ pyplet = ["../apps/**/*"]
 [tool.black]
 verbose = true
 line-length = 79
-target-version = ['py37', 'py38', 'py39', 'py310', 'py311', 'py312']
+target-version = ['py312', 'py313', 'py314']
 include = '.pyi?$'
 exclude = '''
 /(
