@@ -1,27 +1,10 @@
 import os
 
-__all__ = [
-    "address",
-    "apps",
-    "debug",
-    "port",
-    "pyodide_url",
-    "url",
-    # OAuth / auth
-    "oauth_cookie_secret",
-    "oauth_google_client_id",
-    "oauth_google_client_secret",
-    "oauth_microsoft_client_id",
-    "oauth_microsoft_client_secret",
-    "oauth_microsoft_tenant",
-    # Magic-link e-mail auth
-    "magiclink_smtp_host",
-    "magiclink_smtp_port",
-    "magiclink_smtp_user",
-    "magiclink_smtp_password",
-    "magiclink_smtp_tls",
-    "magiclink_from",
-    "magiclink_token_ttl",
+# Generate params dynamically from the module's attributes
+params = [
+    name
+    for name, _ in globals().items()
+    if not name.startswith("_") and name != "params"
 ]
 
 address = os.environ.get("PYPLET_ADDR", "127.0.0.1")

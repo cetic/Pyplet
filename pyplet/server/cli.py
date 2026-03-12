@@ -8,24 +8,30 @@ from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("pyplet.cli")
 
+projects_dir = Path.cwd() / "apps"
 
-def create_project(project_name: str):
+
+def create_project(project_name: str) -> None:
     """
     Create a new project directory under ./apps/project_name and copy
-    template_client.py and template_server.py from the template directory.
+    template_client.py, template_server.py, and config.py from ../apps/examples
+    into it.
+
+    Args:
+        project_name (str): The name of the project to create.
     """
     # Validate project name for Python importability
     if not project_name.isidentifier():
         logger.error(
-            f"'{project_name}' is not a valid Python module name. "
+            "%s is not a valid Python's module name."
             "Use only letters, numbers and underscores, "
-            "and don't start with a number."
+            "and dont start with a number." % project_name
         )
         sys.exit(1)
 
@@ -44,9 +50,12 @@ def create_project(project_name: str):
 
     # Create apps and project dir if they don't exist
     project_dir = cwd / "apps" / project_name
+
     if not project_dir.exists():
         project_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Project '{project_name}' created at {project_dir}")
+        logger.info(
+            "Project '{}' created at {}".format(project_name, project_dir)
+        )
 
     # Copy files
     dest_client = project_dir / f"{project_name}_client.py"
@@ -55,7 +64,9 @@ def create_project(project_name: str):
     # Verify template directory exists
     if dest_client.exists() or dest_server.exists():
         logger.error(
-            f"At least one of {dest_client} and {dest_server} already exists"
+            "At least one of %s and %s already exists",
+            dest_client,
+            dest_server,
         )
         sys.exit(1)
 
@@ -64,17 +75,19 @@ def create_project(project_name: str):
 
     logger.info(f"Files copied: {dest_client.name}, {dest_server.name}")
     logger.info(
-        f"Project '{project_name}' is ready! Start the server with: pyplet start"
+        "Project '%s' is ready! Start the server with: pyplet start",
+        project_name,
     )
 
 
-def script_main():
+def script_main() -> None:
+    """Run the Pyplet server CLI script."""
     if os.getcwd() not in sys.path:
         sys.path.append(os.getcwd())
     main()
 
 
-def main():
+def main() -> None:
     from pyplet.server import config
 
     parser = argparse.ArgumentParser(description="Pyplet project initializer")
@@ -83,8 +96,10 @@ def main():
     # init command
     parser_init = subparsers.add_parser(
         "init",
-        help="Create a new project directory with client and server files under ./apps/",
+        help="Create a new project directory with client.py, "
+        "server.py and config.py under ./apps/",
     )
+
     parser_init.add_argument(
         "project_name",
         help="Name of the project directory to create under ./apps/",
@@ -92,9 +107,10 @@ def main():
 
     # start command
     parser_start = subparsers.add_parser(
-        "start", help="Launch pyplet.server.main()"
+        "start", aliases=["run", "server"], help="Launch pyplet.server.main()"
     )
-    for name in config.__all__:
+
+    for name in config.params:
         parser_start.add_argument(
             f"--{name.replace('_', '-')}",
             required=False,
@@ -103,14 +119,26 @@ def main():
 
     args = parser.parse_args()
 
+    # If no command is provided, print help and exit
+    if args.command is None:
+        parser.print_help()
+        return
+
     if args.command == "init":
         create_project(args.project_name)
-    elif args.command == "start":
-        for name in config.__all__:
+
+    elif args.command in ("start", "run", "server"):
+        if not project_dir.exists():
+            logger.error("No project found. Run 'pyplet init' first.")
+            return
+
+        for name in config.params:
             value = getattr(args, name, ...)
             if value is not ...:
                 setattr(config, name, value)
+
         start_server()
+
     else:
         parser.print_help()
 
@@ -122,12 +150,16 @@ def start_server():
     from ._server import astart
 
     logger.info("Starting Pyplet server...")
+
     try:
         asyncio.run(astart())
+
     except KeyboardInterrupt:
         logger.info("Server stopped by user")
-    except Exception as e:
-        logger.error(f"Server error: {e}", exc_info=True)
+        sys.exit(0)
+
+    except Exception as error:
+        logger.error("Server error: %s", error, exc_info=True)
         sys.exit(1)
 
 
