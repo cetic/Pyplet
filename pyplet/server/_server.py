@@ -95,7 +95,16 @@ class _AuthMixin:
 
 
 class StaticFileHandler(tornado.web.StaticFileHandler):
-    def set_extra_headers(self, path):
+    """
+    A static file handler that sets the Cache-Control header to no-cache.
+    """
+
+    def set_extra_headers(self, path: str) -> None:
+        """Sets the Cache-Control header to no-cache.
+
+        Args:
+            path (str): The path of the requested resource.
+        """
         self.set_header("Cache-Control", "no-cache")
 
 
@@ -105,10 +114,20 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
 
 
 class PackageHandler(_AuthMixin, tornado.web.RequestHandler):
-    async def get(self, project_name, app_name):
+    """A handler for serving package resources."""
+
+    async def get(self, project_name: str, app_name: str) -> None:
+        """Serves the package resource for the given project and app.
+
+        Args:
+            project_name (str): The name of the project.
+            app_name (str): The name of the app.
+        """
         user = self._require_auth(project_name, app_name)
+
         if user is None:
             return
+
         application = server_applications[project_name, app_name]
         application.package(self)
 
@@ -123,7 +142,7 @@ class LoginHandler(_AuthMixin, tornado.web.RequestHandler):
         if oauth.auth_enabled() and oauth.get_session(self) is not None:
             self.redirect("/")
             return
-        self.write(d.render_html(templates.login_template(self)))
+        self.write(str(templates.login_template(self)).encode("UTF-8"))
 
 
 class IndexHandler(_AuthMixin, tornado.web.RequestHandler):

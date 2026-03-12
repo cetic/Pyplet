@@ -1,244 +1,262 @@
-import typing as T
+"""HTPY based DOM builder and renderer.
 
-skip = object()
-auto = object()
-_self_closing = {"meta", "link"}
-_never_closed = {"div", "script"}
+This module provides a HTPY based DOM DSL for both
+server-side HTML generation and
+client-side DOM creation in Pyodide. It exposes:
 
+Docstring style: Google.
+"""
+# Make all the elements available at the module level
+# Ignore unused imports (multiline)
 
-def handle_attr_kwargs(kwargs):
-    return {
-        (k[1:] if k.startswith("_") else k).replace("_", "-"): v
-        for k, v in kwargs.items()
-        if v is not skip
-    }
+from htpy import (
+    Node,  # noqa: F401
+    Renderable,
+    a,  # noqa: F401
+    abbr,  # noqa: F401
+    address,  # noqa: F401
+    area,  # noqa: F401
+    article,  # noqa: F401
+    aside,  # noqa: F401
+    audio,  # noqa: F401
+    b,  # noqa: F401
+    base,  # noqa: F401
+    bdi,  # noqa: F401
+    bdo,  # noqa: F401
+    blockquote,  # noqa: F401
+    body,  # noqa: F401
+    br,  # noqa: F401
+    button,  # noqa: F401
+    canvas,  # noqa: F401
+    caption,  # noqa: F401
+    cite,  # noqa: F401
+    code,  # noqa: F401
+    col,  # noqa: F401
+    colgroup,  # noqa: F401
+    data,  # noqa: F401
+    datalist,  # noqa: F401
+    dd,  # noqa: F401
+    del_,  # noqa: F401
+    details,  # noqa: F401
+    dfn,  # noqa: F401
+    dialog,  # noqa: F401
+    div,  # noqa: F401
+    dl,  # noqa: F401
+    dt,  # noqa: F401
+    em,  # noqa: F401
+    embed,  # noqa: F401
+    fieldset,  # noqa: F401
+    figcaption,  # noqa: F401
+    figure,  # noqa: F401
+    footer,  # noqa: F401
+    form,  # noqa: F401
+    h1,  # noqa: F401
+    h2,  # noqa: F401
+    h3,  # noqa: F401
+    h4,  # noqa: F401
+    h5,  # noqa: F401
+    h6,  # noqa: F401
+    head,  # noqa: F401
+    header,  # noqa: F401
+    hgroup,  # noqa: F401
+    hr,  # noqa: F401
+    html,  # noqa: F401
+    i,  # noqa: F401
+    iframe,  # noqa: F401
+    img,  # noqa: F401
+    input,  # noqa: F401
+    ins,  # noqa: F401
+    kbd,  # noqa: F401
+    label,  # noqa: F401
+    legend,  # noqa: F401
+    li,  # noqa: F401
+    link,  # noqa: F401
+    main,  # noqa: F401
+    map,  # noqa: F401
+    mark,  # noqa: F401
+    math,  # noqa: F401
+    menu,  # noqa: F401
+    meta,  # noqa: F401
+    meter,  # noqa: F401
+    nav,  # noqa: F401
+    noscript,  # noqa: F401
+    object,  # noqa: F401
+    ol,  # noqa: F401
+    optgroup,  # noqa: F401
+    option,  # noqa: F401
+    output,  # noqa: F401
+    p,  # noqa: F401
+    picture,  # noqa: F401
+    pre,  # noqa: F401
+    progress,  # noqa: F401
+    q,  # noqa: F401
+    rp,  # noqa: F401
+    rt,  # noqa: F401
+    ruby,  # noqa: F401
+    s,  # noqa: F401
+    samp,  # noqa: F401
+    script,  # noqa: F401
+    search,  # noqa: F401
+    section,  # noqa: F401
+    select,  # noqa: F401
+    slot,  # noqa: F401
+    small,  # noqa: F401
+    source,  # noqa: F401
+    span,  # noqa: F401
+    strong,  # noqa: F401
+    style,  # noqa: F401
+    sub,  # noqa: F401
+    summary,  # noqa: F401
+    sup,  # noqa: F401
+    svg,  # noqa: F401
+    table,  # noqa: F401
+    tbody,  # noqa: F401
+    td,  # noqa: F401
+    template,  # noqa: F401
+    textarea,  # noqa: F401
+    tfoot,  # noqa: F401
+    th,  # noqa: F401
+    thead,  # noqa: F401
+    time,  # noqa: F401
+    title,  # noqa: F401
+    tr,  # noqa: F401
+    track,  # noqa: F401
+    u,  # noqa: F401
+    ul,  # noqa: F401
+    var,  # noqa: F401
+    video,  # noqa: F401
+    wbr,  # noqa: F401
+)
 
-
-class Node:
-    def __init__(
-        self, tag=None, *, props=(), children=(), event_listeners=(), ns=None
-    ):
-        self.tag = tag
-        self.props = dict(props)
-        self.children = list(children)
-        self.event_listeners = list(event_listeners)
-        self.ns = ns
-
-    def append(self, *children, **props):
-        if props:
-            self.props.update(handle_attr_kwargs(props))
-        self.children.extend(children)
-        return self
-
-    def on(self, event_name, handler):
-        self.event_listeners.append((event_name, handler))
-        return self
-
-    def append_class(self, cls):
-        if "class" in self.props:
-            cls = f"{self.props['class']} {cls}"
-        self.props["class"] = cls
-        return self
-
-    def append_style(self, style):
-        if "style" in self.props:
-            style = f"{self.props['style']};{style}"
-        self.props["style"] = style
-        return self
-
-    @property
-    def id(self):
-        return self.props.get("id", None)
-
-    @property
-    def classes(self):
-        return self.props.get("class", None)
-
-    @staticmethod
-    def _new_factory(type, ns=None):
-        def factory(*children, **props):
-            return Node(
-                type,
-                children=children,
-                props=handle_attr_kwargs(props),
-                ns=ns,
-            )
-
-        return factory
-
-    def __hash__(self):
-        return id(self)
-
-    def __eq__(self, other):
-        return other is self
-
-    def _render_dom(self, document):
-        return render_dom(self)
-
-    def __html__(self):
-        return render_html(self)
-
-
-def render_html(node):
-    def _render_html(node, lst):
-        assert not node.event_listeners
-        tag = node.tag
-        lst.append(f"<{tag}")
-        for k, v in node.props.items():
-            lst.append(f" {k}={v!r}")
-        if not node.children and tag not in _never_closed:
-            lst.append(">" if tag in _self_closing else "/>")
-            return
-        lst.append(">")
-
-        for child in node.children:
-            if isinstance(child, str):
-                lst.append(child)
-            else:
-                _render_html(child, lst)
-
-        lst.append(f"</{tag}>")
-
-    lst = [getattr(node, "prelude", "")]
-    _render_html(node, lst)
-    return "".join(lst)
-
-
-def render_dom(node):
-    from js import document
-
-    element = (
-        document.createElement(node.tag)
-        if node.ns is None
-        else document.createElementNS(node.ns, node.tag)
-    )
-    for prop, value in node.props.items():
-        (
-            element.setAttribute(prop, value)
-            if node.ns is None
-            else element.setAttributeNS(None, prop, value)
-        )
-    for child in node.children:
-        if child is None:
-            continue
-        elif isinstance(child, str):
-            child = document.createTextNode(child)
-        else:
-            child = render_dom(child)
-        element.appendChild(child)
-    for event_name, handler in node.event_listeners:
-        element.addEventListener(event_name, handler)
-    return element
-
-
-def html(prelude, *children, **props):
-    node = Node("html", props=handle_attr_kwargs(props), children=children)
-    node.prelude = prelude
-    return node
-
-
-a = Node._new_factory("a")
-acronym = Node._new_factory("acronym")
-article = Node._new_factory("article")
-aside = Node._new_factory("aside")
-b = Node._new_factory("b")
-body = Node._new_factory("body")
-button = Node._new_factory("button")
-canvas = Node._new_factory("canvas")
-code = Node._new_factory("code")
-details = Node._new_factory("details")
-div = Node._new_factory("div")
-em = Node._new_factory("em")
-fieldset = Node._new_factory("fieldset")
-fieldcaption = Node._new_factory("fieldcaption")
-figure = Node._new_factory("figure")
-form = Node._new_factory("form")
-footer = Node._new_factory("footer")
-h1 = Node._new_factory("h1")
-h2 = Node._new_factory("h2")
-h3 = Node._new_factory("h3")
-h4 = Node._new_factory("h4")
-h5 = Node._new_factory("h5")
-h6 = Node._new_factory("h6")
-head = Node._new_factory("head")
-header = Node._new_factory("header")
-hr = Node._new_factory("hr")
-i = Node._new_factory("i")
-iframe = Node._new_factory("iframe")
-img = Node._new_factory("img")
-input = Node._new_factory("input")
-input = Node._new_factory("input")
-label = Node._new_factory("label")
-legend = Node._new_factory("legend")
-li = Node._new_factory("li")
-link = Node._new_factory("link")
-meta = Node._new_factory("meta")
-main = Node._new_factory("main")
-nav = Node._new_factory("nav")
-ol = Node._new_factory("ol")
-option = Node._new_factory("option")
-p = Node._new_factory("p")
-pre = Node._new_factory("pre")
-script = Node._new_factory("script")
-section = Node._new_factory("section")
-small = Node._new_factory("small")
-source = Node._new_factory("source")
-span = Node._new_factory("span")
-strong = Node._new_factory("strong")
-summary = Node._new_factory("summary")
-table = Node._new_factory("table")
-tbody = Node._new_factory("tbody")
-select = Node._new_factory("select")
-td = Node._new_factory("td")
-tfoot = Node._new_factory("tfoot")
-th = Node._new_factory("th")
-thead = Node._new_factory("thead")
-time = Node._new_factory("time")
-tr = Node._new_factory("tr")
-textarea = Node._new_factory("textarea")
-title = Node._new_factory("title")
-ul = Node._new_factory("ul")
-video = Node._new_factory("video")
-
-_SVG_NS = "http://www.w3.org/2000/svg"
-circle = Node._new_factory("circle", _SVG_NS)
-g = Node._new_factory("g", _SVG_NS)
-image = Node._new_factory("image", _SVG_NS)
-line = Node._new_factory("line", _SVG_NS)
-path = Node._new_factory("path", _SVG_NS)
-polygon = Node._new_factory("polygon", _SVG_NS)
-rect = Node._new_factory("rect", _SVG_NS)
-svg = Node._new_factory("svg", _SVG_NS)
-text = Node._new_factory("text", _SVG_NS)
+# Components to implement:
+# Download button (from server/from client)
+# Upload button (to client, to server, to both)
+# Graphic render (clientside, serverside)
+# image (clientside/serverside)
+# video/audio (clientside/serverside)
+# Slider, radio, check, button (with client, server, hybrid callbacks)
 
 
-def append_classes(node, classes):
-    if "class" in node.props:
-        classes = f"{node.props['class']} {classes}"
-    node.props["class"] = classes
+def download_from_client() -> Renderable:
+    """A download button that downloads files from the client."""
+    ...
 
 
-def gen_id():
-    import secrets
-
-    return f"rd-{secrets.token_hex(4)}"
-
-
-P = T.ParamSpec("P")
+def download_from_server() -> Renderable:
+    """A download button that downloads files from the server."""
+    ...
 
 
-def DomFX(f: T.Callable[T.Concatenate[Node, P], Node]) -> T.Callable[P, Node]:
-    return _DomFX(f)
+def upload_to_client() -> Renderable:
+    """An upload button that uploads files to the client."""
+    ...
 
 
-class _DomFX:
-    def __init__(self, f, args=(), kwargs={}):
-        self.f = f
-        self.args = args
-        self.kwargs = kwargs
+def upload_to_server() -> Renderable:
+    """An upload button that uploads files to the server."""
+    ...
 
-    def __call__(self, *args, **kwargs):
-        return _DomFX(self.f, args, kwargs)
 
-    def __ror__(self, node):
-        return self.f(node, *self.args, **self.kwargs)
+def upload_to_both() -> Renderable:
+    """An upload button that uploads files to both the client and server."""
+    ...
+
+
+def render_graphic_on_client() -> Renderable:
+    """A button that renders graphics on the client."""
+    ...
+
+
+def render_graphic_on_server() -> Renderable:
+    """A button that renders graphics on the server."""
+    ...
+
+
+def image_from_client() -> Renderable:
+    """An image that is rendered on the client."""
+    ...
+
+
+def image_from_server() -> Renderable:
+    """An image that is rendered on the server."""
+    ...
+
+
+def video_from_client() -> Renderable:
+    """A video that is rendered on the client."""
+    ...
+
+
+def video_from_server() -> Renderable:
+    """A video that is rendered on the server."""
+    ...
+
+
+def audio_from_client() -> Renderable:
+    """An audio that is rendered on the client."""
+    ...
+
+
+def audio_from_server() -> Renderable:
+    """An audio that is rendered on the server."""
+    ...
+
+
+def slider_with_client_callbacks() -> Renderable:
+    """A slider that is controlled on the client."""
+    ...
+
+
+def slider_with_server_callbacks() -> Renderable:
+    """A slider that is controlled on the server."""
+    ...
+
+
+def slider_with_server_and_client_callbacks() -> Renderable:
+    """A slider that is controlled on both the client and server."""
+    ...
+
+
+def radio_button_with_client_callbacks() -> Renderable:
+    """A radio button that is controlled on the client."""
+    ...
+
+
+def radio_button_with_server_callbacks() -> Renderable:
+    """A radio button that is controlled on the server."""
+    ...
+
+
+def radio_button_with_server_and_client_callbacks() -> Renderable:
+    """A radio button that is controlled on both the client and server."""
+    ...
+
+
+def checkbox_with_client_callbacks() -> Renderable:
+    """A checkbox that is controlled on the client."""
+    ...
+
+
+def checkbox_with_server_callbacks() -> Renderable:
+    """A checkbox that is controlled on the server."""
+    ...
+
+
+def checkbox_with_server_and_client_callbacks() -> Renderable:
+    """A checkbox that is controlled on both the client and server."""
+    ...
+
+
+def button_with_client_callbacks() -> Renderable:
+    """A button that is controlled on the client."""
+    ...
+
+
+def button_with_server_callbacks() -> Renderable:
+    """A button that is controlled on the server."""
+    ...
+
+
+def button_with_server_and_client_callbacks() -> Renderable:
+    """A button that is controlled on both the client and server."""
+    ...

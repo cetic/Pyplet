@@ -128,8 +128,11 @@ def main() -> None:
         create_project(args.project_name)
 
     elif args.command in ("start", "run", "server"):
-        if not project_dir.exists():
-            logger.error("No project found. Run 'pyplet init' first.")
+        if not projects_dir.exists():
+            logger.error(
+                "No projects directory found in the current directory.\n"
+                "Run 'pyplet init' first or move to the projects directory."
+            )
             return
 
         for name in config.params:
