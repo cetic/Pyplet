@@ -1,10 +1,11 @@
+---
 name: Test Suite
 
 on:
   push:
-    branches: [ master, main, develop ]
+    branches: [master, main, develop]
   pull_request:
-    branches: [ master, main, develop ]
+    branches: [master, main, develop]
 
 jobs:
   test:
@@ -12,58 +13,58 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.12"] #, "3.13", "3.14"]
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install Chrome and ChromeDriver
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y chromium-browser chromium-chromedriver
-        chromedriver --version
-        chromium-browser --version
+      - name: Install Chrome and ChromeDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+          chromedriver --version
+          chromium-browser --version
 
-    - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-    - name: Install dependencies
-      run: |
-        uv venv
-        source .venv/bin/activate
-        uv sync --group test
+      - name: Install dependencies
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync --group test
 
-    - name: Download Pyodide
-      run: |
-        wget https://github.com/pyodide/pyodide/releases/download/0.28.0/pyodide-0.28.0.tar.bz2
-        tar -xvjf pyodide-0.28.0.tar.bz2
+      - name: Download Pyodide
+        run: |
+          wget https://github.com/pyodide/pyodide/releases/download/0.28.0/pyodide-0.28.0.tar.bz2
+          tar -xvjf pyodide-0.28.0.tar.bz2
 
-    - name: Run tests
-      run: |
-        source .venv/bin/activate
-        pytest tests/ -v --cov=pyplet --cov-report=xml --cov-report=term
-      env:
-        PYPLET_DEBUG: "1"
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -v --cov=pyplet --cov-report=xml --cov-report=term
+        env:
+          PYPLET_DEBUG: "1"
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
 
-    - name: Archive test results
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          htmlcov/
-          .pytest_cache/
+      - name: Archive test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            htmlcov/
+            .pytest_cache/
