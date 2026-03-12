@@ -9,6 +9,8 @@ from pathlib import Path
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+project_dir = Path.cwd() / "apps"
+
 
 def create_project(project_name: str) -> None:
     """
@@ -111,6 +113,10 @@ def main() -> None:
         create_project(args.project_name)
 
     elif args.command in ("start", "run", "server"):
+        if not project_dir.exists():
+            logger.error("No project found. Run 'pyplet init' first.")
+            return
+
         for name in config.params:
             value = getattr(args, name, ...)
             if value is not ...:
