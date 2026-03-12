@@ -422,6 +422,7 @@ class ServerApplication:
                             zip_file.extractall()
                             from pyplet.client import bootstrap
                             await bootstrap(
+                                '{config.apps}',
                                 '{project}',
                                 '{app}',
                                 {self.client_libraries},
