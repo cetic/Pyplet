@@ -1,9 +1,9 @@
 import asyncio
+from importlib import import_module
 from typing import Dict, Tuple
 
 from js import WebSocket
 from pyodide.ffi import create_proxy
-from importlib import import_module
 
 import pyplet
 
@@ -26,7 +26,10 @@ async def bootstrap(prefix, project_name, app_name, deps=()):
     import_module(f"{_apps}.{project_name}.{app_name}_client")
     client_application = client_applications[project_name, app_name]
 
-    if client_application.__class__.client_init is not ClientApplication.client_init:
+    if (
+        client_application.__class__.client_init
+        is not ClientApplication.client_init
+    ):
         await client_application.client_init()
 
     if (
@@ -43,7 +46,6 @@ class ClientWebSocket:
     closing_message = pyplet.WebSocket.closing_message
 
     def __init__(self, javascript_websocket):
-
         self.ws = javascript_websocket
         self.queue = asyncio.Queue()
 

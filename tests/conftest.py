@@ -2,18 +2,17 @@
 Pytest configuration and fixtures for Pyplet end-to-end tests.
 """
 
-import pytest
 import asyncio
 import multiprocessing
 import time
+
+import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from pyplet.server._server import astart
+
 from pyplet.server import config
+from pyplet.server._server import astart
 
 
 def run_server():

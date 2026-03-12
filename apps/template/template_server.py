@@ -1,5 +1,6 @@
-import pyplet
 import logging
+
+import pyplet
 
 
 class _(pyplet.server.ServerApplication):

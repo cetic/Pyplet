@@ -1,11 +1,10 @@
-import os
-import sys
 import argparse
-import shutil
-from pathlib import Path
-import importlib
 import asyncio
 import logging
+import os
+import shutil
+import sys
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -55,7 +54,9 @@ def create_project(project_name: str):
 
     # Verify template directory exists
     if dest_client.exists() or dest_server.exists():
-        logger.error(f"At least one of {dest_client} and {dest_server} already exists")
+        logger.error(
+            f"At least one of {dest_client} and {dest_server} already exists"
+        )
         sys.exit(1)
 
     shutil.copyfile(src_client, dest_client)
@@ -85,14 +86,19 @@ def main():
         help="Create a new project directory with client and server files under ./apps/",
     )
     parser_init.add_argument(
-        "project_name", help="Name of the project directory to create under ./apps/"
+        "project_name",
+        help="Name of the project directory to create under ./apps/",
     )
 
     # start command
-    parser_start = subparsers.add_parser("start", help="Launch pyplet.server.main()")
+    parser_start = subparsers.add_parser(
+        "start", help="Launch pyplet.server.main()"
+    )
     for name in config.__all__:
         parser_start.add_argument(
-            f'--{name.replace("_", "-")}', required=False, default=getattr(config, name)
+            f"--{name.replace('_', '-')}",
+            required=False,
+            default=getattr(config, name),
         )
 
     args = parser.parse_args()

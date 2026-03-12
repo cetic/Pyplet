@@ -1,27 +1,23 @@
 import asyncio
+import glob
+import io
+import logging
+import os
+import secrets
+import zipfile
+from importlib import import_module
+from pathlib import Path
+from typing import Dict, Tuple
+
 import tornado
 import tornado.web
 import tornado.websocket
-import os
-import asyncio
-import json
-import secrets
-import sys
-from pathlib import Path
-import io
-import zipfile
-import glob
-from importlib import import_module
-import runpy
-import logging
 
-from . import templates
-from . import oauth
-from . import magiclink
-from ..shared import dom as d
 import pyplet
 from pyplet.server import config
-from typing import Dict, Tuple
+
+from ..shared import dom as d
+from . import magiclink, oauth, templates
 
 # Configure logging
 logger = logging.getLogger("pyplet.server")
@@ -57,7 +53,9 @@ class _AuthMixin:
             return {"email": "", "name": "anonymous", "provider": None}
         return oauth.get_session(self)
 
-    def _require_auth(self, project: str | None = None, app: str | None = None):
+    def _require_auth(
+        self, project: str | None = None, app: str | None = None
+    ):
         """
         Enforce auth + ACL.  Returns the user dict on success, or None if
         the request has already been terminated (redirect / error written).
@@ -217,7 +215,9 @@ class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
         return await self.queue.get()
 
     async def send(self, message):
-        await super().write_message(message, binary=not isinstance(message, str))
+        await super().write_message(
+            message, binary=not isinstance(message, str)
+        )
 
     def on_close(self):
         asyncio.get_running_loop().create_task(self.aclose())
@@ -261,7 +261,11 @@ _app_spec = {
             r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)",
             AppHandler,
         ),
-        (r"/.*", tornado.web.RedirectHandler, {"url": "/", "permanent": False}),
+        (
+            r"/.*",
+            tornado.web.RedirectHandler,
+            {"url": "/", "permanent": False},
+        ),
     ],
     "debug": config.debug == "1",
     # Signs session cookies.  Falls back to a per-process random value so the
@@ -282,7 +286,9 @@ async def astart():
             import_module(module_name)
             logger.debug(f"Loaded module: {module_name}")
         except Exception as e:
-            logger.error(f"Failed to load module {module_name}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to load module {module_name}: {e}", exc_info=True
+            )
 
     url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")
@@ -308,7 +314,9 @@ class ServerApplication:
     client_libraries: Tuple[str] = ()
     mcp_tools = ()
 
-    def websocket_server_loop(self, websocket: tornado.websocket.WebSocketHandler): ...
+    def websocket_server_loop(
+        self, websocket: tornado.websocket.WebSocketHandler
+    ): ...
 
     def package(self, handler: PackageHandler):
         project, app = handler.path_args
@@ -323,11 +331,14 @@ class ServerApplication:
                 (".", f"{config.apps}/{project}/**", ""),
             ]
             for root_dir, pattern, prefix in files:
-                for file in glob.glob(pattern, root_dir=root_dir, recursive=True):
+                for file in glob.glob(
+                    pattern, root_dir=root_dir, recursive=True
+                ):
                     if not os.path.isfile(os.path.join(root_dir, file)):
                         continue
                     zip_file.write(
-                        os.path.join(root_dir, file), os.path.join(prefix, file)
+                        os.path.join(root_dir, file),
+                        os.path.join(prefix, file),
                     )
 
         handler.set_header("Content-Type", "application/octet-stream")
@@ -342,14 +353,16 @@ class ServerApplication:
         content = [
             d.head(
                 d.script(
-                    src=f"https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"
+                    src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"
                 ),
                 d.link(
                     rel="stylesheet",
                     href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",
                 ),
                 d.script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
-                d.script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
+                d.script(
+                    src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"
+                ),
             ),
             d.body(
                 d.div(id="container"),
@@ -371,7 +384,7 @@ class ServerApplication:
             zip_file.extractall()
             from pyplet.client import bootstrap
             await bootstrap({config.apps!r}, {project!r}, {app!r}, {self.client_libraries!r})
-            
+
         import asyncio
         asyncio.create_task(main())
     `)
@@ -381,7 +394,9 @@ class ServerApplication:
             ),
         ]
 
-        tree = templates.application_template(f"{project}/{app}", handler, content)
+        tree = templates.application_template(
+            f"{project}/{app}", handler, content
+        )
         handler.write(d.render_html(tree))
 
     def __init_subclass__(cls):

@@ -1,12 +1,9 @@
-from ..shared import dom as d
-from ..shared.dom import bootstrap as b
-from . import config
-from . import oauth
-from . import magiclink
-import typing as t
 import collections
 import glob
-from dataclasses import dataclass
+
+from ..shared import dom as d
+from ..shared.dom import bootstrap as b
+from . import config, magiclink, oauth
 
 
 def base_template(
@@ -23,7 +20,9 @@ def base_template(
     return d.html("<!doctype html>", lang="en", _class="h-100").append(
         d.head(
             d.meta(charset="utf-8"),
-            d.meta(name="viewport", content="width=device-width, initial-scale=1"),
+            d.meta(
+                name="viewport", content="width=device-width, initial-scale=1"
+            ),
             d.title(f"{title} - Pyplet" if title else "Pyplet"),
             d.link(
                 href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
@@ -62,6 +61,7 @@ def base_template(
 # Navbar variants
 # ---------------------------------------------------------------------------
 
+
 def default_navbar(handler, user: dict | None = None):
     """
     Build the top navigation bar.
@@ -93,7 +93,9 @@ def default_navbar(handler, user: dict | None = None):
                         )
                     ),
                     d.li(d.hr(_class="dropdown-divider")),
-                    d.li(d.a("Sign out", href="/logout", _class="dropdown-item")),
+                    d.li(
+                        d.a("Sign out", href="/logout", _class="dropdown-item")
+                    ),
                 ),
             )
         )
@@ -179,11 +181,11 @@ def login_template(handler):
     # ── Magic-link e-mail form ──────────────────────────────────────────
     if show_magiclink:
         card_children.append(
-            d.form(method="POST", action=f"/auth/email").append(
+            d.form(method="POST", action="/auth/email").append(
                 d.input(
                     type="hidden",
                     name="_xsrf",
-                    value="",   # Tornado XSRF is not used here; form is self-contained
+                    value="",  # Tornado XSRF is not used here; form is self-contained
                 ),
                 d.input(
                     type="hidden",
@@ -191,8 +193,11 @@ def login_template(handler):
                     value=next_url,
                 ),
                 d.div(_class="mb-2").append(
-                    d.label("Sign in with e-mail", _for="ml_email",
-                            _class="form-label small text-muted"),
+                    d.label(
+                        "Sign in with e-mail",
+                        _for="ml_email",
+                        _class="form-label small text-muted",
+                    ),
                     d.input(
                         type="email",
                         name="email",
@@ -238,9 +243,16 @@ def magiclink_sent_template(handler, email_addr: str):
             ".",
         ),
         d.p(
-            d.span(f"The link expires in {ttl_min} minute(s). ", _class="text-muted small"),
+            d.span(
+                f"The link expires in {ttl_min} minute(s). ",
+                _class="text-muted small",
+            ),
         ),
-        d.a("← Back to sign-in", href="/login", _class="btn btn-outline-secondary mt-2"),
+        d.a(
+            "← Back to sign-in",
+            href="/login",
+            _class="btn btn-outline-secondary mt-2",
+        ),
     )
     return base_template(
         title="Check your inbox",
@@ -256,6 +268,7 @@ def magiclink_sent_template(handler, email_addr: str):
 # ---------------------------------------------------------------------------
 # Index / home page
 # ---------------------------------------------------------------------------
+
 
 def index_template(handler, user: dict | None = None):
     """
@@ -316,6 +329,7 @@ def index_template(handler, user: dict | None = None):
 # About page (unchanged)
 # ---------------------------------------------------------------------------
 
+
 def about_template(handler):
     return base_template(
         title="About",
@@ -325,7 +339,9 @@ def about_template(handler):
                 d.p("Pyplet is a full-Python application server."),
                 d.p(
                     "It is developed at the ",
-                    d.a("CETIC", href="https://www.cetic.be/", target="_blank"),
+                    d.a(
+                        "CETIC", href="https://www.cetic.be/", target="_blank"
+                    ),
                     " to develop web applications.",
                 ),
                 d.p(
@@ -340,6 +356,7 @@ def about_template(handler):
 # ---------------------------------------------------------------------------
 # App page template (unchanged)
 # ---------------------------------------------------------------------------
+
 
 def application_template(title, handler, content: d.Node):
     additional_head = ()

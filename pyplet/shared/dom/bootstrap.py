@@ -40,7 +40,14 @@ def input(type, *, id=d.skip, _class=d.auto, label=None, **props):
 
 
 def slider(
-    value=0, min=0, max=100, step=1, _class="form-range", id=d.skip, label=None, **props
+    value=0,
+    min=0,
+    max=100,
+    step=1,
+    _class="form-range",
+    id=d.skip,
+    label=None,
+    **props,
 ):
     if id is d.skip and label is not None:
         id = d.gen_id()

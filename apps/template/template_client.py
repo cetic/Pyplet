@@ -1,6 +1,6 @@
-import pyplet
 from js import document
 
+import pyplet
 
 container = document.getElementById("container")
 

@@ -48,7 +48,9 @@ oauth_google_client_secret = os.environ.get("OAUTH_GOOGLE_CLIENT_SECRET", None)
 # Microsoft / Entra ID credentials
 # Register at: https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps
 oauth_microsoft_client_id = os.environ.get("OAUTH_MICROSOFT_CLIENT_ID", None)
-oauth_microsoft_client_secret = os.environ.get("OAUTH_MICROSOFT_CLIENT_SECRET", None)
+oauth_microsoft_client_secret = os.environ.get(
+    "OAUTH_MICROSOFT_CLIENT_SECRET", None
+)
 # Tenant ID or "common" for multi-tenant apps
 oauth_microsoft_tenant = os.environ.get("OAUTH_MICROSOFT_TENANT", "common")
 

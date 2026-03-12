@@ -1,4 +1,3 @@
-import re
 import typing as T
 
 skip = object()
@@ -16,7 +15,9 @@ def handle_attr_kwargs(kwargs):
 
 
 class Node:
-    def __init__(self, tag=None, *, props=(), children=(), event_listeners=(), ns=None):
+    def __init__(
+        self, tag=None, *, props=(), children=(), event_listeners=(), ns=None
+    ):
         self.tag = tag
         self.props = dict(props)
         self.children = list(children)
@@ -35,13 +36,13 @@ class Node:
 
     def append_class(self, cls):
         if "class" in self.props:
-            cls = f'{self.props["class"]} {cls}'
+            cls = f"{self.props['class']} {cls}"
         self.props["class"] = cls
         return self
 
     def append_style(self, style):
         if "style" in self.props:
-            style = f'{self.props["style"]};{style}'
+            style = f"{self.props['style']};{style}"
         self.props["style"] = style
         return self
 
@@ -213,7 +214,7 @@ text = Node._new_factory("text", _SVG_NS)
 
 def append_classes(node, classes):
     if "class" in node.props:
-        classes = f'{node.props["class"]} {classes}'
+        classes = f"{node.props['class']} {classes}"
     node.props["class"] = classes
 
 

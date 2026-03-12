@@ -28,13 +28,13 @@ Pyplet is an application server that lets you create interactive web application
    ```
 
 2. **Download Pyodide** (optional - for local development)
-   
+
    Pyplet uses Pyodide from CDN by default. For offline development, download it locally:
    ```bash
    wget https://github.com/pyodide/pyodide/releases/download/0.29.0/pyodide-0.29.0.tar.bz2
    tar -xvjf pyodide-0.29.0.tar.bz2
    ```
-   
+
    Then configure Pyplet to use the local version:
    ```bash
    export PYPLET_PYODIDE=/path/to/pyodide/pyodide.js
@@ -52,7 +52,7 @@ Pyplet is an application server that lets you create interactive web application
    ```bash
    pip install -e .
    ```
-   
+
    To install with test dependencies:
    ```bash
    uv sync --extra test
@@ -94,7 +94,7 @@ class _(pyplet.client.ClientApplication):
         # Receive message from server
         message = await ws.receive()
         container.innerText = message.decode()
-        
+
         # Send message back to server
         await ws.send(b"Hello from the browser!")
 ```
@@ -107,7 +107,7 @@ class _(pyplet.server.ServerApplication):
     async def websocket_server_loop(self, ws: pyplet.WebSocket):
         # Send message to client
         await ws.send(b"Hello from the server!")
-        
+
         # Receive client's response
         response = await ws.receive()
         print(f"Client says: {response.decode()}")

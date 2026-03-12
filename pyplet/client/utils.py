@@ -1,6 +1,6 @@
 import warnings
 
-from js import console, document, window, Object
+from js import Object, document
 from pyodide.ffi import create_proxy, to_js
 
 

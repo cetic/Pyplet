@@ -1,2 +1,2 @@
-from ._server import *
 from . import cli
+from ._server import *

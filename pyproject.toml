@@ -34,3 +34,46 @@ pyplet = "pyplet.server.cli:script_main"
 [tool.setuptools.package-data]
 # Include apps/examples into pip package
 pyplet = ["../apps/**/*"]
+
+[tool.black]
+verbose = true
+line-length = 79
+target-version = ['py312', 'py313', 'py314']
+include = '.pyi?$'
+exclude = '''
+/(
+    .git
+    | .hg
+    | .mypy_cache
+    | .tox
+    | .venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
+
+[tool.ruff]
+builtins = ["_"]
+# cache-dir = "~/.cache/ruff"
+exclude = [".venv", "**/build"]
+line-length = 79
+fix = true
+indent-width = 4
+respect-gitignore = false
+show-fixes = true
+src = ["src"]
+target-version = "py312"
+unsafe-fixes = false
+
+[tool.ruff.analyze]
+detect-string-imports = true
+
+[tool.ruff.format]
+# Enable reformatting of code snippets in docstrings.
+docstring-code-format = true
+docstring-code-line-length = 79
+# Enable reformatting of code snippets in comments.
+indent-style = "space"
+line-ending = "lf"
