@@ -1,5 +1,5 @@
 from . import shared
-from .shared.websocket import WebSocket as Websocket
+from .shared.websocket import WebSocket
 
 try:
     from . import server
