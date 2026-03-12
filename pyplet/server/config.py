@@ -17,10 +17,11 @@ pyodide_url = os.environ.get(
 )
 url = os.environ.get("PYPLET_URL", None)
 
-# ── Authentication ────────────────────────────────────────────────────────────
+# ── Authentication ───────────────────────────────────────────────────────────
 # Signs session cookies.  Generate with:
 #   python -c "import secrets; print(secrets.token_hex(32))"
-# Without this, a random secret is generated at startup (sessions lost on restart).
+# Without this, a random secret is generated at startup
+# (sessions lost on restart).
 oauth_cookie_secret = os.environ.get("PYPLET_COOKIE_SECRET", None)
 
 # Google OAuth2 credentials
@@ -37,7 +38,7 @@ oauth_microsoft_client_secret = os.environ.get(
 # Tenant ID or "common" for multi-tenant apps
 oauth_microsoft_tenant = os.environ.get("OAUTH_MICROSOFT_TENANT", "common")
 
-# ── Magic-link e-mail auth ────────────────────────────────────────────────────
+# ── Magic-link e-mail auth ───────────────────────────────────────────────────
 # Configure an SMTP server to enable passwordless magic-link login.
 # All four of host/port/user/password must be set to enable magic-link auth.
 magiclink_smtp_host = os.environ.get("MAGICLINK_SMTP_HOST", None)
@@ -51,7 +52,7 @@ magiclink_from = os.environ.get("MAGICLINK_FROM", magiclink_smtp_user)
 # How long (in seconds) a magic link remains valid (default: 15 minutes).
 magiclink_token_ttl = int(os.environ.get("MAGICLINK_TOKEN_TTL", "900"))
 
-# ── ACL rules ─────────────────────────────────────────────────────────────────
+# ── ACL rules ────────────────────────────────────────────────────────────────
 # Path to the ACL rules JSON file (default: <apps_dir>/auth_rules.json).
 # Each entry is [project_regex, app_regex, email_regex].
 # If the file does not exist, all authenticated users can access all apps.

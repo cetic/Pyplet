@@ -138,8 +138,9 @@ def _send_email_sync(to_addr: str, base: str, magic_url: str) -> None:
     plain = (
         f"Click the link below to sign in to Pyplet.\n\n"
         f"{magic_url}\n\n"
-        f"This link expires in {ttl_min} minute(s) and can only be used once.\n"
-        f"If you did not request this, you can safely ignore this e-mail."
+        f"This link expires in {ttl_min} minute(s) and "
+        "can only be used once.\nIf you did not request "
+        "this, you can safely ignore this e-mail."
     )
     html = f"""\
 <html><body>
@@ -219,16 +220,18 @@ async def handle_request(handler) -> None:
         oauth._error(
             handler,
             502,
-            "Could not send the sign-in e-mail. Please try again or use another sign-in method.",
+            "Could not send the sign-in e-mail. "
+            "Please try again or use another sign-in method.",
         )
         return
 
     # Show confirmation — don't reveal whether the address exists in any ACL.
-    from ..shared import dom as d
     from . import templates
 
     handler.write(
-        d.render_html(templates.magiclink_sent_template(handler, email_addr))
+        str(templates.magiclink_sent_template(handler, email_addr)).encode(
+            "UTF-8"
+        )
     )
 
 

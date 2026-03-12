@@ -7,16 +7,17 @@ import secrets
 import zipfile
 from importlib import import_module
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import tornado
 import tornado.web
 import tornado.websocket
+from markupsafe import Markup
 
 import pyplet
 from pyplet.server import config
 
-from ..shared import dom as d
+from ..shared.dom import div, link, script
 from . import magiclink, oauth, templates
 
 # Configure logging
@@ -113,6 +114,18 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
 # ---------------------------------------------------------------------------
 
 
+class AboutHandler(_AuthMixin, tornado.web.RequestHandler):
+    """
+    GET  /about  — show the about page.
+    """
+
+    async def get(self):
+        user = self._require_auth()
+        if user is None:
+            return
+        self.write(str(templates.about_template(self, user)).encode("UTF-8"))
+
+
 class PackageHandler(_AuthMixin, tornado.web.RequestHandler):
     """A handler for serving package resources."""
 
@@ -154,7 +167,7 @@ class IndexHandler(_AuthMixin, tornado.web.RequestHandler):
         user = self._require_auth()
         if user is None:
             return
-        self.write(d.render_html(templates.index_template(self, user)))
+        self.write(str(templates.index_template(self, user)).encode("UTF-8"))
 
 
 class LogoutHandler(tornado.web.RequestHandler):
@@ -197,7 +210,8 @@ class MagicLinkRequestHandler(tornado.web.RequestHandler):
 
 class MagicLinkVerifyHandler(tornado.web.RequestHandler):
     """
-    GET  /auth/verify?token=<token>  — validates the token and logs the user in.
+    GET  /auth/verify?token=<token>  —
+    validates the token and logs the user in.
     """
 
     async def get(self):
@@ -262,6 +276,7 @@ _app_spec = {
             {"path": os.path.join(os.path.dirname(__file__), "../pyodide")},
         ),
         (r"/", IndexHandler),
+        (r"/about", AboutHandler),
         (r"/login", LoginHandler),
         (r"/logout", LogoutHandler),
         (r"/oauth/login", OAuthLoginHandler),
@@ -288,7 +303,8 @@ _app_spec = {
     ],
     "debug": config.debug == "1",
     # Signs session cookies.  Falls back to a per-process random value so the
-    # server still works without PYPLET_COOKIE_SECRET (sessions lost on restart).
+    # server still works without PYPLET_COOKIE_SECRET
+    # (sessions lost on restart).
     "cookie_secret": config.oauth_cookie_secret or secrets.token_hex(32),
 }
 
@@ -329,7 +345,7 @@ async def astart():
 
 
 class ServerApplication:
-    title: str = None
+    title: Optional[str] = None
     client_libraries: Tuple[str] = ()
     mcp_tools = ()
 
@@ -366,57 +382,65 @@ class ServerApplication:
     def serve(self, handler: AppHandler):
         project, app = handler.path_args
 
-        server = f"{handler.request.protocol}://{handler.request.host}"
+        server = f"{handler.request.protocol}://{handler.request.host}"  # noqa: E501, F841
         app_package = f"/apps/{project}/{app}.zip"
 
-        content = [
-            d.head(
-                d.script(
-                    src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"
+        content = {
+            "head": [
+                script(
+                    src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"  # noqa: E501
                 ),
-                d.link(
+                link(
                     rel="stylesheet",
-                    href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",
+                    href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",  # noqa: E501
                 ),
-                d.script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
-                d.script(
+                script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
+                script(
                     src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"
                 ),
-            ),
-            d.body(
-                d.div(id="container"),
-                d.script(type="text/javascript").append(
-                    f"""
-(async function() {{
-    let pyodide = await loadPyodide({{
-    }});
-    pyodide.runPython(`
-        async def main():
-            from js import fetch
+            ],
+            "body": [
+                div(id="container"),
+                script(type="text/javascript")[
+                    Markup(
+                        f"""
+                (async function() {{
+                    let pyodide = await loadPyodide({{
+                    }});
+                    pyodide.runPython(`
+                        async def main():
+                            from js import fetch
 
-            response = await fetch({app_package!r})
-            response = await response.arrayBuffer()
-            response = response.to_py().tobytes()
+                            response = await fetch('{app_package}')
+                            response = await response.arrayBuffer()
+                            response = response.to_py().tobytes()
 
-            import io, zipfile
-            zip_file = zipfile.ZipFile(io.BytesIO(response), 'r')
-            zip_file.extractall()
-            from pyplet.client import bootstrap
-            await bootstrap({config.apps!r}, {project!r}, {app!r}, {self.client_libraries!r})
+                            import io, zipfile
+                            zip_file = zipfile.ZipFile(
+                                io.BytesIO(response), 'r'
+                            )
+                            zip_file.extractall()
+                            from pyplet.client import bootstrap
+                            await bootstrap(
+                                '{project}',
+                                '{app}',
+                                {self.client_libraries},
+                            )
 
-        import asyncio
-        asyncio.create_task(main())
-    `)
-}})();
-"""
-                ),
-            ),
-        ]
+                        import asyncio
+                        asyncio.create_task(main())
+                    `)
+                }})();
+                """
+                    )
+                ],
+            ],
+        }
 
         tree = templates.application_template(
             f"{project}/{app}", handler, content
         )
-        handler.write(d.render_html(tree))
+        handler.write(str(tree).encode("UTF-8"))
 
     def __init_subclass__(cls):
         qualname = cls.__module__.split(".")

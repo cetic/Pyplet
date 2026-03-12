@@ -6,127 +6,128 @@ client-side DOM creation in Pyodide. It exposes:
 
 Docstring style: Google.
 """
+
 # Make all the elements available at the module level
 # Ignore unused imports (multiline)
 
-from htpy import (
-    Node,  # noqa: F401
-    Renderable,
-    a,  # noqa: F401
-    abbr,  # noqa: F401
-    address,  # noqa: F401
-    area,  # noqa: F401
-    article,  # noqa: F401
-    aside,  # noqa: F401
-    audio,  # noqa: F401
-    b,  # noqa: F401
-    base,  # noqa: F401
-    bdi,  # noqa: F401
-    bdo,  # noqa: F401
-    blockquote,  # noqa: F401
-    body,  # noqa: F401
-    br,  # noqa: F401
-    button,  # noqa: F401
-    canvas,  # noqa: F401
-    caption,  # noqa: F401
-    cite,  # noqa: F401
-    code,  # noqa: F401
-    col,  # noqa: F401
-    colgroup,  # noqa: F401
-    data,  # noqa: F401
-    datalist,  # noqa: F401
-    dd,  # noqa: F401
-    del_,  # noqa: F401
-    details,  # noqa: F401
-    dfn,  # noqa: F401
-    dialog,  # noqa: F401
-    div,  # noqa: F401
-    dl,  # noqa: F401
-    dt,  # noqa: F401
-    em,  # noqa: F401
-    embed,  # noqa: F401
-    fieldset,  # noqa: F401
-    figcaption,  # noqa: F401
-    figure,  # noqa: F401
-    footer,  # noqa: F401
-    form,  # noqa: F401
-    h1,  # noqa: F401
-    h2,  # noqa: F401
-    h3,  # noqa: F401
-    h4,  # noqa: F401
-    h5,  # noqa: F401
-    h6,  # noqa: F401
-    head,  # noqa: F401
-    header,  # noqa: F401
-    hgroup,  # noqa: F401
-    hr,  # noqa: F401
-    html,  # noqa: F401
-    i,  # noqa: F401
-    iframe,  # noqa: F401
-    img,  # noqa: F401
-    input,  # noqa: F401
-    ins,  # noqa: F401
-    kbd,  # noqa: F401
-    label,  # noqa: F401
-    legend,  # noqa: F401
-    li,  # noqa: F401
-    link,  # noqa: F401
-    main,  # noqa: F401
-    map,  # noqa: F401
-    mark,  # noqa: F401
-    math,  # noqa: F401
-    menu,  # noqa: F401
-    meta,  # noqa: F401
-    meter,  # noqa: F401
-    nav,  # noqa: F401
-    noscript,  # noqa: F401
-    object,  # noqa: F401
-    ol,  # noqa: F401
-    optgroup,  # noqa: F401
-    option,  # noqa: F401
-    output,  # noqa: F401
-    p,  # noqa: F401
-    picture,  # noqa: F401
-    pre,  # noqa: F401
-    progress,  # noqa: F401
-    q,  # noqa: F401
-    rp,  # noqa: F401
-    rt,  # noqa: F401
-    ruby,  # noqa: F401
-    s,  # noqa: F401
-    samp,  # noqa: F401
-    script,  # noqa: F401
-    search,  # noqa: F401
-    section,  # noqa: F401
-    select,  # noqa: F401
-    slot,  # noqa: F401
-    small,  # noqa: F401
-    source,  # noqa: F401
-    span,  # noqa: F401
-    strong,  # noqa: F401
-    style,  # noqa: F401
-    sub,  # noqa: F401
-    summary,  # noqa: F401
-    sup,  # noqa: F401
-    svg,  # noqa: F401
-    table,  # noqa: F401
-    tbody,  # noqa: F401
-    td,  # noqa: F401
-    template,  # noqa: F401
-    textarea,  # noqa: F401
-    tfoot,  # noqa: F401
-    th,  # noqa: F401
-    thead,  # noqa: F401
-    time,  # noqa: F401
-    title,  # noqa: F401
-    tr,  # noqa: F401
-    track,  # noqa: F401
-    u,  # noqa: F401
-    ul,  # noqa: F401
-    var,  # noqa: F401
-    video,  # noqa: F401
-    wbr,  # noqa: F401
-)
+from htpy import Node  # noqa: F401
+from htpy import a  # noqa: F401
+from htpy import abbr  # noqa: F401
+from htpy import address  # noqa: F401
+from htpy import area  # noqa: F401
+from htpy import article  # noqa: F401
+from htpy import aside  # noqa: F401
+from htpy import audio  # noqa: F401
+from htpy import b  # noqa: F401
+from htpy import base  # noqa: F401
+from htpy import bdi  # noqa: F401
+from htpy import bdo  # noqa: F401
+from htpy import blockquote  # noqa: F401
+from htpy import body  # noqa: F401
+from htpy import br  # noqa: F401
+from htpy import button  # noqa: F401
+from htpy import canvas  # noqa: F401
+from htpy import caption  # noqa: F401
+from htpy import cite  # noqa: F401
+from htpy import code  # noqa: F401
+from htpy import col  # noqa: F401
+from htpy import colgroup  # noqa: F401
+from htpy import data  # noqa: F401
+from htpy import datalist  # noqa: F401
+from htpy import dd  # noqa: F401
+from htpy import del_  # noqa: F401
+from htpy import details  # noqa: F401
+from htpy import dfn  # noqa: F401
+from htpy import dialog  # noqa: F401
+from htpy import div  # noqa: F401
+from htpy import dl  # noqa: F401
+from htpy import dt  # noqa: F401
+from htpy import em  # noqa: F401
+from htpy import embed  # noqa: F401
+from htpy import fieldset  # noqa: F401
+from htpy import figcaption  # noqa: F401
+from htpy import figure  # noqa: F401
+from htpy import footer  # noqa: F401
+from htpy import form  # noqa: F401
+from htpy import h1  # noqa: F401
+from htpy import h2  # noqa: F401
+from htpy import h3  # noqa: F401
+from htpy import h4  # noqa: F401
+from htpy import h5  # noqa: F401
+from htpy import h6  # noqa: F401
+from htpy import head  # noqa: F401
+from htpy import header  # noqa: F401
+from htpy import hgroup  # noqa: F401
+from htpy import hr  # noqa: F401
+from htpy import html  # noqa: F401
+from htpy import i  # noqa: F401
+from htpy import iframe  # noqa: F401
+from htpy import img  # noqa: F401
+from htpy import input  # noqa: F401
+from htpy import ins  # noqa: F401
+from htpy import kbd  # noqa: F401
+from htpy import label  # noqa: F401
+from htpy import legend  # noqa: F401
+from htpy import li  # noqa: F401
+from htpy import link  # noqa: F401
+from htpy import main  # noqa: F401
+from htpy import map  # noqa: F401
+from htpy import mark  # noqa: F401
+from htpy import math  # noqa: F401
+from htpy import menu  # noqa: F401
+from htpy import meta  # noqa: F401
+from htpy import meter  # noqa: F401
+from htpy import nav  # noqa: F401
+from htpy import noscript  # noqa: F401
+from htpy import object  # noqa: F401
+from htpy import ol  # noqa: F401
+from htpy import optgroup  # noqa: F401
+from htpy import option  # noqa: F401
+from htpy import output  # noqa: F401
+from htpy import p  # noqa: F401
+from htpy import picture  # noqa: F401
+from htpy import pre  # noqa: F401
+from htpy import progress  # noqa: F401
+from htpy import q  # noqa: F401
+from htpy import rp  # noqa: F401
+from htpy import rt  # noqa: F401
+from htpy import ruby  # noqa: F401
+from htpy import s  # noqa: F401
+from htpy import samp  # noqa: F401
+from htpy import script  # noqa: F401
+from htpy import search  # noqa: F401
+from htpy import section  # noqa: F401
+from htpy import select  # noqa: F401
+from htpy import slot  # noqa: F401
+from htpy import small  # noqa: F401
+from htpy import source  # noqa: F401
+from htpy import span  # noqa: F401
+from htpy import strong  # noqa: F401
+from htpy import style  # noqa: F401
+from htpy import sub  # noqa: F401
+from htpy import summary  # noqa: F401
+from htpy import sup  # noqa: F401
+from htpy import svg  # noqa: F401
+from htpy import table  # noqa: F401
+from htpy import tbody  # noqa: F401
+from htpy import td  # noqa: F401
+from htpy import template  # noqa: F401
+from htpy import textarea  # noqa: F401
+from htpy import tfoot  # noqa: F401
+from htpy import th  # noqa: F401
+from htpy import thead  # noqa: F401
+from htpy import time  # noqa: F401
+from htpy import title  # noqa: F401
+from htpy import tr  # noqa: F401
+from htpy import track  # noqa: F401
+from htpy import u  # noqa: F401
+from htpy import ul  # noqa: F401
+from htpy import var  # noqa: F401
+from htpy import video  # noqa: F401
+from htpy import wbr  # noqa: F401
+from htpy import Element, Renderable
+
+svg_path = Element("path")
 
 # Components to implement:
 # Download button (from server/from client)

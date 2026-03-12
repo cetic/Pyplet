@@ -70,7 +70,10 @@ logger = logging.getLogger("pyplet.server.oauth")
 _GOOGLE_OPENID_CONFIG_URL = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
-_MICROSOFT_OPENID_CONFIG_URL = "https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration"
+_MICROSOFT_OPENID_CONFIG_URL = (
+    "https://login.microsoftonline.com/"
+    "{tenant}/v2.0/.well-known/openid-configuration"
+)
 
 _PROVIDER_CONFIGS: dict[str, dict[str, Any]] = {
     "google": {
@@ -108,12 +111,14 @@ _extra_auth_checks: list = []
 
 
 def register_auth_check(fn) -> None:
-    """Register a zero-argument callable that returns True when its auth method is active."""
+    """Register a zero-argument callable
+    that returns True when its auth method is active."""
     _extra_auth_checks.append(fn)
 
 
 def auth_enabled() -> bool:
-    """True when at least one authentication method (OAuth or magic-link) is configured."""
+    """True when at least one authentication method (OAuth or magic-link)
+    is configured."""
     return bool(enabled_providers()) or any(fn() for fn in _extra_auth_checks)
 
 
@@ -221,7 +226,8 @@ def _load_acl_rules() -> None:
     rules_path = config.auth_rules_file
     if not os.path.isfile(rules_path):
         logger.info(
-            "No ACL rules file found at %s — all authenticated users can access all apps.",
+            "No ACL rules file found at %s — all authenticated users"
+            " can access all apps.",
             rules_path,
         )
         _acl_rules = []
