@@ -1,10 +1,12 @@
 import asyncio
+import base64
 import glob
-import io
+import gzip
+import json
 import logging
 import os
 import secrets
-import zipfile
+import textwrap
 from importlib import import_module
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -284,7 +286,7 @@ _app_spec = {
         (r"/auth/email", MagicLinkRequestHandler),
         (r"/auth/verify", MagicLinkVerifyHandler),
         (
-            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.zip",
+            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.json",
             PackageHandler,
         ),
         (
@@ -348,93 +350,170 @@ class ServerApplication:
     title: Optional[str] = None
     client_libraries: Tuple[str] = ()
     mcp_tools = ()
+    interpreter: str = "py"
 
     def websocket_server_loop(
         self, websocket: tornado.websocket.WebSocketHandler
     ): ...
 
-    def package(self, handler: PackageHandler):
+    def package(self, handler):
         project, app = handler.path_args
-
-        zip_bytes = io.BytesIO()
         pyplet_root = str(Path(pyplet.__file__).parent.parent)
-        with zipfile.ZipFile(zip_bytes, "w") as zip_file:
-            files = [
-                (pyplet_root, "pyplet/*", ""),
-                (pyplet_root, "pyplet/shared/**", ""),
-                (pyplet_root, "pyplet/client/**", ""),
-                (".", f"{config.apps}/{project}/**", ""),
-            ]
-            for root_dir, pattern, prefix in files:
-                for file in glob.glob(
-                    pattern, root_dir=root_dir, recursive=True
-                ):
-                    if not os.path.isfile(os.path.join(root_dir, file)):
-                        continue
-                    zip_file.write(
-                        os.path.join(root_dir, file),
-                        os.path.join(prefix, file),
+
+        file_map = {}
+        files = [
+            (pyplet_root, "pyplet/*", ""),
+            (pyplet_root, "pyplet/shared/**", ""),
+            (pyplet_root, "pyplet/client/**", ""),
+            (".", f"{config.apps}/{project}/**", ""),
+        ]
+
+        for root_dir, pattern, prefix in files:
+            for file in glob.glob(pattern, root_dir=root_dir, recursive=True):
+                full_path = os.path.join(root_dir, file)
+                if not os.path.isfile(full_path):
+                    continue
+
+                target_path = os.path.join(prefix, file)
+
+                # Read as bytes and encode to base64 for JSON safety
+                with open(full_path, "rb") as f:
+                    encoded_content = base64.b64encode(f.read()).decode(
+                        "utf-8"
                     )
+                    file_map[target_path] = encoded_content
 
-        handler.set_header("Content-Type", "application/octet-stream")
-        handler.write(zip_bytes.getvalue())
+        # Convert to JSON and compress
+        json_bytes = json.dumps(file_map).encode("utf-8")
+        compressed_bytes = gzip.compress(json_bytes)
 
-    def serve(self, handler: AppHandler):
+        # Set headers so the browser natively decompresses the payload
+        handler.set_header("Content-Type", "application/json")
+        handler.set_header("Content-Encoding", "gzip")
+        handler.write(compressed_bytes)
+
+    def serve(self, handler):
         project, app = handler.path_args
 
-        server = f"{handler.request.protocol}://{handler.request.host}"  # noqa: E501, F841
-        app_package = f"/apps/{project}/{app}.zip"
+        # Update the extension to .json
+        app_package = f"/apps/{project}/{app}.json"
+
+        # Inject PyScript core scripts
+        head_content = [
+            link(
+                rel="stylesheet",
+                href="https://pyscript.net/releases/2024.1.1/core.css",
+            ),
+            script(
+                type="module",
+                src="https://pyscript.net/releases/2024.1.1/core.js",
+            ),
+            link(
+                rel="stylesheet",
+                href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",  # noqa: E501
+            ),
+            script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
+            script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
+        ]
+
+        # The Python script to run on the client
+        # (works in both Pyodide and MicroPython)
+        python_code = textwrap.dedent(f"""
+            import base64
+            import os
+            import json
+            import sys
+            from js import fetch
+
+            # Polyfill os.makedirs
+            def ensure_dir(path):
+                if not path: return
+                parts = path.split("/")
+                current_path = ""
+                for part in parts:
+                    if not part: continue
+
+                    current_path = current_path + "/"
+                    current_path += part if current_path else part
+
+                    try:
+                        os.mkdir(current_path)
+                    except OSError:
+                        pass
+
+            # Top-level await for the package
+            response = await fetch('{app_package}')
+
+            if not response.ok:
+                print(f"Failed to fetch package: HTTP {{response.status}}")
+            else:
+                raw_text = await response.text()
+                file_data = json.loads(raw_text)
+
+                # Write files to the VFS
+                for filepath, b64_content in file_data.items():
+                    dir_name = os.path.dirname(filepath)
+                    if dir_name:
+                        ensure_dir(dir_name)
+                    with open(filepath, "wb") as f:
+                        f.write(base64.b64decode(b64_content))
+
+                # --- NEW: Mock the typing module for MicroPython ---
+                if sys.implementation.name == "micropython":
+                    # 1. Mock Typing
+                    if "typing" not in sys.modules:
+                        class MockTyping:
+                            def __getattr__(self, name): return self
+                            def __getitem__(self, key): return self
+                        sys.modules["typing"] = MockTyping()
+
+                    # 2. Polyfill importlib
+                    if "importlib" not in sys.modules:
+                        class MockImportlib:
+                            @staticmethod
+                            def import_module(name, package=None):
+                                # Handle basic relative imports
+                                # if they exist in your framework
+                                if name.startswith('.'):
+                                    if not package:
+                                        raise TypeError(
+                                            "Relative imports require"
+                                            " the 'package' argument"
+                                        )
+                                    # Very basic resolution
+                                    # (assumes 1 level deep like '.my_module')
+                                    name = package + name
+
+                                # Passing a fromlist like ['']
+                                # forces __import__ to return
+                                # the rightmost module
+                                return __import__(
+                                    name, globals(), locals(), ['']
+                                )
+
+                        sys.modules["importlib"] = MockImportlib()
+                # ---------------------------------------------------
+
+                # Boot the application
+                from pyplet.client import bootstrap_client
+                await bootstrap_client(
+                    '{config.apps}',
+                    '{project}',
+                    '{app}',
+                    {self.client_libraries},
+                )
+        """)
+
+        # Toggle between interpreters based on your class property
+        script_tag = getattr(self, "interpreter", "py")
 
         content = {
-            "head": [
-                script(
-                    src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"  # noqa: E501
-                ),
-                link(
-                    rel="stylesheet",
-                    href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",  # noqa: E501
-                ),
-                script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
-                script(
-                    src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"
-                ),
-            ],
+            "head": head_content,
             "body": [
                 div(id="container"),
-                script(type="text/javascript")[
-                    Markup(
-                        f"""
-                (async function() {{
-                    let pyodide = await loadPyodide({{
-                    }});
-                    pyodide.runPython(`
-                        async def main():
-                            from js import fetch
-
-                            response = await fetch('{app_package}')
-                            response = await response.arrayBuffer()
-                            response = response.to_py().tobytes()
-
-                            import io, zipfile
-                            zip_file = zipfile.ZipFile(
-                                io.BytesIO(response), 'r'
-                            )
-                            zip_file.extractall()
-                            from pyplet.client import bootstrap
-                            await bootstrap(
-                                '{config.apps}',
-                                '{project}',
-                                '{app}',
-                                {self.client_libraries},
-                            )
-
-                        import asyncio
-                        asyncio.create_task(main())
-                    `)
-                }})();
-                """
-                    )
-                ],
+                Markup(
+                    f'<script type="{script_tag}" async>{python_code}</script>'
+                ),
             ],
         }
 
