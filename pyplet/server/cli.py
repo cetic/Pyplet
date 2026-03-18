@@ -14,8 +14,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pyplet.cli")
 
-projects_dir = Path.cwd() / "apps"
-
 
 def create_project(project_name: str) -> None:
     """
@@ -80,6 +78,7 @@ def create_project(project_name: str) -> None:
     )
 
 
+# Entry point when run as `pyplet [...]`
 def script_main() -> None:
     """Run the Pyplet server CLI script."""
     if os.getcwd() not in sys.path:
@@ -122,18 +121,25 @@ def main() -> None:
     # If no command is provided, print help and exit
     if args.command is None:
         parser.print_help()
-        return
+        sys.exit(0)
 
     if args.command == "init":
         create_project(args.project_name)
 
     elif args.command in ("start", "run", "server"):
+        projects_dir = Path(config.apps)
+
+        # If path is relative, make it absolute
+        if not projects_dir.is_absolute():
+            projects_dir = Path.cwd() / projects_dir
+
+        # If path doesn't exist, print error and exit
         if not projects_dir.exists():
             logger.error(
                 "No projects directory found in the current directory.\n"
                 "Run 'pyplet init' first or move to the projects directory."
             )
-            return
+            sys.exit(2)
 
         for name in config.params:
             value = getattr(args, name, ...)
@@ -141,9 +147,6 @@ def main() -> None:
                 setattr(config, name, value)
 
         start_server()
-
-    else:
-        parser.print_help()
 
 
 def start_server():
@@ -164,7 +167,3 @@ def start_server():
     except Exception as error:
         logger.error("Server error: %s", error, exc_info=True)
         sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()

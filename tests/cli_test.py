@@ -11,7 +11,9 @@ These tests verify that:
 
 import logging
 import os
+import runpy
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -118,6 +120,28 @@ class TestCreateProject:
                     "config.py should NOT be created"
                 )
 
+        finally:
+            os.chdir(original_cwd)
+
+    def test_create_project_missing_template_directory(self, temp_workspace):
+        from pyplet.server.cli import create_project
+
+        work_dir = temp_workspace["work_dir"]
+        original_cwd = os.getcwd()
+        os.chdir(work_dir)
+
+        try:
+            with patch("pyplet.server.cli.Path") as mock_path_class:
+                mock_file_path = MagicMock()
+                mock_file_path.resolve.return_value.parent.parent = (
+                    temp_workspace["tmp_path"]
+                )
+                mock_path_class.return_value = mock_file_path
+
+                with pytest.raises(SystemExit) as excinfo:
+                    create_project("my_test_app")
+
+                assert excinfo.value.code == 1
         finally:
             os.chdir(original_cwd)
 
@@ -567,6 +591,42 @@ class TestStartServer:
 class TestCLIArgumentParsing:
     """Test suite for CLI argument parsing."""
 
+    def test_pyplet_main_entry_point_subprocess(self):
+        """Test `python -m pyplet` using a real subprocess."""
+
+        # 1. Run the command: `<path_to_python> -m pyplet --help`
+        result = subprocess.run(
+            [sys.executable, "-m", "pyplet", "--help"],
+            capture_output=True,
+            text=True,
+        )
+
+        # 2. Verify the process exited gracefully
+        assert result.returncode == 0
+
+        # 3. Verify the output contains the CLI help menu
+        assert "usage:" in result.stdout.lower()
+
+    def test_pyplet_main_entry_point(self):
+        """Test `python -m pyplet` entry point with full coverage."""
+        with patch("sys.argv", ["pyplet", "--help"]):
+            with pytest.raises(SystemExit) as excinfo:
+                runpy.run_module("pyplet", run_name="__main__")
+
+            assert excinfo.value.code == 0
+
+    def test_no_args(self):
+        """Test that no args raises SystemExit."""
+        from pyplet.server.cli import main
+
+        with patch("sys.argv", ["pyplet"]):
+            # main() should print the help message and return
+            with patch("sys.stdout") as mock_stdout:
+                with pytest.raises(SystemExit) as excinfo:
+                    main()
+                assert excinfo.value.code == 0
+                mock_stdout.write.assert_called_once()
+
     @patch("pyplet.server.cli.create_project")
     def test_init_command(self, mock_create_project):
         """Test that 'init' command calls create_project."""
@@ -582,6 +642,50 @@ class TestCLIArgumentParsing:
 
             # Note: This test is limited because main() imports config
             # which triggers the pyplet environment detection
+
+    @patch("pyplet.server.cli.start_server")
+    def test_start_command(self, mock_start_server):
+        """Test that 'start' command calls start_server."""
+        from pyplet.server.cli import main
+
+        # We need to test pyplet start, run, server
+        start_commands = ["start", "run", "server"]
+        for cmd in start_commands:
+            with patch("sys.argv", ["pyplet", cmd]):
+                # If your main() function exits gracefully
+                # after running the command,
+                # you don't need the try/except SystemExit block here.
+                main()
+
+            mock_start_server.assert_called_once()
+            mock_start_server.reset_mock()
+
+        # Test that "pyplet anything" displays help and exits
+        with patch("sys.argv", ["pyplet", "anything"]):
+            # argparse automatically throws a SystemExit(2) on invalid choices,
+            # so we should use pytest.raises to catch it properly!
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+
+            # Verify argparse exited with the standard error code (2)
+            assert excinfo.value.code == 2
+
+    def test_try_to_start_server_with_no_existing_project_dir(self):
+        """Test that trying to start a server with
+        no existing project dir exits with error."""
+        from pyplet.server.cli import main
+
+        # 1. Patch the exists method on the Path
+        # class imported in your cli module
+        with patch("pyplet.server.cli.Path.exists", return_value=False):
+            # 2. Simulate the CLI arguments
+            with patch("sys.argv", ["pyplet", "start"]):
+                # 3. Catch the expected SystemExit
+                with pytest.raises(SystemExit) as excinfo:
+                    main()
+
+                # 4. Assert the exit code is 2
+                assert excinfo.value.code == 2
 
     def test_script_main_adds_cwd_to_path(self):
         """Test that script_main adds cwd to sys.path."""
