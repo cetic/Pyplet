@@ -462,40 +462,6 @@ class ServerApplication:
                             with open(filepath, "wb") as f:
                                 f.write(base64.b64decode(b64_content))
 
-                        # --- NEW: VFS Download Function (Cross-Engine) ---
-                        def download_vfs_file(file_path):
-                            try:
-                                with open(file_path, "rb") as f:
-                                    content = f.read()
-
-                                # Base64 encode to avoid Pyodide/MicroPython
-                                # FFI byte translation issues
-                                b64_str = base64.b64encode(
-                                    content
-                                ).decode('utf-8')
-                                data_uri = (
-                                    "data:application/octet-stream;base64,"
-                                    + b64_str
-                                )
-
-                                link = js.document.createElement("a")
-                                link.href = data_uri
-                                link.download = file_path.split("/")[-1]
-
-                                js.document.body.appendChild(link)
-                                link.click()
-                                js.document.body.removeChild(link)
-                            except Exception as e:
-                                js.console.error(
-                                    "Download failed for " +
-                                    file_path + ": " + str(e)
-                                )
-
-                        # Expose to global window so HTML onclick
-                        # handlers can find it
-                        js.window.download_vfs_file = download_vfs_file
-                        # -------------------------------------------------
-
                         # --- Mock the typing module for MicroPython ---
                         if sys.implementation.name == "micropython":
                             # 1. Mock Typing

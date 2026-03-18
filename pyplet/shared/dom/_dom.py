@@ -7,11 +7,11 @@ client-side DOM creation in Pyodide. It exposes:
 Docstring style: Google.
 """
 
-# Make all the elements available at the module level
-# Ignore unused imports (multiline)
+import json
+from typing import Optional
 
+# Make all the elements available at the module level
 from htpy import Node  # noqa: F401
-from htpy import a  # noqa: F401
 from htpy import abbr  # noqa: F401
 from htpy import address  # noqa: F401
 from htpy import area  # noqa: F401
@@ -125,7 +125,7 @@ from htpy import ul  # noqa: F401
 from htpy import var  # noqa: F401
 from htpy import video  # noqa: F401
 from htpy import wbr  # noqa: F401
-from htpy import Element, Renderable
+from htpy import Element, Renderable, a
 
 # from markupsafe import Markup
 
@@ -140,10 +140,39 @@ svg_path = Element("path")
 # Slider, radio, check, button (with client, server, hybrid callbacks)
 
 
+def _merge_classes(
+    default_classes: str,
+    extra_classes: Optional[str] = None,
+    overwrite_classes: Optional[str] = None,
+) -> str:
+    """Safely merges or overwrites framework CSS selector strings."""
+    if overwrite_classes is not None:
+        return overwrite_classes
+
+    if extra_classes:
+        if not isinstance(extra_classes, str):
+            raise ValueError("extra_classes must be a string")
+
+        # Safety check: ensure the extra classes start with a dot
+        # so we don't accidentally create invalid selectors like
+        # ".primary.btnw-full"
+        if not extra_classes.startswith("."):
+            extra_classes = "." + extra_classes.replace(" ", ".")
+
+        return f"{default_classes}{extra_classes}"
+
+    return default_classes
+
+
 # Download component, is a button like component that allows
 # to download files from the client (pyscript partition) or from the server.
 def download(
-    file_path: str, button_text: str = "Download", from_vfs: bool = False
+    file_path: str,
+    button_text: str = "Download",
+    from_vfs: bool = False,
+    extra_classes: Optional[str] = None,
+    overwrite_classes: Optional[str] = None,
+    **additional_attrs,
 ) -> Renderable:
     """A download button that downloads files
     from the client (VFS) or server.
@@ -152,10 +181,15 @@ def download(
         file_path: The path to the file to download.
         button_text: The text to display on the button.
         from_vfs: Whether to download from the client (VFS) or server.
+        extra_classes: Additional CSS classes to apply to the button.
+        overwrite_classes: CSS classes to overwrite the default classes.
+        additional_attrs: Additional attributes to add to the button.
 
     Returns:
         A renderable element that represents the download button.
     """
+
+    classes = _merge_classes(".primary.btn", overwrite_classes, extra_classes)
 
     if from_vfs:
         # Prevent standard link navigation and
@@ -164,26 +198,173 @@ def download(
             f"event.preventDefault(); download_vfs_file('{file_path}');"
         )
         return a(
-            ".primary.btn", href="#", text=button_text, onclick=click_handler
+            classes,
+            href="#",
+            text=button_text,
+            onclick=click_handler,
+            **additional_attrs,
         )
 
     # Standard server-side download
-    return a(".primary.btn", href=file_path, text=button_text, download=True)
+    return a(
+        classes,
+        href=file_path,
+        text=button_text,
+        download=True,
+        **additional_attrs,
+    )
 
 
-def upload_to_client() -> Renderable:
-    """An upload button that uploads files to the client."""
-    ...
+def upload(
+    filename: Optional[str] = None,
+    button_text: str = "Upload",
+    client_destination: Optional[str] = None,
+    server_destination: Optional[str] = None,
+    files_limit: Optional[int] = None,
+    total_size_limit: Optional[int] = 50 * 2**20,
+    per_file_size_limit: Optional[int] = 4 * 2**20,
+    allowed_extensions: Optional[list[str]] = None,
+    overwrite_classes: Optional[str] = None,
+    extra_classes: Optional[str] = None,
+    **additional_attrs,
+) -> Renderable:
+    """An upload button that uploads files to the client (VFS) and/or server.
+
+    Args:
+        filename: The name of the file to upload.
+        button_text: The text to display on the button.
+        client_destination: The path to the client (VFS) destination.
+        server_destination: The path to the server destination.
+        files_limit: The maximum number of files to upload.
+        total_size_limit: The maximum total size of all uploaded files.
+        per_file_size_limit: The maximum size of each uploaded file.
+        allowed_extensions: A list of allowed file extensions
+        (e.g. ["jpg", "png"], ["*"]).
+        overwrite_classes: A string of classes to overwrite
+        the default classes.
+        extra_classes: A string of classes to add to the button.
+        additional_attrs: Additional attributes to add to the button.
+
+    Returns:
+        A renderable element that represents the upload button.
+    """
+
+    # json.dumps safely formats strings and turns None into null for JavaScript
+    safe_filename = json.dumps(filename or "")
+    safe_client_dest = json.dumps(client_destination or "")
+    safe_server_dest = json.dumps(server_destination or "")
+
+    if allowed_extensions == ["*"]:
+        allowed_extensions = None
+
+    onclick_js = (
+        "event.preventDefault(); "
+        "upload_file("
+        f"{safe_filename}, "
+        f"{safe_client_dest}, "
+        f"{safe_server_dest}, "
+        f"{files_limit}, "
+        f"{total_size_limit}, "
+        f"{per_file_size_limit}, "
+        f"{json.dumps(allowed_extensions or [])});"
+    )
+
+    return a(
+        _merge_classes(
+            "primary btn",
+            extra_classes=extra_classes,
+            overwrite_classes=overwrite_classes,
+        ),
+        href="#",
+        text=button_text,
+        onclick=onclick_js,
+        **additional_attrs,
+    )
 
 
-def upload_to_server() -> Renderable:
-    """An upload button that uploads files to the server."""
-    ...
+def upload_area(
+    client_destination: Optional[str] = None,
+    server_destination: Optional[str] = None,
+    text: str = "Drag and drop files here",
+    files_limit: Optional[int] = None,
+    total_size_limit: Optional[int] = 50 * 2**20,
+    per_file_size_limit: Optional[int] = 4 * 2**20,
+    allowed_extensions: Optional[list[str]] = None,
+    extra_classes: Optional[str] = None,
+    overwrite_classes: Optional[str] = None,
+    **additional_attrs,
+) -> Renderable:
+    """A drag-and-drop zone for uploading files
+    to the client (VFS) and/or server.
 
+    Args:
+        client_destination: The VFS path to upload files to.
+        server_destination: The server path to upload files to.
+        text: The text to display in the upload area.
+        files_limit: The maximum number of files to upload.
+        total_size_limit: The maximum total size of all files to upload.
+        per_file_size_limit: The maximum size of each file to upload.
+        allowed_extensions: A list of allowed file extensions.
+        extra_classes: Additional CSS classes to apply to the upload area.
+        overwrite_classes: CSS classes to overwrite the default classes.
+        additional_attrs: Additional attributes to add to the upload area.
 
-def upload_to_both() -> Renderable:
-    """An upload button that uploads files to both the client and server."""
-    ...
+    Returns:
+        A renderable div element representing the upload area.
+    """
+
+    safe_client_dest = json.dumps(client_destination or "")
+    safe_server_dest = json.dumps(server_destination or "")
+
+    # JS handlers to manage the visual state and
+    # prevent default browser navigation
+    drag_over_js = "event.preventDefault(); this.classList.add('drag-over');"
+    drag_leave_js = (
+        "event.preventDefault(); this.classList.remove('drag-over');"
+    )
+
+    if allowed_extensions == ["*"]:
+        allowed_extensions = None
+
+    # On drop, prevent navigation, reset visual state, and hand off to Python
+    drop_js = (
+        "event.preventDefault(); "
+        "this.classList.remove('drag-over'); "
+        "handle_drop(event, "
+        f"{safe_client_dest}, "
+        f"{safe_server_dest}, "
+        f"{files_limit}, "
+        f"{total_size_limit}, "
+        f"{per_file_size_limit}, "
+        f"{json.dumps(allowed_extensions or [])});"
+    )
+
+    # On click, open the file picker
+    click_js = (
+        "event.preventDefault(); "
+        "this.classList.remove('drag-over'); "
+        "handle_click(event, "
+        f"{safe_client_dest}, "
+        f"{safe_server_dest}, "
+        f"{files_limit}, "
+        f"{total_size_limit}, "
+        f"{per_file_size_limit}, "
+        f"{json.dumps(allowed_extensions or [])});"
+    )
+
+    return div(
+        _merge_classes(
+            "upload-area",
+            extra_classes=extra_classes,
+            overwrite_classes=overwrite_classes,
+        ),
+        text=text,
+        ondragover=drag_over_js,
+        ondragleave=drag_leave_js,
+        ondrop=drop_js,
+        onclick=click_js,
+        **additional_attrs,
+    )
 
 
 def render_graphic_on_client() -> Renderable:
