@@ -496,7 +496,8 @@ class TestCLILogging:
 
                     # Check that error was logged
                     assert any(
-                        "not a valid Python module name" in record.message
+                        "is not a valid Python's module name."
+                        in record.message
                         for record in caplog.records
                     )
 
@@ -528,13 +529,18 @@ class TestStartServer:
         mock_asyncio_run.side_effect = KeyboardInterrupt()
 
         with caplog.at_level(logging.INFO):
-            start_server()
+            # Catch the expected SystemExit exception
+            with pytest.raises(SystemExit) as exc_info:
+                start_server()
 
-            # Check that the interrupt was logged
-            assert any(
-                "Server stopped by user" in record.message
-                for record in caplog.records
-            )
+            # Verify the exit code is exactly 0
+            assert exc_info.value.code == 0
+
+        # Check that the interrupt was logged
+        assert any(
+            "Server stopped by user" in record.message
+            for record in caplog.records
+        )
 
     @patch("pyplet.server.cli.asyncio.run")
     @patch("pyplet.server._server.astart")

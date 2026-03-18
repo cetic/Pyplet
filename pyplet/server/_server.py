@@ -419,90 +419,121 @@ class ServerApplication:
         # The Python script to run on the client
         # (works in both Pyodide and MicroPython)
         python_code = textwrap.dedent(f"""
-            import base64
-            import os
-            import json
-            import sys
-            from js import fetch
+                    import base64
+                    import os
+                    import json
+                    import sys
+                    import js
+                    from js import fetch
 
-            # Polyfill os.makedirs
-            def ensure_dir(path):
-                if not path: return
-                parts = path.split("/")
-                current_path = ""
-                for part in parts:
-                    if not part: continue
+                    # Polyfill os.makedirs
+                    def ensure_dir(path):
+                        if not path: return
+                        parts = path.split("/")
+                        current_path = ""
+                        for part in parts:
+                            if not part: continue
 
-                    current_path = current_path + "/"
-                    current_path += part if current_path else part
+                            current_path = current_path + "/"
+                            current_path += part if current_path else part
 
-                    try:
-                        os.mkdir(current_path)
-                    except OSError:
-                        pass
+                            try:
+                                os.mkdir(current_path)
+                            except OSError:
+                                pass
 
-            # Top-level await for the package
-            response = await fetch('{app_package}')
+                    # Top-level await for the package
+                    response = await fetch('{app_package}')
 
-            if not response.ok:
-                print(f"Failed to fetch package: HTTP {{response.status}}")
-            else:
-                raw_text = await response.text()
-                file_data = json.loads(raw_text)
+                    if not response.ok:
+                        print(
+                            "Failed to fetch package: HTTP "
+                            f"{{response.status}}"
+                        )
+                    else:
+                        raw_text = await response.text()
+                        file_data = json.loads(raw_text)
 
-                # Write files to the VFS
-                for filepath, b64_content in file_data.items():
-                    dir_name = os.path.dirname(filepath)
-                    if dir_name:
-                        ensure_dir(dir_name)
-                    with open(filepath, "wb") as f:
-                        f.write(base64.b64decode(b64_content))
+                        # Write files to the VFS
+                        for filepath, b64_content in file_data.items():
+                            dir_name = os.path.dirname(filepath)
+                            if dir_name:
+                                ensure_dir(dir_name)
+                            with open(filepath, "wb") as f:
+                                f.write(base64.b64decode(b64_content))
 
-                # --- NEW: Mock the typing module for MicroPython ---
-                if sys.implementation.name == "micropython":
-                    # 1. Mock Typing
-                    if "typing" not in sys.modules:
-                        class MockTyping:
-                            def __getattr__(self, name): return self
-                            def __getitem__(self, key): return self
-                        sys.modules["typing"] = MockTyping()
+                        # --- NEW: VFS Download Function (Cross-Engine) ---
+                        def download_vfs_file(file_path):
+                            try:
+                                with open(file_path, "rb") as f:
+                                    content = f.read()
 
-                    # 2. Polyfill importlib
-                    if "importlib" not in sys.modules:
-                        class MockImportlib:
-                            @staticmethod
-                            def import_module(name, package=None):
-                                # Handle basic relative imports
-                                # if they exist in your framework
-                                if name.startswith('.'):
-                                    if not package:
-                                        raise TypeError(
-                                            "Relative imports require"
-                                            " the 'package' argument"
-                                        )
-                                    # Very basic resolution
-                                    # (assumes 1 level deep like '.my_module')
-                                    name = package + name
-
-                                # Passing a fromlist like ['']
-                                # forces __import__ to return
-                                # the rightmost module
-                                return __import__(
-                                    name, globals(), locals(), ['']
+                                # Base64 encode to avoid Pyodide/MicroPython
+                                # FFI byte translation issues
+                                b64_str = base64.b64encode(
+                                    content
+                                ).decode('utf-8')
+                                data_uri = (
+                                    "data:application/octet-stream;base64,"
+                                    + b64_str
                                 )
 
-                        sys.modules["importlib"] = MockImportlib()
-                # ---------------------------------------------------
+                                link = js.document.createElement("a")
+                                link.href = data_uri
+                                link.download = file_path.split("/")[-1]
 
-                # Boot the application
-                from pyplet.client import bootstrap_client
-                await bootstrap_client(
-                    '{config.apps}',
-                    '{project}',
-                    '{app}',
-                    {self.client_libraries},
-                )
-        """)
+                                js.document.body.appendChild(link)
+                                link.click()
+                                js.document.body.removeChild(link)
+                            except Exception as e:
+                                js.console.error(
+                                    "Download failed for " +
+                                    file_path + ": " + str(e)
+                                )
+
+                        # Expose to global window so HTML onclick
+                        # handlers can find it
+                        js.window.download_vfs_file = download_vfs_file
+                        # -------------------------------------------------
+
+                        # --- Mock the typing module for MicroPython ---
+                        if sys.implementation.name == "micropython":
+                            # 1. Mock Typing
+                            if "typing" not in sys.modules:
+                                class MockTyping:
+                                    def __getattr__(self, name): return self
+                                    def __getitem__(self, key): return self
+                                sys.modules["typing"] = MockTyping()
+
+                            # 2. Polyfill importlib
+                            if "importlib" not in sys.modules:
+                                class MockImportlib:
+                                    @staticmethod
+                                    def import_module(name, package=None):
+                                        if name.startswith('.'):
+                                            if not package:
+                                                raise TypeError(
+                                                    "Relative imports require"
+                                                    " the 'package' argument"
+                                                )
+                                            name = package + name
+
+                                        return __import__(
+                                            name, globals(), locals(), ['']
+                                        )
+
+                                sys.modules["importlib"] = MockImportlib()
+                        # ---------------------------------------------------
+
+                        # Boot the application
+                        from pyplet.client import bootstrap_client
+                        await bootstrap_client(
+                            '{config.apps}',
+                            '{project}',
+                            '{app}',
+                            {self.client_libraries},
+                        )
+                """)
 
         # Toggle between interpreters based on your class property
         script_tag = getattr(self, "interpreter", "py")

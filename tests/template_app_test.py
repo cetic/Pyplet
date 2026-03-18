@@ -3,7 +3,7 @@ End-to-end tests for the template application using Selenium.
 
 These tests verify that:
 1. The application loads correctly
-2. Pyodide initializes successfully
+2. Pyscript initializes successfully
 3. WebSocket communication works between client and server
 4. The DOM is updated as expected
 """
@@ -33,26 +33,28 @@ class TestTemplateApp:
         )
         assert container is not None
 
-    def test_pyodide_initialization(self, driver, server, wait):
-        """Test that Pyodide loads successfully."""
+    def test_pyscript_initialization(self, driver, server, wait):
+        """Test that Pyscript loads successfully."""
         driver.get(f"{server}/apps/template/template")
 
         # Wait for container to be present
         wait.until(EC.presence_of_element_located((By.ID, "container")))
 
-        # Check browser console for Pyodide loading errors
-        time.sleep(2)  # Give Pyodide time to initialize
+        # Check browser console for Pyscript loading errors
+        time.sleep(2)  # Give Pyscript time to initialize
 
         logs = driver.get_log("browser")
         severe_errors = [log for log in logs if log["level"] == "SEVERE"]
 
         # Filter out expected errors (some browser warnings are normal)
-        pyodide_errors = [
-            err for err in severe_errors if "pyodide" in err["message"].lower()
+        pyscript_errors = [
+            err
+            for err in severe_errors
+            if "pyscript" in err["message"].lower()
         ]
 
-        assert len(pyodide_errors) == 0, (
-            f"Pyodide errors found: {pyodide_errors}"
+        assert len(pyscript_errors) == 0, (
+            f"Pyscript errors found: {pyscript_errors}"
         )
 
     def test_websocket_message_display(self, driver, server, wait):
@@ -66,7 +68,7 @@ class TestTemplateApp:
         )
 
         # Wait for the message to appear
-        # (WebSocket communication + Pyodide initialization)
+        # (WebSocket communication + Pyscript initialization)
         # The server sends "Hello world!"
         # which should be displayed in the container
         wait.until(
@@ -82,13 +84,13 @@ class TestTemplateApp:
         """Test that the page has the expected HTML structure."""
         driver.get(f"{server}/apps/template/template")
 
-        # Check for Pyodide script tag
+        # Check for Pyscript script tag
         scripts = driver.find_elements(By.TAG_NAME, "script")
-        pyodide_script = any(
-            "pyodide" in script.get_attribute("src") or ""
+        pyscript_script = any(
+            "pyscript" in script.get_attribute("src") or ""
             for script in scripts
         )
-        assert pyodide_script, "Pyodide script not found"
+        assert pyscript_script, "Pyscript script not found"
 
         # Check for jQuery UI CSS
         links = driver.find_elements(By.TAG_NAME, "link")
@@ -185,14 +187,14 @@ class TestTemplateAppPerformance:
         end_time = time.time()
         load_time = end_time - start_time
 
-        # Pyodide initialization can take a while,
+        # Pyscript initialization can take a while,
         # but should be under 30 seconds
         assert load_time < 30, (
             f"App took too long to load: {load_time:.2f} seconds"
         )
 
-    def test_pyodide_bootstrap_completes(self, driver, server, wait):
-        """Test that the Pyodide bootstrap process completes successfully."""
+    def test_pyscript_bootstrap_completes(self, driver, server, wait):
+        """Test that the Pyscript bootstrap process completes successfully."""
         driver.get(f"{server}/apps/template/template")
 
         # The bootstrap process should result in the message being displayed

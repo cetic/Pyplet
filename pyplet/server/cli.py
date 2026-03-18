@@ -29,9 +29,9 @@ def create_project(project_name: str) -> None:
     # Validate project name for Python importability
     if not project_name.isidentifier():
         logger.error(
-            "%s is not a valid Python's module name."
+            "%s is not a valid Python's module name. "
             "Use only letters, numbers and underscores, "
-            "and dont start with a number." % project_name
+            "and don't start with a number." % project_name
         )
         sys.exit(1)
 
