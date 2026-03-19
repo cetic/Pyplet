@@ -568,6 +568,38 @@ class TestStartServer:
 
     @patch("pyplet.server.cli.asyncio.run")
     @patch("pyplet.server._server.astart")
+    def test_start_server_oserror_98(
+        self, mock_astart, mock_asyncio_run, caplog
+    ):
+        """Test that OSError 98 (address already in use) is
+        handled gracefully."""
+        from pyplet.server.cli import start_server
+
+        mock_asyncio_run.side_effect = OSError(
+            98,
+            "Address already in use",
+        )
+
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(SystemExit) as excinfo:
+                start_server()
+
+            assert excinfo.value.code == 3
+
+            # Check that error was logged
+            assert any(
+                "The server address (" in record.message
+                for record in caplog.records
+            )
+
+        # Check that the exception is re-raised is it's not
+        # a Error 98, but still an OSError
+        mock_asyncio_run.side_effect = OSError(99, "Other address in use")
+        with pytest.raises(OSError):
+            start_server()
+
+    @patch("pyplet.server.cli.asyncio.run")
+    @patch("pyplet.server._server.astart")
     def test_start_server_exception(
         self, mock_astart, mock_asyncio_run, caplog
     ):
@@ -580,7 +612,7 @@ class TestStartServer:
             with pytest.raises(SystemExit) as excinfo:
                 start_server()
 
-            assert excinfo.value.code == 1
+            assert excinfo.value.code == 4
 
             # Check that error was logged
             assert any(
@@ -704,6 +736,43 @@ class TestCLIArgumentParsing:
                 assert cwd in sys.path
         finally:
             sys.path = original_path
+
+
+class TestCLIConfigOverrides:
+    @patch("pyplet.server.cli.start_server")
+    @patch("pyplet.server.cli.Path.exists", return_value=True)
+    def test_start_command_sets_config_attributes(
+        self, mock_exists, mock_start_server
+    ):
+        """Test that CLI arguments correctly override config values."""
+        from pyplet.server.cli import main
+        from pyplet.server.config import config
+
+        # 1. Store original config values to prevent test leakage
+        # (Assuming your config has 'port' and 'host' as valid params)
+        original_port = config.port
+        original_host = config.address
+
+        # 2. Simulate the CLI command: `pyplet start --port 9999`
+        with patch("sys.argv", ["pyplet", "start", "--port", "9999"]):
+            main()
+
+        try:
+            # 3. Verify the setattr logic correctly
+            # updated the provided argument
+            assert config.port == 9999
+
+            # 4. Verify the `argparse.SUPPRESS` and
+            # `if value is not ...:` logic
+            # This ensures omitted arguments don't
+            # accidentally overwrite defaults
+            # with None or empty strings.
+            assert config.address == original_host
+
+        finally:
+            # 5. Clean up the singleton state so subsequent tests don't fail!
+            config.port = original_port
+            config.address = original_host
 
 
 @pytest.mark.unit

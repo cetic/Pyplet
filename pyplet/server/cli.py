@@ -180,7 +180,8 @@ def start_server():
             "Check that no other application using the same port "
             "or that another instance Pyplet is running."
         )
+        sys.exit(3)
 
     except Exception as error:
         logger.error("Server error: %s", error, exc_info=True)
-        sys.exit(1)
+        sys.exit(4)
