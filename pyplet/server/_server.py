@@ -370,8 +370,15 @@ class ServerApplication:
 
         for root_dir, pattern, prefix in files:
             for file in glob.glob(pattern, root_dir=root_dir, recursive=True):
+                # Skip __pycache__ and similar hidden files
+                if file.startswith("."):
+                    continue
+
                 full_path = os.path.join(root_dir, file)
                 if not os.path.isfile(full_path):
+                    continue
+
+                if "__pycache__" in full_path:
                     continue
 
                 target_path = os.path.join(prefix, file)

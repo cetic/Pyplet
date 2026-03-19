@@ -177,7 +177,7 @@ def start_server():
         logger.error(
             f"The server address ({config.address}) or port ({config.port})"
             " is already binded.\n"
-            "Check that no other application using the same port "
+            "Check that no other application is using the same port "
             "or that another instance Pyplet is running."
         )
         sys.exit(3)
