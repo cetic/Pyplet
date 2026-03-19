@@ -192,7 +192,7 @@ def _setup_vfs_bindings():  # noqa: F811, C901
                 if ext not in allowed_extensions:
                     js.console.error(
                         f"Skipped {selected_file.name}: "
-                        f"Extension '{ext}' not allowed."
+                        + f"Extension '{ext}' not allowed."
                     )
                     continue
 
@@ -203,7 +203,7 @@ def _setup_vfs_bindings():  # noqa: F811, C901
             ):
                 js.console.error(
                     f"Skipped {selected_file.name}: "
-                    f"Exceeds {per_file_size_limit} bytes."
+                    + f"Exceeds {per_file_size_limit} bytes."
                 )
                 continue
 
@@ -212,7 +212,7 @@ def _setup_vfs_bindings():  # noqa: F811, C901
                 if (total_size + selected_file.size) > total_size_limit:
                     js.console.error(
                         f"Skipped {selected_file.name}: "
-                        "Exceeds total size limit."
+                        + "Exceeds total size limit."
                     )
                     continue
                 total_size += selected_file.size
