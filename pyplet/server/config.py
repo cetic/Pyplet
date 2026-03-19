@@ -1,12 +1,5 @@
 import os
 
-# Generate params dynamically from the module's attributes
-params = [
-    name
-    for name, _ in globals().items()
-    if not name.startswith("_") and name != "params"
-]
-
 address = os.environ.get("PYPLET_ADDR", "127.0.0.1")
 apps = os.environ.get("PYPLET_APPS", "apps")
 debug = os.environ.get("PYPLET_DEBUG", "1")
@@ -60,3 +53,12 @@ auth_rules_file = os.environ.get(
     "PYPLET_AUTH_RULES_FILE",
     os.path.join(apps, "auth_rules.json"),
 )
+
+# Generate params dynamically from the module's attributes.
+# All attributes except _private ones and os are included, as long
+# as they are defined in the module's globals and above this line.
+params = [
+    name
+    for name, _ in globals().items()
+    if not name.startswith("_") and name not in ["params", "os"]
+]

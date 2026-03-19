@@ -367,101 +367,53 @@ def upload_area(
     )
 
 
-def render_graphic_on_client() -> Renderable:
-    """A button that renders graphics on the client."""
+def browser() -> Renderable:
+    """A browser element that allows the user to navigate
+    through files, folders, etc."""
     ...
 
 
-def render_graphic_on_server() -> Renderable:
-    """A button that renders graphics on the server."""
+# def render_graphic(server_side: bool = False) -> Renderable:
+#     """A button that renders graphics on the client or on the server."""
+#     ...
+
+
+def image(href: str, from_vfs: bool = False) -> Renderable:
+    """An image that is loaded from the server or the client."""
     ...
 
 
-def image_from_client() -> Renderable:
-    """An image that is rendered on the client."""
+def pp_video(href: str, from_vfs: bool = False) -> Renderable:
+    """A video that is loaded from the server or the client."""
     ...
 
 
-def image_from_server() -> Renderable:
-    """An image that is rendered on the server."""
+def pp_audio(href: str, from_vfs: bool = False) -> Renderable:
+    """An audio that is loaded from the server or the client."""
     ...
 
 
-def video_from_client() -> Renderable:
-    """A video that is rendered on the client."""
+def _interactive_element() -> Renderable:
+    """A generic interactive element that allows the user to interact
+    with buttons, sliders, checkboxes, etc."""
     ...
 
 
-def video_from_server() -> Renderable:
-    """A video that is rendered on the server."""
+def slider() -> Renderable:
+    """A slider that is loaded from the server or the client."""
     ...
 
 
-def audio_from_client() -> Renderable:
-    """An audio that is rendered on the client."""
-    ...
-
-
-def audio_from_server() -> Renderable:
-    """An audio that is rendered on the server."""
-    ...
-
-
-def slider_with_client_callbacks() -> Renderable:
-    """A slider that is controlled on the client."""
-    ...
-
-
-def slider_with_server_callbacks() -> Renderable:
-    """A slider that is controlled on the server."""
-    ...
-
-
-def slider_with_server_and_client_callbacks() -> Renderable:
-    """A slider that is controlled on both the client and server."""
-    ...
-
-
-def radio_button_with_client_callbacks() -> Renderable:
+def radio() -> Renderable:
     """A radio button that is controlled on the client."""
     ...
 
 
-def radio_button_with_server_callbacks() -> Renderable:
-    """A radio button that is controlled on the server."""
+def checkbox() -> Renderable:
+    """A checkbox that is loaded from the server or the client."""
     ...
 
 
-def radio_button_with_server_and_client_callbacks() -> Renderable:
-    """A radio button that is controlled on both the client and server."""
-    ...
-
-
-def checkbox_with_client_callbacks() -> Renderable:
-    """A checkbox that is controlled on the client."""
-    ...
-
-
-def checkbox_with_server_callbacks() -> Renderable:
-    """A checkbox that is controlled on the server."""
-    ...
-
-
-def checkbox_with_server_and_client_callbacks() -> Renderable:
-    """A checkbox that is controlled on both the client and server."""
-    ...
-
-
-def button_with_client_callbacks() -> Renderable:
-    """A button that is controlled on the client."""
-    ...
-
-
-def button_with_server_callbacks() -> Renderable:
-    """A button that is controlled on the server."""
-    ...
-
-
-def button_with_server_and_client_callbacks() -> Renderable:
-    """A button that is controlled on both the client and server."""
+def pp_button() -> Renderable:
+    """A button that is loaded from the server or the client."""
     ...
