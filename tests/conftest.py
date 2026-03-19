@@ -11,8 +11,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 
-from pyplet.server import config
 from pyplet.server._server import astart
+from pyplet.server.config import config
 
 
 def run_server():

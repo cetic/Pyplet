@@ -17,7 +17,7 @@ import tornado.websocket
 from markupsafe import Markup
 
 import pyplet
-from pyplet.server import config
+from pyplet.server.config import config
 
 from ..shared.dom import div, link, script
 from . import magiclink, oauth, templates

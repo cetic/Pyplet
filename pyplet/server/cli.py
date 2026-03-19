@@ -6,6 +6,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from .config import config
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -87,7 +89,7 @@ def script_main() -> None:
 
 
 def main() -> None:
-    from pyplet.server import config
+    from pyplet.server.config import config
 
     parser = argparse.ArgumentParser(description="Pyplet project initializer")
     subparsers = parser.add_subparsers(dest="command")
@@ -110,10 +112,14 @@ def main() -> None:
     )
 
     for name in config.params:
+        param_obj = getattr(type(config), name)
+
         parser_start.add_argument(
             f"--{name.replace('_', '-')}",
             required=False,
-            default=getattr(config, name),
+            help=f"{param_obj.description} [Env: {param_obj.env_var}]",
+            default=argparse.SUPPRESS,
+            type=param_obj.type_cast,
         )
 
     args = parser.parse_args()
@@ -163,6 +169,17 @@ def start_server():
     except KeyboardInterrupt:
         logger.info("Server stopped by user")
         sys.exit(0)
+
+    except OSError as error:
+        if "[Errno 98] Address already in use" not in str(error):
+            raise OSError(error)
+
+        logger.error(
+            f"The server address ({config.address}) or port ({config.port})"
+            " is already binded.\n"
+            "Check that no other application using the same port "
+            "or that another instance Pyplet is running."
+        )
 
     except Exception as error:
         logger.error("Server error: %s", error, exc_info=True)

@@ -41,7 +41,7 @@ import time
 from urllib.parse import urljoin
 
 from . import oauth  # for set_session and _error
-from . import config
+from .config import config
 
 logger = logging.getLogger("pyplet.server.magiclink")
 

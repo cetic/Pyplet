@@ -59,7 +59,7 @@ from urllib.parse import urlencode, urljoin
 
 import httpx
 
-from . import config
+from .config import config
 
 logger = logging.getLogger("pyplet.server.oauth")
 

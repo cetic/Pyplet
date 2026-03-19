@@ -34,7 +34,8 @@ from ..shared.dom import (
     title,
     ul,
 )
-from . import config, magiclink, oauth
+from . import magiclink, oauth
+from .config import config
 
 current_year = datetime.datetime.now().year
 
