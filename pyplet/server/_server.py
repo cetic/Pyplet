@@ -2,6 +2,7 @@ import asyncio
 import base64
 import glob
 import gzip
+import importlib.util
 import json
 import logging
 import os
@@ -17,6 +18,7 @@ import tornado.websocket
 from markupsafe import Markup
 
 import pyplet
+from pyplet.server._transpiler import transpile_to_pyscript
 from pyplet.server.config import config
 
 from ..shared.dom import div, link, script
@@ -27,7 +29,6 @@ logger = logging.getLogger("pyplet.server")
 
 
 server_applications: Dict[Tuple[str, str], "ServerApplication"] = {}
-
 
 # ---------------------------------------------------------------------------
 # Auth gate mixin
@@ -360,12 +361,27 @@ class ServerApplication:
         project, app = handler.path_args
         pyplet_root = str(Path(pyplet.__file__).parent.parent)
 
+        # Safely locate htpy and get its parent directory
+        htpy_location = str(
+            importlib.util.find_spec("htpy").submodule_search_locations[0]
+        )
+        htpy_parent = str(Path(htpy_location).parent)
+        markupsafe_location = str(
+            importlib.util.find_spec("markupsafe").submodule_search_locations[
+                0
+            ]
+        )
+        markupsafe_parent = str(Path(markupsafe_location).parent)
+
         file_map = {}
         files = [
             (pyplet_root, "pyplet/*", ""),
             (pyplet_root, "pyplet/shared/**", ""),
             (pyplet_root, "pyplet/client/**", ""),
             (".", f"{config.apps}/{project}/**", ""),
+            # Inject htpy dynamically!
+            (htpy_parent, "htpy/**", ""),
+            (markupsafe_parent, "markupsafe/**", ""),
         ]
 
         for root_dir, pattern, prefix in files:
@@ -374,21 +390,72 @@ class ServerApplication:
                 if file.startswith("."):
                     continue
 
-                full_path = os.path.join(root_dir, file)
-                if not os.path.isfile(full_path):
+                full_path = Path(root_dir, file)
+                if not full_path.is_file():
                     continue
 
-                if "__pycache__" in full_path:
+                # Filter out cache and compiled bytecode
+                if (
+                    "__pycache__" in full_path.__str__()
+                    or full_path.suffix == ".pyc"
+                ):
                     continue
 
-                target_path = os.path.join(prefix, file)
+                target_path = Path(prefix, file)
 
                 # Read as bytes and encode to base64 for JSON safety
-                with open(full_path, "rb") as f:
-                    encoded_content = base64.b64encode(f.read()).decode(
-                        "utf-8"
-                    )
-                    file_map[target_path] = encoded_content
+                # 1. Open strictly in binary mode to prevent
+                # UnicodeDecodeError on assets
+                with full_path.open("rb") as source_file:
+                    raw_bytes = source_file.read()
+
+                # 2. Process Python files through the transpiler
+                if full_path.suffix == ".py":
+                    try:
+                        # Decode to string for AST manipulation
+                        code_str = raw_bytes.decode("utf-8")
+
+                        # Transpile ONCE to save CPU time
+                        transpiled_str = transpile_to_pyscript(
+                            code_str,
+                            full_path.name,
+                            targer_interpreter=self.interpreter,
+                        )
+                        content_bytes = transpiled_str.encode("utf-8")
+
+                        # Write the transpiled content to
+                        # "apps"/.transpiled/...
+                        app_root = Path(config.apps) / project
+                        transpiled_path = (
+                            app_root / ".transpiled" / target_path
+                        )
+                        transpiled_path.parent.mkdir(
+                            parents=True, exist_ok=True
+                        )
+
+                        with transpiled_path.open(
+                            "w", encoding="utf-8"
+                        ) as transpiled_file:
+                            transpiled_file.write(transpiled_str)
+
+                    except UnicodeDecodeError:
+                        # Fallback if a .py file is somehow weirdly
+                        # encoded/binary
+                        logger.warning(
+                            f"{full_path} is not valid UTF-8. "
+                            "Skipping transpilation."
+                        )
+                        content_bytes = raw_bytes
+
+                # 3. Handle all other files (images, data, etc.) natively
+                else:
+                    content_bytes = raw_bytes
+
+                # 4. Encode the final bytes to base64 for the JSON payload
+                encoded_content = base64.b64encode(content_bytes).decode(
+                    "utf-8"
+                )
+                file_map[target_path.as_posix()] = encoded_content
 
         # Convert to JSON and compress
         json_bytes = json.dumps(file_map).encode("utf-8")
@@ -409,114 +476,330 @@ class ServerApplication:
         head_content = [
             link(
                 rel="stylesheet",
-                href="https://pyscript.net/releases/2024.1.1/core.css",
+                href="https://pyscript.net/releases/2026.3.1/core.css",
             ),
             script(
                 type="module",
-                src="https://pyscript.net/releases/2024.1.1/core.js",
+                src="https://pyscript.net/releases/2026.3.1/core.js",
             ),
-            link(
-                rel="stylesheet",
-                href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",  # noqa: E501
-            ),
-            script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
-            script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
+            # link(
+            #     rel="stylesheet",
+            #     href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",  # noqa: E501
+            # ),
+            # script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
+            # script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
         ]
 
         # The Python script to run on the client
         # (works in both Pyodide and MicroPython)
         python_code = textwrap.dedent(f"""
-                    import base64
-                    import os
-                    import json
-                    import sys
-                    import js
-                    from js import fetch
+import base64
+import js
+import json
+import os
+import sys
 
-                    # Polyfill os.makedirs
-                    def ensure_dir(path):
-                        if not path: return
-                        parts = path.split("/")
-                        current_path = ""
-                        for part in parts:
-                            if not part: continue
+from js import fetch
 
-                            current_path = current_path + "/"
-                            current_path += part if current_path else part
+# Polyfill os.makedirs
+def ensure_dir(path):
+    if not path: return
+    parts = path.split("/")
+    current_path = ""
+    for part in parts:
+        if not part: continue
 
-                            try:
-                                os.mkdir(current_path)
-                            except OSError:
-                                pass
+        # Only add the slash if current_path is not empty
+        if current_path:
+            current_path += "/"
+        current_path += part
 
-                    # Top-level await for the package
-                    response = await fetch('{app_package}')
+        try:
+            os.mkdir(current_path)
+        except OSError:
+            pass
 
-                    if not response.ok:
-                        print(
-                            "Failed to fetch package: HTTP "
-                            f"{{response.status}}"
-                        )
-                    else:
-                        raw_text = await response.text()
-                        file_data = json.loads(raw_text)
+# Top-level await for the package
+response = await fetch('{app_package}')
 
-                        # Write files to the VFS
-                        for filepath, b64_content in file_data.items():
-                            dir_name = os.path.dirname(filepath)
-                            if dir_name:
-                                ensure_dir(dir_name)
-                            with open(filepath, "wb") as f:
-                                f.write(base64.b64decode(b64_content))
+if not response.ok:
+    print(
+        "Failed to fetch package: HTTP "
+        + f"{{response.status}}"
+    )
+else:
+    raw_text = await response.text()
+    file_data = json.loads(raw_text)
 
-                        # --- Mock the typing module for MicroPython ---
-                        if sys.implementation.name == "micropython":
-                            # 1. Mock Typing
-                            if "typing" not in sys.modules:
-                                class MockTyping:
-                                    def __getattr__(self, name): return self
-                                    def __getitem__(self, key): return self
-                                sys.modules["typing"] = MockTyping()
+    # Write files to the VFS
+    for filepath, b64_content in file_data.items():
+        dir_name = os.path.dirname(filepath)
+        if dir_name:
+            ensure_dir(dir_name)
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(b64_content))
 
-                            # 2. Polyfill importlib
-                            if "importlib" not in sys.modules:
-                                class MockImportlib:
-                                    @staticmethod
-                                    def import_module(name, package=None):
-                                        if name.startswith('.'):
-                                            if not package:
-                                                raise TypeError(
-                                                    "Relative imports require"
-                                                    " the 'package' argument"
-                                                )
-                                            name = package + name
+    # --- Mock the typing module for MicroPython ---
+    if sys.implementation.name == "micropython":
+        # 1. Mock Typing
+        if "typing" not in sys.modules:
+            class MockTyping:
+                TYPE_CHECKING = False
+                def __getattr__(self, name): return self
+                def __getitem__(self, key): return self
+                def __or__(self, other): return self
+                def __ror__(self, other): return self
 
-                                        return __import__(
-                                            name, globals(), locals(), ['']
-                                        )
+                def __call__(self, *args, **kwargs):
+                    # If they are doing t.cast(Type, value),
+                    # it's safer to return the value.
+                    # Otherwise, just return self.
+                    if (
+                        args and hasattr(args[0], "__class__")
+                        and len(args) == 2
+                    ):
+                        return args[1]
+                    return self
+            sys.modules["typing"] = MockTyping()
 
-                                sys.modules["importlib"] = MockImportlib()
-                        # ---------------------------------------------------
+        # 2. Mock __future__
+        if "__future__" not in sys.modules:
+            class MockFuture:
+                def __getattr__(self, name): return self
+            sys.modules["__future__"] = MockFuture()
 
-                        # Boot the application
-                        from pyplet.client import bootstrap_client
-                        await bootstrap_client(
-                            '{config.apps}',
-                            '{project}',
-                            '{app}',
-                            {self.client_libraries},
-                        )
-                """)
+        # 3. Polyfill importlib
+        if "importlib" not in sys.modules:
+            class MockImportlib:
+                @staticmethod
+                def import_module(name, package=None):
+                    if name.startswith('.'):
+                        if not package:
+                            raise TypeError(
+                                "Relative imports require"
+                                + " the 'package' argument"
+                            )
+                        name = package + name
+
+                    return __import__(
+                        name, globals(), locals(), ['']
+                    )
+
+            sys.modules["importlib"] = MockImportlib()
+        # 4. Mock collections.abc
+        if "collections.abc" not in sys.modules:
+            class DummyGenericMeta(type):
+                def __getitem__(cls, key):
+                    return cls
+                def __or__(cls, other):
+                    return cls
+                def __ror__(cls, other):
+                    return cls
+
+            class MockCollectionsAbc:
+                def __getattr__(self, name):
+                    TYPE_CHECKING = False
+                    return DummyGenericMeta(name, (), {{}})
+
+                    def __call__(self, *args, **kwargs):
+                        # If they are doing t.cast(Type, value),
+                        # it's safer to return the value.
+                        # Otherwise, just return self.
+                        if (
+                            args and hasattr(args[0], "__class__")
+                            and len(args) == 2
+                        ):
+                            return args[1]
+                        return self
+
+            mock_abc = MockCollectionsAbc()
+            sys.modules["collections.abc"] = mock_abc
+
+            # --- NEW: Attach it to the base collections module ---
+            import collections
+            try:
+                # Try to attach it directly
+                collections.abc = mock_abc
+            except AttributeError:
+                # If MicroPython's built-in collections is read-only, wrap it!
+                class CollectionsWrapper:
+                    abc = mock_abc
+                    def __getattr__(self, name):
+                        return getattr(collections, name)
+                sys.modules["collections"] = CollectionsWrapper()
+
+        # 5. Mock typing_extensions (highly recommended for modern libs)
+        def dummy_decorator(*args, **kwargs):
+            # If used with arguments: @deprecated("msg")
+            def wrapper(func): return func
+            # If used without arguments: @deprecated
+            if len(args) == 1 and callable(args[0]): return args[0]
+            return wrapper
+
+        if "typing_extensions" not in sys.modules:
+            class MockTypingExtensions:
+                deprecated = staticmethod(dummy_decorator)
+                def __getattr__(self, name):
+                    # Fallback to the typing mock for anything else
+                    return sys.modules["typing"]
+            sys.modules["typing_extensions"] = MockTypingExtensions()
+        # 6. Mock string.Formatter for markupsafe
+        import string
+        if not hasattr(string, "Formatter"):
+            # Provide a basic implementation so
+            # EscapeFormatter can inherit from it
+            class MockFormatter:
+                def format(self, format_string, *args, **kwargs):
+                    return format_string.format(*args, **kwargs)
+
+                def format_field(self, value, format_spec):
+                    # Fallback to standard python format()
+                    return format(value, format_spec)
+
+            try:
+                # Try to attach it directly
+                string.Formatter = MockFormatter
+            except AttributeError:
+                # Wrap it if string is a read-only C module
+                class StringWrapper:
+                    Formatter = MockFormatter
+                    def __getattr__(self, name):
+                        return getattr(string, name)
+
+                sys.modules["string"] = StringWrapper()
+        # 7. Mock weakref.WeakSet
+        import weakref
+        if not hasattr(weakref, "WeakSet"):
+            # Provide a dummy WeakSet that behaves exactly like a standard set
+            class MockWeakSet:
+                def __init__(self, elements=()):
+                    self.data = set(elements)
+                def add(self, item): self.data.add(item)
+                def remove(self, item): self.data.remove(item)
+                def discard(self, item): self.data.discard(item)
+                def pop(self): return self.data.pop()
+                def clear(self): self.data.clear()
+                def update(self, other): self.data.update(other)
+                def __contains__(self, item): return item in self.data
+                def __iter__(self): return iter(self.data)
+                def __len__(self): return len(self.data)
+
+            try:
+                # Try to attach it directly
+                weakref.WeakSet = MockWeakSet
+            except AttributeError:
+                # Wrap it if weakref is a read-only C module
+                class WeakrefWrapper:
+                    WeakSet = MockWeakSet
+                    def __getattr__(self, name):
+                        return getattr(weakref, name)
+
+                sys.modules["weakref"] = WeakrefWrapper()
+        # 8. Mock warnings.deprecated
+        try:
+            import warnings
+            if not hasattr(warnings, "deprecated"):
+                try:
+                    warnings.deprecated = dummy_decorator
+                except AttributeError:
+                    class WarningsWrapper:
+                        deprecated = dummy_decorator
+                        def __getattr__(self, name):
+                            return getattr(warnings, name)
+                    sys.modules["warnings"] = WarningsWrapper()
+        except ImportError:
+            pass
+            # If warnings doesn't exist at all,
+            # htpy falls back to typing_extensions
+        # 9. Mock the keyword module
+        if "keyword" not in sys.modules:
+            class MockKeyword:
+                kwlist = [
+                    'False', 'None', 'True', 'and', 'as', 'assert', 'async',
+                    'await', 'break', 'class', 'continue', 'def', 'del',
+                    'elif', 'else', 'except', 'finally', 'for', 'from',
+                    'global', 'if', 'import', 'in', 'is', 'lambda',
+                    'nonlocal', 'not', 'or', 'pass', 'raise', 'return',
+                    'try', 'while', 'with', 'yield'
+                ]
+
+                @staticmethod
+                def iskeyword(s):
+                    return s in sys.modules["keyword"].kwlist
+
+            sys.modules["keyword"] = MockKeyword()
+        # 10. Mock functools.lru_cache (and .cache just in case!)
+        try:
+            import functools
+        except ImportError:
+            # Some extremely minimal MicroPython builds drop functools entirely
+            class MockFunctools: pass
+            functools = MockFunctools()
+            sys.modules["functools"] = functools
+
+        if not hasattr(functools, "lru_cache"):
+            def mock_lru_cache(*args, **kwargs):
+                # If used with arguments: @lru_cache(maxsize=128)
+                def decorator(func): return func
+
+                # If used without arguments: @lru_cache
+                if len(args) == 1 and callable(args[0]):
+                    return args[0]
+
+                return decorator
+
+            try:
+                # Try to attach it directly
+                functools.lru_cache = mock_lru_cache
+                functools.cache = mock_lru_cache  # htpy might use @cache too!
+            except AttributeError:
+                # Wrap it if functools is a read-only C module
+                class FunctoolsWrapper:
+                    lru_cache = staticmethod(mock_lru_cache)
+                    cache = staticmethod(mock_lru_cache)
+                    def __getattr__(self, name):
+                        return getattr(functools, name)
+                sys.modules["functools"] = FunctoolsWrapper()
+
+        # 11. Polyfill Python 3.9 string methods into builtins
+        import builtins
+        def __removesuffix(s, suffix):
+            if suffix and s.endswith(suffix): return s[:-len(suffix)]
+            return s
+
+        def __removeprefix(s, prefix):
+            if prefix and s.startswith(prefix): return s[len(prefix):]
+            return s
+
+        builtins.__removesuffix = __removesuffix
+        builtins.__removeprefix = __removeprefix
+    # ---------------------------------------------------
+
+    # Boot the application
+    from pyplet.client import bootstrap_client
+    await bootstrap_client(
+        '{config.apps}',
+        '{project}',
+        '{app}',
+        {self.client_libraries},
+    )
+""")
 
         # Toggle between interpreters based on your class property
         script_tag = getattr(self, "interpreter", "py")
+
+        py_config = {
+            "packages": [] if script_tag == "mpy" else ["htpy", "markupsafe"]
+        }
 
         content = {
             "head": head_content,
             "body": [
                 div(id="container"),
                 Markup(
-                    f'<script type="{script_tag}" async>{python_code}</script>'
+                    f"<script type='{script_tag}' "
+                    f"config='{json.dumps(py_config)}'"
+                    f" async>{python_code}</script>"
                 ),
             ],
         }

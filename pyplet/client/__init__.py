@@ -8,7 +8,10 @@ from typing import Dict, Tuple
 import js
 from js import WebSocket
 
-try:
+try:  # noqa: C901
+    if sys.implementation.name == "micropython":
+        raise ImportError("asyncio Queue are not available on MicroPython")
+
     # 1. Try Pyodide / CPython standard library
     import asyncio
 
@@ -18,17 +21,22 @@ try:
         create_proxy = lambda x: x  # noqa: E731
 
 except ImportError:
+    # This should not be used with the current version of
+    # MicroPython (>= 2026.3.1)
+    print(
+        "Warning: asyncio not available, "
+        + "falling back to MicroPython JS polyfill"
+    )
     # 2. MicroPython Fallback
     # Inject a tiny JS helper to create a safe Deferred promise across FFI
     js.eval("""
-    if (!globalThis.create_deferred) {
-        globalThis.create_deferred = function() {
-            let res;
-            let p = new Promise(r => res = r);
-            return {promise: p, resolve: res};
-        };
-    }
-    """)
+if (!globalThis.create_deferred) {
+    globalThis.create_deferred = function() {
+        let res;
+        let p = new Promise(r => res = r);
+        return {promise: p, resolve: res};
+    };
+}""")
 
     # Build a native JS-Promise event loop to drive Python coroutines!
     class AsyncioPolyfill:
@@ -61,7 +69,18 @@ except ImportError:
     # Polyfill Queue using JS Promises bridging to the browser event loop
     class AsyncQueue:
         def __init__(self, maxsize=0):
-            self._queue = collections.deque()
+            # CPython allows infinite queues (maxsize=0).
+            # MicroPython strictly requires a maxlen.
+            # We default to 100 if unbounded.
+            queue_limit = maxsize if maxsize > 0 else 100
+
+            try:
+                # Try the MicroPython strict signature first
+                self._queue = collections.deque((), queue_limit)
+            except TypeError:
+                # Fallback for standard CPython/Pyodide just in case
+                self._queue = collections.deque()
+
             self._resolve = None
             self._promise = None
             self._reset_promise()

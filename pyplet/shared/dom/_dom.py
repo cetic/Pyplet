@@ -155,7 +155,7 @@ def _merge_classes(
 
         # Safety check: ensure the extra classes start with a dot
         # so we don't accidentally create invalid selectors like
-        # ".primary.btnw-full"
+        # ".btn-primary.btnw-full"
         if not extra_classes.startswith("."):
             extra_classes = "." + extra_classes.replace(" ", ".")
 
@@ -173,7 +173,7 @@ def download(
     extra_classes: Optional[str] = None,
     overwrite_classes: Optional[str] = None,
     **additional_attrs,
-) -> Renderable:
+) -> Element:
     """A download button that downloads files
     from the client (VFS) or server.
 
@@ -189,7 +189,9 @@ def download(
         A renderable element that represents the download button.
     """
 
-    classes = _merge_classes(".primary.btn", overwrite_classes, extra_classes)
+    classes = _merge_classes(
+        ".btn-primary.btn", overwrite_classes, extra_classes
+    )
 
     if from_vfs:
         # Prevent standard link navigation and
@@ -203,7 +205,7 @@ def download(
             text=button_text,
             onclick=click_handler,
             **additional_attrs,
-        )
+        )[button_text]
 
     # Standard server-side download
     return a(
@@ -212,7 +214,7 @@ def download(
         text=button_text,
         download=True,
         **additional_attrs,
-    )
+    )[button_text]
 
 
 def upload(
@@ -259,19 +261,19 @@ def upload(
 
     onclick_js = (
         "event.preventDefault(); "
-        "upload_file("
-        f"{safe_filename}, "
-        f"{safe_client_dest}, "
-        f"{safe_server_dest}, "
-        f"{files_limit}, "
-        f"{total_size_limit}, "
-        f"{per_file_size_limit}, "
-        f"{json.dumps(allowed_extensions or [])});"
+        + "upload_file("
+        + f"{safe_filename}, "
+        + f"{safe_client_dest}, "
+        + f"{safe_server_dest}, "
+        + f"{files_limit}, "
+        + f"{total_size_limit}, "
+        + f"{per_file_size_limit}, "
+        + f"{json.dumps(allowed_extensions or [])});"
     )
 
     return a(
         _merge_classes(
-            "primary btn",
+            "btn-primary btn",
             extra_classes=extra_classes,
             overwrite_classes=overwrite_classes,
         ),
@@ -279,7 +281,7 @@ def upload(
         text=button_text,
         onclick=onclick_js,
         **additional_attrs,
-    )
+    )[button_text]
 
 
 def upload_area(
@@ -329,27 +331,27 @@ def upload_area(
     # On drop, prevent navigation, reset visual state, and hand off to Python
     drop_js = (
         "event.preventDefault(); "
-        "this.classList.remove('drag-over'); "
-        "handle_drop(event, "
-        f"{safe_client_dest}, "
-        f"{safe_server_dest}, "
-        f"{files_limit}, "
-        f"{total_size_limit}, "
-        f"{per_file_size_limit}, "
-        f"{json.dumps(allowed_extensions or [])});"
+        + "this.classList.remove('drag-over'); "
+        + "handle_drop(event, "
+        + f"{safe_client_dest}, "
+        + f"{safe_server_dest}, "
+        + f"{files_limit}, "
+        + f"{total_size_limit}, "
+        + f"{per_file_size_limit}, "
+        + f"{json.dumps(allowed_extensions or [])});"
     )
 
     # On click, open the file picker
     click_js = (
         "event.preventDefault(); "
-        "this.classList.remove('drag-over'); "
-        "handle_click(event, "
-        f"{safe_client_dest}, "
-        f"{safe_server_dest}, "
-        f"{files_limit}, "
-        f"{total_size_limit}, "
-        f"{per_file_size_limit}, "
-        f"{json.dumps(allowed_extensions or [])});"
+        + "this.classList.remove('drag-over'); "
+        + "handle_click(event, "
+        + f"{safe_client_dest}, "
+        + f"{safe_server_dest}, "
+        + f"{files_limit}, "
+        + f"{total_size_limit}, "
+        + f"{per_file_size_limit}, "
+        + f"{json.dumps(allowed_extensions or [])});"
     )
 
     return div(
