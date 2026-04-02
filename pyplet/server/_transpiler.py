@@ -206,90 +206,229 @@ class SubscriptFixer(ast.NodeTransformer):
         return node
 
 
+# class UnionTypeFixer(ast.NodeTransformer):
+#     def visit_BinOp(self, node):
+#         # Visit children first to handle nested unions (e.g., A | B | None)
+#         self.generic_visit(node)
+
+#         # Check if the operation is a Bitwise OR (|)
+#         if isinstance(node.op, ast.BitOr):
+#             # Helper function to guess if an AST node is a Type Hint
+#             def is_type_node(n):
+#                 # Is it `None`? (You can't mathematically OR with None,
+#                 # so it must be a type union)
+#                 if isinstance(n, ast.Constant) and n.value is None:
+#                     return True
+#                 # Is it a standard primitive or known htpy type?
+#                 if isinstance(n, ast.Name):
+#                     return n.id in {
+#                         "type",
+#                         "str",
+#                         "int",
+#                         "bool",
+#                         "float",
+#                         "bytes",
+#                         "list",
+#                         "dict",
+#                         "set",
+#                         "tuple",
+#                         "Any",
+#                         "Node",
+#                         "Context",
+#                         "T",
+#                         "P",
+#                     }
+#                 # Is it something like t.Any or collections.abc.Mapping?
+#                 if isinstance(n, ast.Attribute):
+#                     return n.attr in{
+#                         "Any",
+#                         "Mapping",
+#                         "Iterator",
+#                         "Callable",
+#                     }
+#                 return False
+
+#             # If either side looks like a type, this is a Type Union,
+#             # not a math operation!
+#             if is_type_node(node.left) or is_type_node(node.right):
+#                 # Collapse the union by just returning one side.
+#                 # (If the left side is None, return the right side instead)
+#                 if (
+#                     isinstance(node.left, ast.Constant)
+#                     and node.left.value is None
+#                 ):
+#                     return node.right
+#                 return node.left
+
+#         return node
+
+
+# class IsInstanceTypeFixer(ast.NodeTransformer):
+#     """Rewrites Abstract Base Classes in isinstance()
+#     checks to concrete MicroPython types."""
+
+#     def visit_Call(self, node):
+#         self.generic_visit(node)
+
+#         # Intercept isinstance() and issubclass() function calls
+#         if isinstance(node.func, ast.Name) and node.func.id in {
+#             "isinstance",
+#             "issubclass",
+#         }:
+#             if len(node.args) == 2:
+#                 # Recursive helper to dig through tuples like
+#                 # isinstance(x, (Mapping, str))
+#                 def rewrite_type(n):
+#                     if isinstance(n, ast.Name):
+#                         # Map abstract concepts to concrete primitives that
+#                         # MicroPython understands
+#                         if n.id == "Mapping":
+#                             n.id = "dict"
+#                         elif n.id in {
+#                             "Iterable",
+#                             "Sequence",
+#                             "MutableSequence",
+#                         }:
+#                             n.id = "list"
+#                     elif isinstance(n, ast.Tuple):
+#                         for el in n.elts:
+#                             rewrite_type(el)
+
+#                 rewrite_type(node.args[1])
+
+#         return node
+
+
 class UnionTypeFixer(ast.NodeTransformer):
+    """Converts PEP 604 type unions (X | Y) to tuples — only in safe scopes.
+
+    The old implementation blindly converted every ``A | B`` BinOp, which
+    silently broke runtime bitwise-OR and set/dict merge operations.
+
+    This version restricts conversion to:
+
+    * **Annotation contexts** — function-argument annotations, return
+      annotations, and ``AnnAssign`` annotations.  (They are subsequently
+      removed by :class:`RemoveTypeHint`, so the tuple form is transient.)
+    * **The second argument of isinstance / issubclass calls** — where
+      MicroPython requires a plain tuple rather than a ``types.UnionType``.
+
+    Regular bitwise-OR and set/dict-merge expressions in function bodies
+    are left untouched.
+    """
+
+    def __init__(self):
+        self._annotation_depth = 0
+
+    def _flatten_union(self, node):
+        """Recursively flatten nested ``BinOp(BitOr)`` into a flat list."""
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            return self._flatten_union(node.left) + self._flatten_union(
+                node.right
+            )
+        return [node]
+
+    def _enter_annotation(self, node):
+        """Visit *node* treating it as a type-annotation expression."""
+        if node is None:
+            return None
+        self._annotation_depth += 1
+        result = self.visit(node)
+        self._annotation_depth -= 1
+        return result
+
+    # ------------------------------------------------------------------
+    # Annotation-context entry points
+    # ------------------------------------------------------------------
+
+    def visit_AnnAssign(self, node):
+        node.annotation = self._enter_annotation(node.annotation)
+        if node.value is not None:
+            node.value = self.visit(node.value)
+        node.target = self.visit(node.target)
+        return node
+
+    def _visit_func(self, node):
+        all_args = (
+            node.args.args + node.args.posonlyargs + node.args.kwonlyargs
+        )
+        for arg in all_args:
+            if arg.annotation:
+                arg.annotation = self._enter_annotation(arg.annotation)
+        if node.args.vararg and node.args.vararg.annotation:
+            node.args.vararg.annotation = self._enter_annotation(
+                node.args.vararg.annotation
+            )
+        if node.args.kwarg and node.args.kwarg.annotation:
+            node.args.kwarg.annotation = self._enter_annotation(
+                node.args.kwarg.annotation
+            )
+        if node.returns:
+            node.returns = self._enter_annotation(node.returns)
+        node.body = [self.visit(s) for s in node.body]
+        node.decorator_list = [self.visit(d) for d in node.decorator_list]
+        return node
+
+    def visit_FunctionDef(self, node):
+        return self._visit_func(node)
+
+    def visit_AsyncFunctionDef(self, node):
+        return self._visit_func(node)
+
+    def visit_Call(self, node):
+        node.func = self.visit(node.func)
+        node.keywords = [self.visit(k) for k in node.keywords]
+        # isinstance/issubclass type argument must be a real tuple
+        # on MicroPython
+        func_name = node.func.id if isinstance(node.func, ast.Name) else None
+        isinstance_funcs = {
+            "isinstance",
+            "issubclass",
+            "poly_isinstance",
+            "poly_issubclass",
+        }
+        node.args = [
+            self._enter_annotation(a)
+            if (i == 1 and func_name in isinstance_funcs)
+            else self.visit(a)
+            for i, a in enumerate(node.args)
+        ]
+        return node
+
+    # ------------------------------------------------------------------
+    # Core BinOp handler — only convert inside annotation context
+    # ------------------------------------------------------------------
+
     def visit_BinOp(self, node):
-        # Visit children first to handle nested unions (e.g., A | B | None)
+        if self._annotation_depth > 0 and isinstance(node.op, ast.BitOr):
+            # Flatten without calling generic_visit first to avoid
+            # double-processing nested unions.
+            def flatten(n):
+                if isinstance(n, ast.BinOp) and isinstance(n.op, ast.BitOr):
+                    return flatten(n.left) + flatten(n.right)
+                # Visit non-union children so other transformers still run.
+                return [self.visit(n)]
+
+            elts = flatten(node)
+            new_node = ast.Tuple(elts=elts, ctx=ast.Load())
+            return ast.copy_location(new_node, node)
+
+        # Outside annotation context — visit children normally.
         self.generic_visit(node)
-
-        # Check if the operation is a Bitwise OR (|)
-        if isinstance(node.op, ast.BitOr):
-            # Helper function to guess if an AST node is a Type Hint
-            def is_type_node(n):
-                # Is it `None`? (You can't mathematically OR with None,
-                # so it must be a type union)
-                if isinstance(n, ast.Constant) and n.value is None:
-                    return True
-                # Is it a standard primitive or known htpy type?
-                if isinstance(n, ast.Name):
-                    return n.id in {
-                        "type",
-                        "str",
-                        "int",
-                        "bool",
-                        "float",
-                        "bytes",
-                        "list",
-                        "dict",
-                        "set",
-                        "tuple",
-                        "Any",
-                        "Node",
-                        "Context",
-                        "T",
-                        "P",
-                    }
-                # Is it something like t.Any or collections.abc.Mapping?
-                if isinstance(n, ast.Attribute):
-                    return n.attr in {"Any", "Mapping", "Iterator", "Callable"}
-                return False
-
-            # If either side looks like a type, this is a Type Union,
-            # not a math operation!
-            if is_type_node(node.left) or is_type_node(node.right):
-                # Collapse the union by just returning one side.
-                # (If the left side is None, return the right side instead)
-                if (
-                    isinstance(node.left, ast.Constant)
-                    and node.left.value is None
-                ):
-                    return node.right
-                return node.left
-
         return node
 
 
 class IsInstanceTypeFixer(ast.NodeTransformer):
-    """Rewrites Abstract Base Classes in isinstance()
-    checks to concrete MicroPython types."""
+    """Rewrites isinstance/issubclass to use safe polyfills."""
 
     def visit_Call(self, node):
         self.generic_visit(node)
 
-        # Intercept isinstance() and issubclass() function calls
         if isinstance(node.func, ast.Name) and node.func.id in {
             "isinstance",
             "issubclass",
         }:
-            if len(node.args) == 2:
-                # Recursive helper to dig through tuples like
-                # isinstance(x, (Mapping, str))
-                def rewrite_type(n):
-                    if isinstance(n, ast.Name):
-                        # Map abstract concepts to concrete primitives that
-                        # MicroPython understands
-                        if n.id == "Mapping":
-                            n.id = "dict"
-                        elif n.id in {
-                            "Iterable",
-                            "Sequence",
-                            "MutableSequence",
-                        }:
-                            n.id = "list"
-                    elif isinstance(n, ast.Tuple):
-                        for el in n.elts:
-                            rewrite_type(el)
-
-                rewrite_type(node.args[1])
+            node.func.id = f"poly_{node.func.id}"
 
         return node
 
@@ -300,14 +439,11 @@ class StringMethodFixer(ast.NodeTransformer):
     def visit_Call(self, node):
         self.generic_visit(node)
 
-        # Look for a method call like obj.removesuffix(arg)
         if isinstance(node.func, ast.Attribute) and node.func.attr in {
             "removesuffix",
             "removeprefix",
         }:
-            # Change obj.removesuffix(arg) to __removesuffix(obj, arg)
             poly_name = f"__{node.func.attr}"
-
             new_node = ast.Call(
                 func=ast.Name(id=poly_name, ctx=ast.Load()),
                 args=[node.func.value] + node.args,

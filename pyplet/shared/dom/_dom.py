@@ -190,7 +190,9 @@ def download(
     """
 
     classes = _merge_classes(
-        ".btn-primary.btn", overwrite_classes, extra_classes
+        ".btn-primary.btn",
+        extra_classes=extra_classes,
+        overwrite_classes=overwrite_classes,
     )
 
     if from_vfs:
@@ -273,7 +275,7 @@ def upload(
 
     return a(
         _merge_classes(
-            "btn-primary btn",
+            ".btn-primary.btn",
             extra_classes=extra_classes,
             overwrite_classes=overwrite_classes,
         ),
@@ -356,7 +358,7 @@ def upload_area(
 
     return div(
         _merge_classes(
-            "upload-area",
+            ".upload-area",
             extra_classes=extra_classes,
             overwrite_classes=overwrite_classes,
         ),
@@ -369,53 +371,268 @@ def upload_area(
     )
 
 
-def browser() -> Renderable:
-    """A browser element that allows the user to navigate
-    through files, folders, etc."""
-    ...
+def browser(
+    root_path: str = "/",
+    id: Optional[str] = None,
+    extra_classes: Optional[str] = None,
+    overwrite_classes: Optional[str] = None,
+    **additional_attrs,
+) -> Renderable:
+    """A file-browser container div.
+
+    Renders a styled ``<div>`` with ``data-root`` set to *root_path*.
+    Actual file-listing behaviour must be wired up in the client application.
+
+    Args:
+        root_path: The VFS or server root path to browse.
+        id: Optional HTML ``id`` attribute.
+        extra_classes: Additional CSS classes to append.
+        overwrite_classes: CSS classes that replace the defaults.
+        additional_attrs: Extra HTML attributes forwarded to the element.
+
+    Returns:
+        A renderable ``<div>`` element.
+    """
+    classes = _merge_classes(
+        ".file-browser",
+        extra_classes=extra_classes,
+        overwrite_classes=overwrite_classes,
+    )
+    attrs = {"data_root": root_path}
+    if id is not None:
+        attrs["id"] = id
+    return div(classes, **attrs, **additional_attrs)
 
 
-# def render_graphic(server_side: bool = False) -> Renderable:
-#     """A button that renders graphics on the client or on the server."""
-#     ...
+def image(
+    href: str,
+    from_vfs: bool = False,
+    **additional_attrs,
+) -> Renderable:
+    """An ``<img>`` element loading from a server path or the client VFS.
+
+    When *from_vfs* is ``True`` the ``src`` attribute is left as ``"#"`` and a
+    ``data-vfs-src`` attribute is added so client-side code can swap in a blob
+    URL after reading the file from the in-browser virtual filesystem.
+
+    Args:
+        href: Path to the image file.
+        from_vfs: When ``True`` the image is loaded from the in-browser VFS.
+        additional_attrs: Extra HTML attributes (e.g. ``alt``, ``width``).
+
+    Returns:
+        A renderable ``<img>`` element.
+    """
+    if from_vfs:
+        return img(src="#", data_vfs_src=href, **additional_attrs)
+    return img(src=href, **additional_attrs)
 
 
-def image(href: str, from_vfs: bool = False) -> Renderable:
-    """An image that is loaded from the server or the client."""
-    ...
+def pp_video(
+    href: str,
+    from_vfs: bool = False,
+    **additional_attrs,
+) -> Renderable:
+    """A ``<video>`` element loading from a server path or the client VFS.
+
+    When *from_vfs* is ``True`` a ``data-vfs-src`` attribute is set and
+    ``src`` is left as ``"#"`` so that client-side code can supply the content.
+
+    Args:
+        href: Path to the video file.
+        from_vfs: When ``True`` the video is loaded from the in-browser VFS.
+        additional_attrs: Extra HTML attributes forwarded to the element.
+
+    Returns:
+        A renderable ``<video>`` element.
+    """
+    if from_vfs:
+        return video(
+            src="#", data_vfs_src=href, controls=True, **additional_attrs
+        )
+    return video(src=href, controls=True, **additional_attrs)
 
 
-def pp_video(href: str, from_vfs: bool = False) -> Renderable:
-    """A video that is loaded from the server or the client."""
-    ...
+def pp_audio(
+    href: str,
+    from_vfs: bool = False,
+    **additional_attrs,
+) -> Renderable:
+    """An ``<audio>`` element loading from a server path or the client VFS.
+
+    When *from_vfs* is ``True`` a ``data-vfs-src`` attribute is set and
+    ``src`` is left as ``"#"`` so that client-side code can supply the content.
+
+    Args:
+        href: Path to the audio file.
+        from_vfs: When ``True`` the audio is loaded from the in-browser VFS.
+        additional_attrs: Extra HTML attributes forwarded to the element.
+
+    Returns:
+        A renderable ``<audio>`` element.
+    """
+    if from_vfs:
+        return audio(
+            src="#", data_vfs_src=href, controls=True, **additional_attrs
+        )
+    return audio(src=href, controls=True, **additional_attrs)
 
 
-def pp_audio(href: str, from_vfs: bool = False) -> Renderable:
-    """An audio that is loaded from the server or the client."""
-    ...
+def slider(
+    value: float = 50,
+    min: float = 0,
+    max: float = 100,
+    step: float = 1,
+    id: Optional[str] = None,
+    extra_classes: Optional[str] = None,
+    overwrite_classes: Optional[str] = None,
+    **additional_attrs,
+) -> Renderable:
+    """A Bootstrap range ``<input>`` slider.
+
+    Args:
+        value: Initial value of the slider.
+        min: Minimum value.
+        max: Maximum value.
+        step: Step increment.
+        id: Optional HTML ``id`` attribute.
+        extra_classes: Additional CSS classes to append.
+        overwrite_classes: CSS classes that replace the defaults.
+        additional_attrs: Extra HTML attributes forwarded to the element.
+
+    Returns:
+        A renderable ``<input type="range">`` element.
+    """
+    classes = _merge_classes(
+        ".form-range",
+        extra_classes=extra_classes,
+        overwrite_classes=overwrite_classes,
+    )
+    attrs = {
+        "type": "range",
+        "min": str(min),
+        "max": str(max),
+        "value": str(value),
+        "step": str(step),
+    }
+    if id is not None:
+        attrs["id"] = id
+    return input(classes, **attrs, **additional_attrs)
 
 
-def _interactive_element() -> Renderable:
-    """A generic interactive element that allows the user to interact
-    with buttons, sliders, checkboxes, etc."""
-    ...
+def radio(
+    options: list = (),
+    selected=None,
+    name: str = "radio_group",
+    extra_classes: Optional[str] = None,
+    overwrite_classes: Optional[str] = None,
+    **additional_attrs,
+) -> Renderable:
+    """A group of Bootstrap radio buttons.
+
+    Each option in *options* becomes a labelled ``<input type="radio">``.
+    The option matching *selected* gets the ``checked`` attribute.
+
+    Args:
+        options: Sequence of option values (rendered via ``str()``).
+        selected: The initially selected option value.
+        name: The shared ``name`` attribute for the radio group.
+        extra_classes: Additional CSS classes for the wrapper div.
+        overwrite_classes: CSS classes that replace the wrapper defaults.
+        additional_attrs: Extra HTML attributes forwarded to the wrapper div.
+
+    Returns:
+        A renderable ``<div>`` wrapping the radio inputs.
+    """
+    wrapper_classes = _merge_classes(
+        ".d-flex.flex-column",
+        extra_classes=extra_classes,
+        overwrite_classes=overwrite_classes,
+    )
+    items = []
+    for index, _option in enumerate(options):
+        option_id = f"{name}_{index}"
+        input_attrs = {
+            "type": "radio",
+            "id": option_id,
+            "name": name,
+            "value": str(_option),
+        }
+        if selected == _option:
+            input_attrs["checked"] = True
+
+        items.append(
+            div(".form-check")[
+                input(".form-check-input", **input_attrs),
+                label(".form-check-label", for_=option_id)[str(_option)],
+            ]
+        )
+    return div(wrapper_classes, **additional_attrs)[*items]
 
 
-def slider() -> Renderable:
-    """A slider that is loaded from the server or the client."""
-    ...
+def checkbox(
+    label_text: str = "",
+    checked: bool = False,
+    id: Optional[str] = None,
+    extra_classes: Optional[str] = None,
+    overwrite_classes: Optional[str] = None,
+    **additional_attrs,
+) -> Renderable:
+    """A Bootstrap checkbox with an associated label.
+
+    Args:
+        label_text: Text displayed next to the checkbox.
+        checked: Initial state of the checkbox.
+        id: HTML ``id`` for the ``<input>`` (also used as the label's ``for``).
+        extra_classes: Additional CSS classes for the wrapper div.
+        overwrite_classes: CSS classes that replace the wrapper defaults.
+        additional_attrs: Extra HTML attributes forwarded to the wrapper div.
+
+    Returns:
+        A renderable ``<div class="form-check">`` element.
+    """
+    checkbox_id = id or "checkbox"
+    wrapper_classes = _merge_classes(
+        ".form-check",
+        extra_classes=extra_classes,
+        overwrite_classes=overwrite_classes,
+    )
+    input_attrs = {"type": "checkbox", "id": checkbox_id}
+    if checked:
+        input_attrs["checked"] = True
+    return div(wrapper_classes, **additional_attrs)[
+        input(".form-check-input", **input_attrs),
+        label(".form-check-label", for_=checkbox_id)[label_text],
+    ]
 
 
-def radio() -> Renderable:
-    """A radio button that is controlled on the client."""
-    ...
+def pp_button(
+    text: str = "Button",
+    variant: str = "primary",
+    id: Optional[str] = None,
+    extra_classes: Optional[str] = None,
+    overwrite_classes: Optional[str] = None,
+    **additional_attrs,
+) -> Renderable:
+    """A Bootstrap-styled ``<button>`` element.
 
+    Args:
+        text: Button label text.
+        variant: Bootstrap colour variant (``"primary"``, ``"danger"``, …).
+        id: Optional HTML ``id`` attribute.
+        extra_classes: Additional CSS classes to append.
+        overwrite_classes: CSS classes that replace the defaults.
+        additional_attrs: Extra HTML attributes forwarded to the element.
 
-def checkbox() -> Renderable:
-    """A checkbox that is loaded from the server or the client."""
-    ...
-
-
-def pp_button() -> Renderable:
-    """A button that is loaded from the server or the client."""
-    ...
+    Returns:
+        A renderable ``<button>`` element.
+    """
+    classes = _merge_classes(
+        f".btn.btn-{variant}",
+        extra_classes=extra_classes,
+        overwrite_classes=overwrite_classes,
+    )
+    attrs = {"type": "button"}
+    if id is not None:
+        attrs["id"] = id
+    return button(classes, **attrs, **additional_attrs)[text]

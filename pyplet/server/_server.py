@@ -597,20 +597,15 @@ else:
                     return cls
 
             class MockCollectionsAbc:
+                TYPE_CHECKING = False
                 def __getattr__(self, name):
-                    TYPE_CHECKING = False
-                    return DummyGenericMeta(name, (), {{}})
-
-                    def __call__(self, *args, **kwargs):
-                        # If they are doing t.cast(Type, value),
-                        # it's safer to return the value.
-                        # Otherwise, just return self.
-                        if (
-                            args and hasattr(args[0], "__class__")
-                            and len(args) == 2
-                        ):
-                            return args[1]
-                        return self
+                    cls = DummyGenericMeta(name, (), {{}})
+                    # Cache so repeated access returns the same object
+                    try:
+                        object.__setattr__(self, name, cls)
+                    except (AttributeError, TypeError):
+                        pass
+                    return cls
 
             mock_abc = MockCollectionsAbc()
             sys.modules["collections.abc"] = mock_abc
@@ -773,6 +768,46 @@ else:
 
         builtins.__removesuffix = __removesuffix
         builtins.__removeprefix = __removeprefix
+
+        # 12. Polyfill isinstance to intelligently handle Dummy Typing Objects
+        import builtins
+        _orig_isinstance = builtins.isinstance
+        _orig_issubclass = builtins.issubclass
+
+        def poly_isinstance(obj, class_or_tuple):
+            try:
+                # Real classes (str, BaseElement, int) evaluate perfectly here
+                return _orig_isinstance(obj, class_or_tuple)
+            except TypeError:
+                # If we crash, we hit a dummy mock object!
+
+                if _orig_isinstance(class_or_tuple, tuple):
+                    return any(
+                        poly_isinstance(obj, c) for c in class_or_tuple
+                    )
+
+                # In htpy's render loop, the ONLY mock
+                # object it checks is `Iterable`.
+                # So if we are here, it is simply asking:
+                # "Can I iterate over this child node?"
+                if (
+                    hasattr(obj, "__iter__")
+                    and not _orig_isinstance(obj, (str, bytes))
+                ):
+                    return True
+
+                return False
+
+        def poly_issubclass(cls, class_or_tuple):
+            try:
+                return _orig_issubclass(cls, class_or_tuple)
+            except TypeError:
+                if _orig_isinstance(class_or_tuple, tuple):
+                    return any(poly_issubclass(cls, c) for c in class_or_tuple)
+                return False
+
+        builtins.poly_isinstance = poly_isinstance
+        builtins.poly_issubclass = poly_issubclass
     # ---------------------------------------------------
 
     # Boot the application
