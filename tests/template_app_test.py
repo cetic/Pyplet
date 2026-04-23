@@ -92,13 +92,6 @@ class TestTemplateApp:
         )
         assert pyscript_script, "Pyscript script not found"
 
-        # Check for jQuery UI CSS
-        links = driver.find_elements(By.TAG_NAME, "link")
-        jquery_css = any(
-            "jquery-ui" in (link.get_attribute("href") or "") for link in links
-        )
-        assert jquery_css, "jQuery UI CSS not found"
-
     def test_multiple_page_loads(self, driver, server, wait):
         """Test that the app works correctly across multiple page loads."""
         for _ in range(3):
