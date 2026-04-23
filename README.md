@@ -2,12 +2,16 @@
 
 **Build full-stack web applications entirely in Python.**
 
-Pyplet is an application server that lets you create interactive web applications using Python on both the client and server side. Powered by [Pyodide](https://pyodide.org/) (Python compiled to WebAssembly), Pyplet brings the full power of Python to the browser.
+Pyplet is an application server that lets you create interactive web
+applications using Python on both the client and server side.
+Powered by [Pyodide](https://pyodide.org/) (Python compiled to WebAssembly),
+Pyplet brings the full power of Python to the browser.
 
 ## Why Pyplet?
 
 - **Pure Python**: Write your entire application in Python - no JavaScript required
-- **Real-time Communication**: Built-in WebSocket support for seamless client-server interaction
+- **Real-time Communication**: Built-in WebSocket support for seamless
+client-server interaction
 - **Modern Async**: Leverages Python's async/await for responsive applications
 - **Browser-Native**: Client code runs directly in the browser via WebAssembly
 - **Shared Code**: Reuse Python modules between client and server
@@ -22,6 +26,7 @@ Pyplet is an application server that lets you create interactive web application
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository_url>
    cd pyplet
@@ -29,13 +34,16 @@ Pyplet is an application server that lets you create interactive web application
 
 2. **Download Pyodide** (optional - for local development)
 
-   Pyplet uses Pyodide from CDN by default. For offline development, download it locally:
+   Pyplet uses Pyodide from CDN by default. For offline development,
+   download it locally:
+
    ```bash
    wget https://github.com/pyodide/pyodide/releases/download/0.29.0/pyodide-0.29.0.tar.bz2
    tar -xvjf pyodide-0.29.0.tar.bz2
    ```
 
    Then configure Pyplet to use the local version:
+
    ```bash
    export PYPLET_PYODIDE=/path/to/pyodide/pyodide.js
    ```
@@ -43,17 +51,20 @@ Pyplet is an application server that lets you create interactive web application
 3. **Install Pyplet**
 
    With `uv` (recommended):
+
    ```bash
    uv venv
    uv sync
    ```
 
    Or with `pip`:
+
    ```bash
    pip install -e .
    ```
 
    To install with test dependencies:
+
    ```bash
    uv sync --extra test
    # or with pip
@@ -67,6 +78,7 @@ pyplet init my_app
 ```
 
 This creates a new project in `apps/my_app/` with two files:
+
 - `my_app_client.py` - Python code that runs in the browser
 - `my_app_server.py` - Server-side Python logic
 
@@ -83,6 +95,7 @@ Then open your browser to `http://localhost:8080` to see your apps!
 Here's a minimal Pyplet app showing real-time communication:
 
 **`hello_client.py`** (runs in the browser):
+
 ```python
 import pyplet
 from js import document
@@ -100,6 +113,7 @@ class _(pyplet.client.ClientApplication):
 ```
 
 **`hello_server.py`**:
+
 ```python
 import pyplet
 
@@ -118,10 +132,11 @@ class _(pyplet.server.ServerApplication):
 Pyplet uses a unique dual-runtime architecture:
 
 1. **Server-side**: Standard CPython running Tornado web server
-2. **Client-side**: Python code compiled to WebAssembly via Pyodide, running in the browser
+2. **Client-side**: Python code compiled to WebAssembly via Pyodide, running in
+the browser
 3. **Communication**: WebSocket connection bridges the two environments
 
-```
+```text
 ┌─────────────────────┐         WebSocket         ┌─────────────────────┐
 │   Browser (Pyodide) │ <───────────────────────> │   Server (CPython)  │
 │   your_app_client.py│                           │   your_app_server.py│
@@ -130,7 +145,7 @@ Pyplet uses a unique dual-runtime architecture:
 
 ## Project Structure
 
-```
+```bash
 pyplet/
 ├── apps/              # Your applications live here
 │   └── template/      # Template for new projects
@@ -146,12 +161,17 @@ pyplet/
 
 ## Authentication
 
-Pyplet supports platform-level OAuth2 / OIDC authentication via Google and Microsoft. When enabled, all pages and WebSocket connections are gated behind a login screen. Auth is **opt-in**: if no provider is configured the platform runs with no login, exactly as before.
+Pyplet supports platform-level OAuth2 / OIDC authentication via Google and
+Microsoft. When enabled, all pages and WebSocket connections are gated behind
+a login screen. Auth is **opt-in**: if no provider is configured the platform
+runs with no login, exactly as before.
 
 ### Setup
 
-**1. Register an OAuth app** with your provider and obtain a client ID and secret. Set the callback URL to:
-```
+**1. Register an OAuth app** with your provider and obtain a client ID and
+secret. Set the callback URL to:
+
+```text
 http://<your-host>/oauth/callback
 ```
 
@@ -175,7 +195,9 @@ export OAUTH_MICROSOFT_TENANT=common  # or your tenant ID
 
 ### Access control (ACL)
 
-By default every authenticated user can see all apps. To restrict access, create `apps/auth_rules.json` — a JSON array of `["project/app regex", "email regex"]` pairs:
+By default every authenticated user can see all apps. To restrict access,
+create `apps/auth_rules.json` — a JSON array of
+`["project/app regex", "email regex"]` pairs:
 
 ```json
 [
@@ -184,13 +206,18 @@ By default every authenticated user can see all apps. To restrict access, create
 ]
 ```
 
-Rules are evaluated in order; the **first matching rule** grants access. The first regex is matched against the combined `"project/app"` string; the second against the user's email address. If no rule matches, access is denied.
+Rules are evaluated in order; the **first matching rule** grants access.
+The first regex is matched against the combined `"project/app"` string;
+the second against the user's email address.
+If no rule matches, access is denied.
 
 Override the rules file path with `PYPLET_AUTH_RULES_FILE`.
 
 ### Magic-link e-mail authentication
 
-As an alternative (or complement) to OAuth, users can sign in by entering their e-mail address and clicking a single-use link delivered to their inbox — no password required.
+As an alternative (or complement) to OAuth, users can sign in by entering their
+e-mail address and clicking a single-use link delivered to their inbox — no
+password required.
 
 Configure an SMTP server to enable it:
 
@@ -205,14 +232,17 @@ export MAGICLINK_TOKEN_TTL=900              # seconds (default: 15 min)
 # export MAGICLINK_SMTP_TLS=0
 ```
 
-Magic-link and OAuth providers can be active simultaneously — the login page shows all available methods.
+Magic-link and OAuth providers can be active simultaneously — the login page
+shows all available methods.
 
-The ACL rules file applies to magic-link logins exactly the same way it does for OAuth: the user's e-mail address is matched against the `email_regex` column of each rule.
+The ACL rules file applies to magic-link logins exactly the same way it does
+for OAuth: the user's e-mail address is matched against the `email_regex`
+column of each rule.
 
 ### Configuration reference
 
 | Variable | Description |
-|---|---|
+| --- | --- |
 | `PYPLET_COOKIE_SECRET` | Secret for signing session cookies |
 | **OAuth — Google** | |
 | `OAUTH_GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
@@ -230,7 +260,7 @@ The ACL rules file applies to magic-link logins exactly the same way it does for
 | `MAGICLINK_FROM` | Sender address (defaults to `MAGICLINK_SMTP_USER`) |
 | `MAGICLINK_TOKEN_TTL` | Token validity in seconds (default: `900` = 15 min) |
 | **ACL** | |
-| `PYPLET_AUTH_RULES_FILE` | Path to ACL rules JSON file (default: `apps/auth_rules.json`) |
+| `PYPLET_AUTH_RULES_FILE` | ACL rules path (default: `apps/auth_rules.json`) |
 
 ## Advanced Features
 
@@ -287,7 +317,8 @@ python -m pyplet.server
 
 ## Configuration
 
-Server-wide configuration is managed in `pyplet/server/config.py` and can be set via environment variables or CLI flags:
+Server-wide configuration is managed in `pyplet/server/config.py` and can be
+set via environment variables or CLI flags:
 
 ```bash
 # Using environment variables
@@ -300,6 +331,7 @@ pyplet start --port 3000 --address 0.0.0.0
 ```
 
 Available configuration options:
+
 - `--address` / `PYPLET_ADDR` - Server address (default: `127.0.0.1`)
 - `--port` / `PYPLET_PORT` - Server port (default: `8080`)
 - `--apps` / `PYPLET_APPS` - Apps directory (default: `apps`)
@@ -312,6 +344,7 @@ See the [Authentication](#authentication) section for OAuth-related variables.
 ## Browser Compatibility
 
 Pyplet should work in any modern browser that supports WebAssembly:
+
 - Chrome/Edge 57+
 - Firefox 52+
 - Safari 11+
@@ -319,6 +352,7 @@ Pyplet should work in any modern browser that supports WebAssembly:
 ## Dependencies
 
 Pyplet uses:
+
 - **Tornado** - Async web server
 - **Pyodide** - Python in WebAssembly
 - **Cython** - Python to C compiler for performance
@@ -326,15 +360,18 @@ Pyplet uses:
 
 ## Adding Dependencies
 
-### For server-side code:
+### For server-side code
+
 Edit `pyproject.toml` under `[project].dependencies`
 
-### For testing:
+### For testing
+
 Edit `pyproject.toml` under `[project.optional-dependencies].test`
 
 ## Examples
 
 Check the `apps/template/` directory for a working example demonstrating:
+
 - WebSocket communication
 - DOM manipulation
 - Async patterns
@@ -343,6 +380,7 @@ Check the `apps/template/` directory for a working example demonstrating:
 ## Limitations
 
 Since client code runs in Pyodide (WebAssembly):
+
 - Not all Python packages are available in the browser
 - Some stdlib modules have limited functionality
 - Use the `js` module to access browser APIs directly
@@ -362,12 +400,13 @@ Apache License 2.0 - See [LICENSE](LICENSE) for details
 
 ## Support
 
-- **Author**: Maxime Istasse (istassem@gmail.com)
+- **Author**: Maxime Istasse (<istassem@gmail.com>)
 - **Issues**: Please report bugs and feature requests via the issue tracker
 
 ## Roadmap
 
 Future enhancements planned:
+
 - Hot reload during development
 - More built-in UI components
 - Better error handling and debugging tools

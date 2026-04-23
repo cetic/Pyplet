@@ -12,10 +12,10 @@ from importlib import import_module
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
+import markupsafe
 import tornado
 import tornado.web
 import tornado.websocket
-from markupsafe import Markup
 
 import pyplet
 from pyplet.server._transpiler import transpile_to_pyscript
@@ -126,7 +126,13 @@ class AboutHandler(_AuthMixin, tornado.web.RequestHandler):
         user = self._require_auth()
         if user is None:
             return
-        self.write(str(templates.about_template(self, user)).encode("UTF-8"))
+        self.write(
+            str(
+                markupsafe.Markup(  # nosec
+                    templates.about_template(self, user)
+                )
+            ).encode("UTF-8")
+        )
 
 
 class PackageHandler(_AuthMixin, tornado.web.RequestHandler):
@@ -831,7 +837,7 @@ else:
             "head": head_content,
             "body": [
                 div(id="container"),
-                Markup(
+                markupsafe.Markup(  # nosec
                     f"<script type='{script_tag}' "
                     f"config='{json.dumps(py_config)}'"
                     f" async>{python_code}</script>"
