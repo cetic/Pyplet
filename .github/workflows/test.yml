@@ -1,11 +1,8 @@
----
 name: Test Suite
 
 on:
-  push:
-    branches: [master, main, develop]
-  pull_request:
-    branches: [master, main, develop]
+  push: {}
+  pull_request: {}
 
 jobs:
   test:
@@ -13,7 +10,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.12"] #, "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14"]
 
     steps:
       - name: Checkout code
@@ -27,30 +24,23 @@ jobs:
       - name: Install Chrome and ChromeDriver
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser chromium-chromedriver
+          sudo apt-get install -y chromium chromium-driver
           chromedriver --version
-          chromium-browser --version
+          chromium --version
 
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install dependencies
-        run: |
-          uv venv
-          source .venv/bin/activate
-          uv sync --group test
+      - name: Create virtual environment
+        run: uv venv
 
-      - name: Download Pyodide
-        run: |
-          wget https://github.com/pyodide/pyodide/releases/download/0.28.0/pyodide-0.28.0.tar.bz2
-          tar -xvjf pyodide-0.28.0.tar.bz2
+      - name: Install dependencies
+        run: uv sync --extra test
 
       - name: Run tests
-        run: |
-          source .venv/bin/activate
-          pytest tests/ -v --cov=pyplet --cov-report=xml --cov-report=term
+        run: uv run pytest tests/ -v --cov=pyplet --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=40
         env:
           PYPLET_DEBUG: "1"
 

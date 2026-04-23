@@ -18,6 +18,7 @@ htmlcov/
 *.pyc
 .tox/
 *.log
+coverage.xml
 
 apps/
 build/
