@@ -22,3 +22,4 @@ coverage.xml
 
 apps/
 build/
+.DS_Store
