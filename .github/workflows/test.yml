@@ -51,8 +51,8 @@ jobs:
         run: uv run pytest tests/ -v --cov=pyplet --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=40
         env:
           PYPLET_DEBUG: "1"
-          CHROME_BIN: /usr/local/share/chromium/chrome-linux/chrome
-          CHROMEDRIVER: /usr/bin/chromedriver
+          # CHROME_BIN: /usr/local/share/chromium/chrome-linux/chrome
+          # CHROMEDRIVER: /usr/bin/chromedriver
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v6
