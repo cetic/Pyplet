@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger("pyplet.cli")
 
 
-def create_project(project_name: str) -> None:
+def create_project(project_name: str, tutorial: bool = False) -> None:
     """
     Create a new project directory under ./apps/project_name and copy
     template_client.py, template_server.py, and config.py from ../apps/examples
@@ -25,6 +25,7 @@ def create_project(project_name: str) -> None:
 
     Args:
         project_name (str): The name of the project to create.
+        tutorial (bool): Whether to create a tutorial project.
     """
     # Validate project name for Python importability
     if not project_name.isidentifier():
@@ -47,6 +48,10 @@ def create_project(project_name: str) -> None:
     # Sources
     src_client = template_dir / "template_client.py"
     src_server = template_dir / "template_server.py"
+
+    if tutorial:
+        src_client = template_dir / "tutorial_client.py"
+        src_server = template_dir / "tutorial_server.py"
 
     # Create apps and project dir if they don't exist
     project_dir = cwd / "apps" / project_name
@@ -111,6 +116,12 @@ def main() -> None:
         "start", aliases=["run", "server"], help="Launch pyplet.server.main()"
     )
 
+    # Tutorial
+    subparsers.add_parser(
+        "tutorial",
+        help="Launch the Pyplet tutorial server with a sample project",
+    )
+
     for name in config.params:
         param_obj = getattr(type(config), name)
 
@@ -153,6 +164,69 @@ def main() -> None:
                 setattr(config, name, value)
 
         start_server()
+
+    elif args.command == "tutorial":
+        # The tutorial command launches a quick start example that
+        # helps to explain the basics of Pyplet. How to create a project,
+        # how to define a client and a server, and how to run them.
+        # Todo: implement the tutorial command
+        print(
+            "Welcome to the Pyplet tutorial! This command will launch"
+            " a sample project that demonstrates the basics of Pyplet."
+            "\n\nTo get started, run the following command: "
+            "pyplet init tutorial"
+        )
+
+        try:
+            while True:
+                prompt_symbol = sys.platform == "win32" and "> " or "$ "
+
+                # Detect root user and change prompt symbol to #
+                if os.name != "nt" and os.geteuid() == 0:
+                    prompt_symbol = "# "
+
+                tutorial_command = input(prompt_symbol)
+                if tutorial_command.lower() in ("exit", "quit"):
+                    print("Exiting tutorial. Goodbye!")
+                    break
+
+                elif tutorial_command != "pyplet init tutorial":
+                    print(
+                        "Invalid command. Please run 'pyplet init tutorial' "
+                        "to start the tutorial or 'exit' to quit."
+                    )
+
+                else:
+                    break
+
+            # Create the tutorial project in the current working directory
+            create_project("tutorial", tutorial=True)
+
+            # Explain the tutorial project structure and how to run it
+            print(
+                "\nGreat! You've initialized the tutorial project.\n"
+                "The project structure is as follows:\n"
+                "  - ./apps/tutorial/\n"
+                "    - tutorial_client.py: This is the client code that "
+                "defines the behavior of the client.\n"
+                "    - tutorial_server.py: This is the server code that "
+                "defines the behavior of the server.\n"
+                "    - config.py: This file contains the configuration for "
+                "the project.\n"
+                "\nTo run the tutorial server, use the following command: "
+                "pyplet start\n"
+                "This will start the server defined in tutorial_server.py. "
+                "You can then run the client in another terminal with: python"
+                " apps/tutorial/tutorial_client.py\n"
+                "\nThe tutorial project will demonstrate a simple interaction"
+                " between the client and the server, showcasing the core "
+                "features of Pyplet. Feel free to explore the code and "
+                "modify it to see how it works!"
+            )
+
+        except KeyboardInterrupt:
+            print("\nTutorial stopped. Goodbye!")
+            sys.exit(0)
 
 
 def start_server():
