@@ -5,13 +5,11 @@ Pytest configuration and fixtures for Pyplet end-to-end tests.
 import asyncio
 import multiprocessing
 import os
-import shutil
 import time
 
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pyplet.server._server import astart
@@ -42,35 +40,61 @@ def server():
         server_process.kill()
 
 
+# @pytest.fixture(scope="function")
+# def driver():
+#     chrome_options = Options()
+#     chrome_options.add_argument("--headless=new")
+#     chrome_options.add_argument("--no-sandbox")
+#     chrome_options.add_argument("--disable-dev-shm-usage")
+
+#     # 1. Use the environment (from GitHub Actions)
+#     # or fallback to system PATH for Chrome binary
+#     chrome_bin = os.environ.get("CHROME_BIN") or shutil.which("chromium")
+
+#     if chrome_bin:
+#         chrome_options.binary_location = chrome_bin
+
+#     # 2. Use the corrected ChromeDriver path
+#     chromedriver_path = os.environ.get("CHROMEDRIVER") or shutil.which(
+#         "chromedriver"
+#     )
+
+#     service = (
+#         Service(executable_path=chromedriver_path)
+#         if chromedriver_path
+#         else Service()
+#     )
+
+#     driver = webdriver.Chrome(service=service, options=chrome_options)
+#     driver.implicitly_wait(10)
+
+#     yield driver
+#     driver.quit()
+
+
 @pytest.fixture(scope="function")
 def driver():
+    """Create a Selenium WebDriver instance for each test."""
     chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+    if os.environ.get("CI"):
+        chrome_options.binary_location = "/usr/bin/chromium-browser"
+    # Enable browser logging
+    chrome_options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
 
-    # 1. Use the environment (from GitHub Actions)
-    # or fallback to system PATH for Chrome binary
-    chrome_bin = os.environ.get("CHROME_BIN") or shutil.which("chromium")
-
-    if chrome_bin:
-        chrome_options.binary_location = chrome_bin
-
-    # 2. Use the corrected ChromeDriver path
-    chromedriver_path = os.environ.get("CHROMEDRIVER") or shutil.which(
-        "chromedriver"
-    )
-
-    service = (
-        Service(executable_path=chromedriver_path)
-        if chromedriver_path
-        else Service()
-    )
-
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver = webdriver.Chrome(options=chrome_options)
     driver.implicitly_wait(10)
 
     yield driver
+
+    # Print browser console logs on teardown (useful for debugging)
+    for entry in driver.get_log("browser"):
+        print(f"Browser console: {entry}")
+
     driver.quit()
 
 
