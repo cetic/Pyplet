@@ -4,11 +4,14 @@ Pytest configuration and fixtures for Pyplet end-to-end tests.
 
 import asyncio
 import multiprocessing
+import os
+import shutil
 import time
 
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 
 from pyplet.server._server import astart
@@ -43,7 +46,7 @@ def server():
 def driver():
     """Create a Selenium WebDriver instance for each test."""
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
@@ -52,12 +55,28 @@ def driver():
     # Enable browser logging
     chrome_options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
 
-    driver = webdriver.Chrome(options=chrome_options)
+    # Ensure Selenium uses the Chromium binary installed by apt on CI
+    chrome_bin = (
+        os.environ.get("CHROME_BIN")
+        or shutil.which("chromium")
+        or shutil.which("chromium-browser")
+        or "/usr/bin/chromium"
+    )
+    chrome_options.binary_location = chrome_bin
+
+    # Be explicit about chromedriver too (helps avoid PATH surprises)
+    chromedriver_path = (
+        os.environ.get("CHROMEDRIVER")
+        or shutil.which("chromedriver")
+        or "/usr/bin/chromedriver"
+    )
+    service = Service(executable_path=chromedriver_path)
+
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.implicitly_wait(10)
 
     yield driver
 
-    # Print browser console logs on teardown (useful for debugging)
     for entry in driver.get_log("browser"):
         print(f"Browser console: {entry}")
 
