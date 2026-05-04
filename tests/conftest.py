@@ -44,42 +44,40 @@ def server():
 
 @pytest.fixture(scope="function")
 def driver():
-    """Create a Selenium WebDriver instance for each test."""
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920,1080")
 
-    # Enable browser logging
-    chrome_options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
-
-    # Ensure Selenium uses the Chromium binary installed by apt on CI
+    # 1. Dynamically find the browser binary
     chrome_bin = (
         os.environ.get("CHROME_BIN")
         or shutil.which("chromium")
         or shutil.which("chromium-browser")
-        or "/usr/bin/chromium"
+        or shutil.which("google-chrome")
+        or "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
     )
-    chrome_options.binary_location = chrome_bin
+    if chrome_bin:
+        chrome_options.binary_location = chrome_bin
 
-    # Be explicit about chromedriver too (helps avoid PATH surprises)
-    chromedriver_path = (
-        os.environ.get("CHROMEDRIVER")
-        or shutil.which("chromedriver")
-        or "/usr/bin/chromedriver"
+    # 2. Dynamically find ChromeDriver
+    chromedriver_path = os.environ.get("CHROMEDRIVER") or shutil.which(
+        "chromedriver"
     )
-    service = Service(executable_path=chromedriver_path)
 
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    service = (
+        Service(executable_path=chromedriver_path)
+        if chromedriver_path
+        else Service()
+    )
+
+    try:
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+    except Exception as e:
+        pytest.fail(f"Failed to initialize WebDriver: {e}")
+
     driver.implicitly_wait(10)
-
     yield driver
-
-    for entry in driver.get_log("browser"):
-        print(f"Browser console: {entry}")
-
     driver.quit()
 
 
