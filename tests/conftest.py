@@ -49,18 +49,14 @@ def driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    # 1. Dynamically find the browser binary
-    chrome_bin = (
-        os.environ.get("CHROME_BIN")
-        or shutil.which("chromium")
-        or shutil.which("chromium-browser")
-        or shutil.which("google-chrome")
-        or "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    )
+    # 1. Use the environment (from GitHub Actions)
+    # or fallback to system PATH for Chrome binary
+    chrome_bin = os.environ.get("CHROME_BIN") or shutil.which("chromium")
+
     if chrome_bin:
         chrome_options.binary_location = chrome_bin
 
-    # 2. Dynamically find ChromeDriver
+    # 2. Use the corrected ChromeDriver path
     chromedriver_path = os.environ.get("CHROMEDRIVER") or shutil.which(
         "chromedriver"
     )
@@ -71,12 +67,9 @@ def driver():
         else Service()
     )
 
-    try:
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-    except Exception as e:
-        pytest.fail(f"Failed to initialize WebDriver: {e}")
-
+    driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.implicitly_wait(10)
+
     yield driver
     driver.quit()
 
