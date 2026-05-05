@@ -27,15 +27,7 @@ jobs:
           sudo apt-get install -y chromium chromium-driver
           chromedriver --version
           chromium --version
-      # - name: Debug Binary Paths
-      #   run: |
-      #     echo "Chromium path: $(which chromium)"
-      #     echo "Chromium-browser path: $(which chromium-browser)"
-      #     echo "ChromeDriver path: $(which chromedriver)"
-      #     echo "CHROME_BIN env: $CHROME_BIN"
-      #     echo "CHROMEDRIVER env: $CHROMEDRIVER"
-      #     ls -l /usr/bin/chromium || echo "No chromium in /usr/bin"
-      #     ls -l /usr/bin/chromedriver || echo "No chromedriver in /usr/bin"
+
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -51,13 +43,11 @@ jobs:
         run: uv run pytest tests/ -v --cov=pyplet --cov-report=xml:coverage.xml --cov-report=term --cov-fail-under=40
         env:
           PYPLET_DEBUG: "1"
-          # CHROME_BIN: /usr/local/share/chromium/chrome-linux/chrome
-          # CHROMEDRIVER: /usr/bin/chromedriver
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v6
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
           fail_ci_if_error: false
 
       - name: Archive test results
