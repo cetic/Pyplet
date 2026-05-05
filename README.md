@@ -4,7 +4,7 @@
 
 Pyplet is an application server that lets you create interactive web
 applications using Python on both the client and server side.
-Powered by [Pyodide](https://pyodide.org/) (Python compiled to WebAssembly),
+Powered by [PyScript](https://pyscript.net/) (Python compiled to WebAssembly),
 Pyplet brings the full power of Python to the browser.
 
 ## Why Pyplet?
@@ -12,7 +12,7 @@ Pyplet brings the full power of Python to the browser.
 - **Pure Python**: Write your entire application in Python - no JavaScript required
 - **Real-time Communication**: Built-in WebSocket support for seamless
 client-server interaction
-- **Modern Async**: Leverages Python's async/await for responsive applications
+- **Modern Async**: Leverages Python's `async`/`await` for responsive applications
 - **Browser-Native**: Client code runs directly in the browser via WebAssembly
 - **Shared Code**: Reuse Python modules between client and server
 
@@ -94,7 +94,7 @@ Then open your browser to `http://localhost:8080` to see your apps!
 
 Here's a minimal Pyplet app showing real-time communication:
 
-**`hello_client.py`** (runs in the browser):
+**`hello_client.py`**, runs in the browser:
 
 ```python
 import pyplet
@@ -102,7 +102,7 @@ from js import document
 
 container = document.getElementById("container")
 
-class _(pyplet.client.ClientApplication):
+class MyClientApp(pyplet.client.ClientApplication):
     async def websocket_client_loop(self, ws: pyplet.WebSocket):
         # Receive message from server
         message = await ws.receive()
@@ -112,7 +112,7 @@ class _(pyplet.client.ClientApplication):
         await ws.send(b"Hello from the browser!")
 ```
 
-**`hello_server.py`**:
+**`hello_server.py`**, runs on the server:
 
 ```python
 import pyplet
@@ -132,31 +132,25 @@ class _(pyplet.server.ServerApplication):
 Pyplet uses a unique dual-runtime architecture:
 
 1. **Server-side**: Standard CPython running Tornado web server
-2. **Client-side**: Python code compiled to WebAssembly via Pyodide, running in
-the browser
+2. **Client-side**: Python code compiled to WebAssembly
+(e.g., via PyScript using Pyodide), running in the browser
 3. **Communication**: WebSocket connection bridges the two environments
 
 ```text
-┌─────────────────────┐         WebSocket         ┌─────────────────────┐
-│   Browser (Pyodide) │ <───────────────────────> │   Server (CPython)  │
-│   your_app_client.py│                           │   your_app_server.py│
-└─────────────────────┘                           └─────────────────────┘
+┌──────────────────────┐         WebSocket         ┌───────────────────────┐
+│  Browser (PyScript)  │ <───────────────────────> │   Server (CPython)    │
+│  your_app_client.py  │                           │   your_app_server.py  │
+└──────────────────────┘                           └───────────────────────┘
 ```
 
 ## Project Structure
 
 ```bash
-pyplet/
-├── apps/              # Your applications live here
-│   └── template/      # Template for new projects
-├── pyplet/
-│   ├── server/        # Server-side framework
-│   ├── client/        # Client-side framework
-│   └── shared/        # Code shared between client & server
-│       ├── websocket.py  # WebSocket abstraction
-│       └── dom/          # DOM manipulation utilities
-├── pyproject.toml     # Project configuration
-└── README.md          # You are here
+apps/                     # Your apps live here
+├── auth_rules.json       # The authentification rules are defined here
+└── app_1/
+    ├── app_1_client.py   # The client code
+    └── app_1_server.py   # The server code
 ```
 
 ## Authentication
@@ -171,9 +165,7 @@ runs with no login, exactly as before.
 **1. Register an OAuth app** with your provider and obtain a client ID and
 secret. Set the callback URL to:
 
-```text
-http://<your-host>/oauth/callback
-```
+[http://\<your-host>/oauth/callback](http://\<your-host>/oauth/callback)
 
 **2. Set environment variables:**
 
@@ -295,6 +287,7 @@ import pyplet
 
 if pyplet.is_server:
     print("Running on server")
+
 elif pyplet.is_client:
     print("Running in browser")
 ```
@@ -307,9 +300,14 @@ pyplet init <project_name>
 
 # Start the development server
 pyplet start
+pyplet run
+pyplet server
 
 # Start server with custom options
 pyplet start --port 3000 --address 0.0.0.0
+
+# Start the tutorial
+pyplet tutorial
 
 # Run server directly with Python
 python -m pyplet.server
@@ -354,9 +352,8 @@ Pyplet should work in any modern browser that supports WebAssembly:
 Pyplet uses:
 
 - **Tornado** - Async web server
-- **Pyodide** - Python in WebAssembly
+- **PyScript** - Python in WebAssembly (via Pyodide)
 - **Cython** - Python to C compiler for performance
-- **pyodide-build** - Build tools for Pyodide packages
 
 ## Adding Dependencies
 
@@ -379,20 +376,22 @@ Check the `apps/template/` directory for a working example demonstrating:
 
 ## Limitations
 
-Since client code runs in Pyodide (WebAssembly):
+Since client code runs in PyScript (WebAssembly):
 
 - Not all Python packages are available in the browser
 - Some stdlib modules have limited functionality
-- Use the `js` module to access browser APIs directly
+- The `js` module gives direct access to the browser APIs
 
 ## Contributing
 
 Contributions are welcome! When contributing:
 
 1. Maintain clean separation between client and server code
-2. Use async/await for all I/O operations
-3. Test in both server (CPython) and client (Pyodide) environments
+2. Use `async`/`await` for all I/O operations
+3. Test in both server (CPython) and client (PyScript) environments
 4. Follow the existing naming conventions
+5. Use the `prek` (`pre-commit`)
+6. Implement tests for the features your are adding
 
 ## License
 
