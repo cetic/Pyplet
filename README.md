@@ -127,6 +127,29 @@ class _(pyplet.server.ServerApplication):
         print(f"Client says: {response.decode()}")
 ```
 
+## Custom GUI components
+
+You can create reusable components that work on both client and server.
+
+### Download Component
+
+```python
+# Server side download component
+download("./static/static_file.txt", "Download from server"),
+
+# Client side download component (from virtual file system, i.e., from_vfs=True)
+download(
+    "./public/vfs_file.txt", "Download from client", from_vfs=True
+),
+```
+
+You must put you files in the right project folder in the `static` directory
+ (the name of the directory must be `static`)
+for the server, and in the `public` directory for the client
+ (the name of the directory can be changed, but should not be `static`).
+The `from_vfs` flag tells Pyplet to look for the file in the virtual file
+system (client-side) instead of the server's filesystem.
+
 ## How It Works
 
 Pyplet uses a unique dual-runtime architecture:

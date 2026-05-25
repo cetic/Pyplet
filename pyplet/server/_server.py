@@ -398,6 +398,9 @@ class ServerApplication:
             (markupsafe_parent, "markupsafe/**", ""),
         ]
 
+        # Define the exact, absolute path to the project's static folder
+        project_static_dir = Path(config.apps, project, "static").resolve()
+
         for root_dir, pattern, prefix in files:
             for file in glob.glob(pattern, root_dir=root_dir, recursive=True):
                 # Skip __pycache__ and similar hidden files
@@ -415,20 +418,9 @@ class ServerApplication:
                 ):
                     continue
 
-                # Filter out static folders
-                # if config.apps in full_path.parts:
-                #     # Only filter out f"{config.apps}/{project}/static/**"
-                #     try:
-                #         static_index = full_path.parts.index("static")
-                #         if (
-                #             static_index > 0
-                #             and full_path.parts[static_index - 1] == project
-                #         ):
-                #             continue
-                #     except ValueError:
-                #         pass
-
-                #     continue
+                # Filter out project static folder
+                if full_path.resolve().is_relative_to(project_static_dir):
+                    continue
 
                 target_path = Path(prefix, file)
 
