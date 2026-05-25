@@ -10,8 +10,10 @@ class MyClientApp(pyplet.client.ClientApplication):
     async def websocket_client_loop(self, ws: pyplet.WebSocket):
         container.innerHTML = str(
             div[
-                download("path/to/file.txt", "Download File"),
-                download("path/to/file_2.txt", "Download File 2"),
+                download("./static/static_file.txt", "Download File"),
+                download(
+                    "./public/vfs_file.txt", "Download File 2", from_vfs=True
+                ),
                 upload("path/to/file.txt", "Upload File"),
                 upload_area("path/to/dir", "Upload Directory"),
             ]

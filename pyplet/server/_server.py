@@ -275,14 +275,9 @@ class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
 _app_spec = {
     "handlers": [
         (
-            r"/static/(.*)",
-            tornado.web.StaticFileHandler,
-            {"path": os.path.join(os.path.dirname(__file__), "static")},
-        ),
-        (
             r"/pyodide/(.*)",
             tornado.web.StaticFileHandler,
-            {"path": os.path.join(os.path.dirname(__file__), "../pyodide")},
+            {"path": os.path.join(config.apps, "../pyodide")},
         ),
         (r"/", IndexHandler),
         (r"/about", AboutHandler),
@@ -292,6 +287,19 @@ _app_spec = {
         (r"/oauth/callback", OAuthCallbackHandler),
         (r"/auth/email", MagicLinkRequestHandler),
         (r"/auth/verify", MagicLinkVerifyHandler),
+        # App static resources (static files)
+        (
+            # ONE capture group covering the app name,
+            # the static folder, and the filename
+            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*/static/.*)",
+            tornado.web.StaticFileHandler,
+            {"path": config.apps},
+        ),
+        # App upload endpoint (for upload() and upload_area())
+        (
+            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/upload/.*",
+            tornado.web.RequestHandler,
+        ),
         (
             r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/([a-zA-Z_][a-zA-Z0-9_]*)\.json",
             PackageHandler,
@@ -406,6 +414,21 @@ class ServerApplication:
                     or full_path.suffix == ".pyc"
                 ):
                     continue
+
+                # Filter out static folders
+                # if config.apps in full_path.parts:
+                #     # Only filter out f"{config.apps}/{project}/static/**"
+                #     try:
+                #         static_index = full_path.parts.index("static")
+                #         if (
+                #             static_index > 0
+                #             and full_path.parts[static_index - 1] == project
+                #         ):
+                #             continue
+                #     except ValueError:
+                #         pass
+
+                #     continue
 
                 target_path = Path(prefix, file)
 

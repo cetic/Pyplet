@@ -15,6 +15,7 @@ dependencies = [
     "python-minifier>=2.11.3",
     "tornado>=6.5.1",
 ]
+
 authors = [
   {name = "Maxime Istasse", email = "istassem@gmail.com"},
 ]

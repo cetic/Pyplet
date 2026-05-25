@@ -149,6 +149,21 @@ def _setup_vfs_bindings():  # noqa: F811, C901
 
     def download_vfs_file(file_path):
         try:
+            file_path = (
+                os.path.normpath(file_path).lstrip("/").replace("../", "")
+            )
+            file_path = os.path.join(
+                os.path.dirname(js.window.location.pathname),
+                file_path,
+            ).lstrip("/")
+
+            file_path = os.path.join(os.getcwd(), file_path)
+
+            # Check if the file exists in the VFS
+            if not os.path.isfile(file_path):
+                js.console.error(f"File not found: {file_path}")
+                return
+
             with open(file_path, "rb") as f:
                 content = f.read()
             b64_str = base64.b64encode(content).decode("utf-8")
