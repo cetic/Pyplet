@@ -124,6 +124,15 @@ class PypletConfig:
         ),
         env_var="PYPLET_COOKIE_SECRET",
     )
+    session_max_age_days = Param(
+        default=1,
+        description=(
+            "Session cookie lifetime in days (default: 1 = 24 h). Set "
+            "PYPLET_SESSION_TTL_DAYS to extend."
+        ),
+        type_cast=int,
+        env_var="PYPLET_SESSION_TTL_DAYS",
+    )
     oauth_google_client_id = Param(
         default=None,
         description="Google OAuth2 client ID.",

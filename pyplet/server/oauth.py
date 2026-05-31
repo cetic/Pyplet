@@ -174,7 +174,6 @@ def _decode_id_token_claims(id_token: str) -> dict:
 # ---------------------------------------------------------------------------
 
 SESSION_COOKIE = "pyplet_user"
-_SESSION_MAX_AGE_DAYS = 1  # 24 hours
 
 
 def set_session(handler, user_info: dict) -> None:
@@ -183,7 +182,7 @@ def set_session(handler, user_info: dict) -> None:
     handler.set_signed_cookie(
         SESSION_COOKIE,
         payload,
-        expires_days=_SESSION_MAX_AGE_DAYS,
+        expires_days=config.session_max_age_days,
         httponly=True,
         samesite="Lax",
     )
@@ -192,7 +191,7 @@ def set_session(handler, user_info: dict) -> None:
 def get_session(handler) -> dict | None:
     """Return the user dict from the signed cookie, or ``None``."""
     raw = handler.get_signed_cookie(
-        SESSION_COOKIE, max_age_days=_SESSION_MAX_AGE_DAYS
+        SESSION_COOKIE, max_age_days=config.session_max_age_days
     )
     if raw is None:
         return None
