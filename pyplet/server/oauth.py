@@ -116,6 +116,22 @@ def register_auth_check(fn) -> None:
     _extra_auth_checks.append(fn)
 
 
+# Callbacks registered by a server application to handle Drive-consent
+# tokens
+# (Story 14.8 / CAP-8). Called after a drive-flow OAuth callback completes.
+_drive_token_hooks: list = []
+
+
+def register_drive_token_hook(fn) -> None:
+    """Register an async callback called after a drive-consent OAuth callback.
+
+    Called with (sub: str, email: str, refresh_token: str | None, scopes: str).
+    Registered hooks are called in order once the Drive token exchange
+    succeeds.
+    """
+    _drive_token_hooks.append(fn)
+
+
 def auth_enabled() -> bool:
     """True when at least one authentication method (OAuth or magic-link)
     is configured."""
@@ -354,6 +370,59 @@ async def start_login(handler, provider: str) -> None:
     handler.redirect(auth_url)
 
 
+async def start_drive_consent(handler, next_url: str = "/") -> None:
+    """Initiate an incremental OAuth authorization to add drive.file scope.
+
+    Uses the same unified Web-application client as login (Q3). Adds
+    access_type=offline and prompt=consent to force a refresh_token response.
+    Stores "flow": "drive" in the state cookie so handle_callback routes
+    the response to the Drive token hook instead of set_session.
+
+    Does not modify the login session (user stays logged in throughout).
+
+    Args:
+        handler: Tornado RequestHandler.
+        next_url: URL to redirect to after Drive consent completes.
+
+    Returns:
+        None (redirects the browser).
+    """
+    meta = _PROVIDER_CONFIGS["google"]
+    oidc = await _fetch_oidc_config("google")
+    client_id = meta["client_id"]()
+    state = secrets.token_urlsafe(16)
+
+    handler.set_signed_cookie(
+        _STATE_COOKIE,
+        json.dumps(
+            {
+                "state": state,
+                "next": next_url,
+                "provider": "google",
+                "flow": "drive",
+            }
+        ),
+        httponly=True,
+        samesite="Lax",
+    )
+
+    callback_url = _callback_url(handler)
+    params = {
+        "client_id": client_id,
+        "redirect_uri": callback_url,
+        "response_type": "code",
+        "scope": " ".join(
+            meta["scopes"] + ["https://www.googleapis.com/auth/drive.file"]
+        ),
+        "state": state,
+        "access_type": "offline",
+        "prompt": "consent",
+        "include_granted_scopes": "true",
+    }
+    auth_url = oidc["authorization_endpoint"] + "?" + urlencode(params)
+    handler.redirect(auth_url)
+
+
 async def handle_callback(handler) -> None:
     """
     Complete the OAuth authorization-code flow.
@@ -441,6 +510,25 @@ async def handle_callback(handler) -> None:
 
     if not user_info["email"]:
         _error(handler, 500, "Provider did not include an email in the token.")
+        return
+
+    # Story 14.8 / CAP-8: Drive incremental consent callback — do NOT call
+    # set_session (the user is already logged in). Call drive token hooks
+    # to store the refresh token, then redirect back to the app.
+    if state_data.get("flow") == "drive":
+        refresh_token = tokens.get(
+            "refresh_token"
+        )  # None if Google omitted it
+        scopes = tokens.get("scope", "")
+        for hook in _drive_token_hooks:
+            try:
+                await hook(
+                    user_info["sub"], user_info["email"], refresh_token, scopes
+                )
+            except Exception as exc:
+                logger.error("Drive token hook failed: %s", exc)
+        handler.clear_cookie(_STATE_COOKIE)
+        handler.redirect(next_url)
         return
 
     set_session(handler, user_info)
