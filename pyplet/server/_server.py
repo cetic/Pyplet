@@ -282,6 +282,23 @@ class LogoutHandler(tornado.web.RequestHandler):
         self.redirect("/")
 
 
+class HealthzHandler(tornado.web.RequestHandler):
+    """
+    GET  /healthz  — unauthenticated process-liveness probe.
+
+    Deliberately a plain handler (NOT ``_AuthMixin``): a liveness probe must
+    answer for an LB / systemd / k8s without a session, even when auth is
+    enabled.  Process-up only — it performs NO database / provider / event-loop
+    checks (deep readiness is the app's ``/readyz`` route).  Lives in core's
+    static ``_app_spec`` so it answers for every pyplet app, even when an app
+    module failed to import (``astart`` swallows app-import errors).
+    """
+
+    async def get(self):
+        self.set_header("Content-Type", "application/json")
+        self.write({"status": "ok"})
+
+
 class OAuthLoginHandler(tornado.web.RequestHandler):
     """
     GET  /oauth/login?provider=<name>  — kick off the OAuth flow.
@@ -376,6 +393,7 @@ _app_spec = {
             tornado.web.StaticFileHandler,
             {"path": os.path.join(config.apps, "../pyodide")},
         ),
+        (r"/healthz", HealthzHandler),
         (r"/", IndexHandler),
         (r"/about", AboutHandler),
         (r"/login", LoginHandler),
