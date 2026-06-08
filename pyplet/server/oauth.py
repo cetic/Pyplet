@@ -41,9 +41,16 @@ Example::
 
     [[".*", "@mycompany\\.com$"], ["public/demo", ".*"]]
 
-If the file does not exist, **any authenticated user** can see **all** apps.
+Deny-by-default (Story 17.6, PB-1): when auth is **enabled** but the rules
+file is missing, ACL **denies** all app access (fail closed) and logs an
+ERROR. When auth is fully disabled (no provider — local dev), a missing file
+still allows all apps so an un-authenticated local run works.
 
-Auth is silently disabled when no OAuth provider env vars are set.
+Fail-closed startup (``PYPLET_REQUIRE_AUTH=1``): on this production profile
+``enforce_startup_auth_policy()`` refuses to boot when no auth method is
+configured, when ``auth_rules.json`` is missing, or when magic-link is enabled
+without ``PYPLET_ALLOW_MAGICLINK=1``. Without the flag, auth is silently
+disabled when no OAuth provider env vars are set (a loud WARNING is logged).
 """
 
 from __future__ import annotations
@@ -231,7 +238,7 @@ def clear_session(handler) -> None:
 # app_pattern is matched against the combined "project/app" string.
 _AclRule = tuple[re.Pattern, re.Pattern]
 _acl_rules: list[_AclRule] | None = None  # None = "not loaded yet"
-_acl_allow_all: bool = False  # True when no rules file exists
+_acl_allow_all: bool = False  # True only when no rules file AND auth disabled
 
 
 def _load_acl_rules() -> None:
@@ -240,9 +247,22 @@ def _load_acl_rules() -> None:
 
     rules_path = config.auth_rules_file
     if not os.path.isfile(rules_path):
+        if auth_enabled():
+            # Fail CLOSED: auth is on but no rules file → deny all by default.
+            logger.error(
+                "No ACL rules file at %s while auth is enabled — denying all "
+                "app access by default (deny-by-default). Ship "
+                "auth_rules.json.",
+                rules_path,
+            )
+            _acl_rules = []
+            _acl_allow_all = False
+            return
+        # Auth fully disabled (local dev, no provider) — allow all so an
+        # un-authenticated local run still works.
         logger.info(
-            "No ACL rules file found at %s — all authenticated users"
-            " can access all apps.",
+            "No ACL rules file at %s and auth disabled — allowing all apps "
+            "(local dev).",
             rules_path,
         )
         _acl_rules = []
@@ -291,7 +311,9 @@ def is_app_permitted(project: str, app: str, email: str) -> bool:
     Each rule's first regex is matched against the combined ``"project/app"``
     string; the second is matched against the user's email address.
     Rules are evaluated in order; the first full match grants access.
-    If no rules file exists, access is always granted.
+    When auth is enabled but no rules file exists, access is denied
+    (deny-by-default, Story 17.6); the allow-all-on-missing-file path
+    survives only when auth is fully disabled (local dev).
     """
     _ensure_acl_loaded()
 
@@ -325,6 +347,79 @@ def permitted_apps(email: str) -> list[tuple[str, str]]:
         if is_app_permitted(project, app, email):
             result.append((project, app))
     return result
+
+
+# ---------------------------------------------------------------------------
+# Fail-closed startup policy (Story 17.6, PB-1)
+# ---------------------------------------------------------------------------
+
+
+class AuthConfigError(RuntimeError):
+    """Raised at startup when a fail-closed auth policy is violated.
+
+    Refusing to boot is intentional: a misdelivered auth config must
+    hard-fail rather than silently serve every app anonymously (PB-1).
+    """
+
+
+def enforce_startup_auth_policy(magiclink_enabled: bool = False) -> None:
+    """Fail-closed startup checks for the production profile (PB-1,
+    Story 17.6).
+
+    On the production profile (``PYPLET_REQUIRE_AUTH=1``) raises
+    ``AuthConfigError`` — refusing to boot — when (1) no auth method is
+    configured, (2) auth is enabled but ``auth_rules.json`` is missing, or
+    (3) magic-link is configured without ``PYPLET_ALLOW_MAGICLINK=1``. Off the
+    production profile it logs a loud WARNING/ERROR instead of raising, so an
+    explicitly-open local dev run still starts.
+
+    Args:
+        magiclink_enabled: whether magic-link auth is active. Passed in by the
+            caller (``_server.astart`` → ``magiclink.enabled()``) to avoid an
+            ``oauth``↔``magiclink`` circular import.
+
+    Side effects: emits log records; reads ``config`` + env.
+    Raises: ``AuthConfigError`` to abort startup on a production-profile
+        breach.
+    """
+    production = config.require_auth == "1"
+
+    if not auth_enabled():
+        if production:
+            raise AuthConfigError(
+                "PYPLET_REQUIRE_AUTH=1 but no authentication method is "
+                "configured — refusing to boot (would serve every app "
+                "anonymously). Configure a provider (e.g. "
+                "OAUTH_GOOGLE_CLIENT_ID/SECRET), or unset PYPLET_REQUIRE_AUTH "
+                "for an explicitly open deployment."
+            )
+        logger.warning(
+            "Authentication is DISABLED (no provider configured) — every "
+            "request is served anonymously. Set PYPLET_REQUIRE_AUTH=1 with a "
+            "configured provider on any non-local deployment."
+        )
+        return
+
+    if not os.path.isfile(config.auth_rules_file):
+        msg = (
+            "auth_rules.json not found at %s while authentication is enabled "
+            "— ACL DENIES all app access by default (fail closed)."
+            % config.auth_rules_file
+        )
+        if production:
+            raise AuthConfigError(
+                msg + " Refusing to boot under PYPLET_REQUIRE_AUTH; ship "
+                "auth_rules.json in the deploy artifact."
+            )
+        logger.error(msg)
+
+    if production and magiclink_enabled and config.allow_magiclink != "1":
+        raise AuthConfigError(
+            "Magic-link (MAGICLINK_SMTP_*) is configured on the production "
+            "profile (PYPLET_REQUIRE_AUTH=1) — refusing to boot. Magic-link "
+            "mints a session for ANY email and bypasses the OAuth/ACL "
+            "boundary. Set PYPLET_ALLOW_MAGICLINK=1 to opt in explicitly."
+        )
 
 
 # ---------------------------------------------------------------------------

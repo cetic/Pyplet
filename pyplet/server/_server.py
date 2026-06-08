@@ -495,6 +495,12 @@ async def astart():
         except Exception as e:
             logger.error(f"Failed to load module {path}: {e}", exc_info=True)
 
+    # Fail-closed auth policy (Story 17.6, PB-1): on the production profile,
+    # refuse to boot on a misdelivered auth config rather than serve
+    # anonymously. Runs once the modules are loaded, so the policy sees
+    # every discovered application.
+    oauth.enforce_startup_auth_policy(magiclink_enabled=magiclink.enabled())
+
     favicon_uri = None
     if config.favicon:
         # Relative paths (e.g. the default "../images/...") are resolved

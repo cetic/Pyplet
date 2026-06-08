@@ -158,6 +158,24 @@ class PypletConfig:
         description='Tenant ID or "common" for multi-tenant apps.',
         env_var="OAUTH_MICROSOFT_TENANT",
     )
+    require_auth = Param(
+        default="0",
+        description=(
+            "Production fail-CLOSED switch. Set to '1' to refuse boot when no "
+            "auth method is configured, when auth_rules.json is missing, or "
+            "when magic-link is enabled without PYPLET_ALLOW_MAGICLINK."
+        ),
+        env_var="PYPLET_REQUIRE_AUTH",
+    )
+    allow_magiclink = Param(
+        default="0",
+        description=(
+            "Set to '1' to opt magic-link login IN on a production "
+            "(PYPLET_REQUIRE_AUTH) profile; otherwise a configured "
+            "MAGICLINK_SMTP_* refuses to boot."
+        ),
+        env_var="PYPLET_ALLOW_MAGICLINK",
+    )
 
     # ── Magic-link e-mail auth ───────────────────────────────────────────────
     magiclink_smtp_host = Param(

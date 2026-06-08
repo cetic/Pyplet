@@ -193,9 +193,8 @@ export OAUTH_MICROSOFT_TENANT=common  # or your tenant ID
 
 ### Access control (ACL)
 
-By default every authenticated user can see all apps. To restrict access,
-create `apps/auth_rules.json` — a JSON array of
-`["project/app regex", "email regex"]` pairs:
+To restrict which apps each user can see, create `apps/auth_rules.json` — a
+JSON array of `["project/app regex", "email regex"]` pairs:
 
 ```json
 [
@@ -210,6 +209,12 @@ the second against the user's email address.
 If no rule matches, access is denied.
 
 Override the rules file path with `PYPLET_AUTH_RULES_FILE`.
+
+**Deny-by-default (fail closed):** when authentication is enabled but the rules
+file is **missing**, access is **denied** to every app — ship `auth_rules.json`
+in your deploy artifact. (When auth is fully disabled — local dev with no
+provider — a missing file still allows all apps, so an un-authenticated local
+run works.)
 
 ### Magic-link e-mail authentication
 
@@ -237,11 +242,27 @@ The ACL rules file applies to magic-link logins exactly the same way it does
 for OAuth: the user's e-mail address is matched against the `email_regex`
 column of each rule.
 
+Because magic-link mints a session for **any** e-mail that can receive the
+link, it is **refused at boot on the production profile** (`PYPLET_REQUIRE_AUTH=1`,
+below) unless you opt in explicitly with `PYPLET_ALLOW_MAGICLINK=1`.
+
+### Production fail-closed startup (`PYPLET_REQUIRE_AUTH`)
+
+On any non-local deployment, set `PYPLET_REQUIRE_AUTH=1`. With it, the server
+**refuses to boot** (exits non-zero with a logged error) rather than silently
+serving anonymously when the auth config is misdelivered — specifically when
+**no** auth method is configured, when `auth_rules.json` is **missing**, or
+when magic-link is enabled **without** `PYPLET_ALLOW_MAGICLINK=1`. Without the
+flag (the default), a deployment with no provider still starts but logs a loud
+WARNING that every request is served anonymously.
+
 ### Configuration reference
 
 | Variable | Description |
 | --- | --- |
 | `PYPLET_COOKIE_SECRET` | Secret for signing session cookies |
+| `PYPLET_REQUIRE_AUTH` | Fail-closed switch: `1` refuses boot, default `0` |
+| `PYPLET_ALLOW_MAGICLINK` | Opt magic-link IN on require-auth, default `0` |
 | **OAuth — Google** | |
 | `OAUTH_GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
 | `OAUTH_GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
