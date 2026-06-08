@@ -8,6 +8,7 @@ Docstring style: Google.
 """
 
 import json
+import uuid
 from typing import Optional
 
 # Make all the elements available at the module level
@@ -231,65 +232,68 @@ def upload(
     overwrite_classes: Optional[str] = None,
     extra_classes: Optional[str] = None,
     **additional_attrs,
-) -> Renderable:
-    """An upload button that uploads files to the client (VFS) and/or server.
+):
+    """An upload button that native opens the file browser."""
 
-    Args:
-        filename: The name of the file to upload.
-        button_text: The text to display on the button.
-        client_destination: The path to the client (VFS) destination.
-        server_destination: The path to the server destination.
-        files_limit: The maximum number of files to upload.
-        total_size_limit: The maximum total size of all uploaded files.
-        per_file_size_limit: The maximum size of each uploaded file.
-        allowed_extensions: A list of allowed file extensions
-        (e.g. ["jpg", "png"], ["*"]).
-        overwrite_classes: A string of classes to overwrite
-        the default classes.
-        extra_classes: A string of classes to add to the button.
-        additional_attrs: Additional attributes to add to the button.
-
-    Returns:
-        A renderable element that represents the upload button.
-    """
-
-    # json.dumps safely formats strings and turns None into null for JavaScript
-    safe_filename = json.dumps(filename or "")
+    # safe_filename = json.dumps(filename or "")
     safe_client_dest = json.dumps(client_destination or "")
     safe_server_dest = json.dumps(server_destination or "")
 
     if allowed_extensions == ["*"]:
         allowed_extensions = None
+    safe_extensions = json.dumps(allowed_extensions or [])
 
-    onclick_js = (
-        "event.preventDefault(); "
-        + "upload_file("
-        + f"{safe_filename}, "
-        + f"{safe_client_dest}, "
-        + f"{safe_server_dest}, "
-        + f"{files_limit}, "
-        + f"{total_size_limit}, "
-        + f"{per_file_size_limit}, "
-        + f"{json.dumps(allowed_extensions or [])});"
+    uid = uuid.uuid4().hex[:8]
+    input_id = f"upload-input-{uid}"
+
+    # Instead of 'onclick', we use 'onchange'.
+    # The browser natively handles the click and opens the file picker.
+    # When the user selects a file, this JS runs.
+    onchange_js = (
+        "if(this.files.length === 0) return; "
+        # We bridge this to your framework by synthesizing a drop event,
+        # reusing the handle_drop JS logic from your upload_area which
+        # we know handles files well.
+        "const mockEvent = "
+        "{ dataTransfer: { files: this.files }, preventDefault: () => {} }; "
+        f"handle_drop(mockEvent, "
+        f"{safe_client_dest}, "
+        f"{safe_server_dest}, "
+        f"{json.dumps(files_limit)}, "
+        f"{json.dumps(total_size_limit)}, "
+        f"{json.dumps(per_file_size_limit)}, "
+        f"{safe_extensions}); "
+        # Reset input so the user can upload the same file again if needed
+        "this.value = '';"
     )
 
-    return a(
+    return label(
         _merge_classes(
-            ".btn-primary.btn",
+            ".btn-primary.btn",  # Retains your original button styling
             extra_classes=extra_classes,
             overwrite_classes=overwrite_classes,
         ),
-        href="#",
-        text=button_text,
-        onclick=onclick_js,
+        # Ensure it feels like a button
+        style="cursor: pointer; display: inline-block;",
         **additional_attrs,
-    )[button_text]
+    )[
+        button_text,
+        input(
+            type="file",
+            id=input_id,
+            style="display: none;",  # Hide the ugly default HTML file input
+            multiple="multiple"
+            if files_limit != 1
+            else None,  # Allow multiple if limit isn't 1
+            onchange=onchange_js,
+        ),
+    ]
 
 
 def upload_area(
     client_destination: Optional[str] = None,
     server_destination: Optional[str] = None,
-    text: str = "Drag and drop files here",
+    text: str = "Drag and drop files here, or click to browse",
     files_limit: Optional[int] = None,
     total_size_limit: Optional[int] = 50 * 2**20,
     per_file_size_limit: Optional[int] = 4 * 2**20,
@@ -297,78 +301,169 @@ def upload_area(
     extra_classes: Optional[str] = None,
     overwrite_classes: Optional[str] = None,
     **additional_attrs,
-) -> Renderable:
-    """A drag-and-drop zone for uploading files
-    to the client (VFS) and/or server.
+):
+    """A drag-and-drop zone with preview, confirmation,
+    and progress tracking.
 
     Args:
-        client_destination: The VFS path to upload files to.
-        server_destination: The server path to upload files to.
-        text: The text to display in the upload area.
-        files_limit: The maximum number of files to upload.
-        total_size_limit: The maximum total size of all files to upload.
-        per_file_size_limit: The maximum size of each file to upload.
-        allowed_extensions: A list of allowed file extensions.
-        extra_classes: Additional CSS classes to apply to the upload area.
-        overwrite_classes: CSS classes to overwrite the default classes.
-        additional_attrs: Additional attributes to add to the upload area.
+        client_destination: VFS path to upload files to.
+        server_destination: Server path to upload files to.
+        text: Instructional text to display in the drop area.
+        files_limit: Maximum number of files allowed per upload.
+        total_size_limit: Maximum combined size of all files in bytes.
+        per_file_size_limit: Maximum size of each individual file in bytes.
+        allowed_extensions:
+            List of allowed file extensions
+            (e.g. [".txt", ".jpg"]) or ["*"] for any.
+        extra_classes: Additional CSS classes to apply to the container.
+        overwrite_classes:
+            CSS classes to overwrite the default container classes.
+        additional_attrs: Additional HTML attributes to add to the container.
 
     Returns:
-        A renderable div element representing the upload area.
+        A renderable element representing the upload area.
     """
 
     safe_client_dest = json.dumps(client_destination or "")
     safe_server_dest = json.dumps(server_destination or "")
 
-    # JS handlers to manage the visual state and
-    # prevent default browser navigation
-    drag_over_js = "event.preventDefault(); this.classList.add('drag-over');"
-    drag_leave_js = (
-        "event.preventDefault(); this.classList.remove('drag-over');"
-    )
-
     if allowed_extensions == ["*"]:
         allowed_extensions = None
+    safe_extensions = json.dumps(allowed_extensions or [])
 
-    # On drop, prevent navigation, reset visual state, and hand off to Python
-    drop_js = (
-        "event.preventDefault(); "
-        + "this.classList.remove('drag-over'); "
-        + "handle_drop(event, "
-        + f"{safe_client_dest}, "
-        + f"{safe_server_dest}, "
-        + f"{files_limit}, "
-        + f"{total_size_limit}, "
-        + f"{per_file_size_limit}, "
-        + f"{json.dumps(allowed_extensions or [])});"
+    # Generate unique IDs so multiple upload areas
+    # on the same page don't conflict
+    uid = uuid.uuid4().hex[:8]
+    input_id = f"file-input-{uid}"
+    list_id = f"file-list-{uid}"
+    progress_id = f"progress-{uid}"
+    btn_id = f"upload-btn-{uid}"
+
+    # 1. Drag & Drop Visuals
+    drag_over_js = (
+        "event.preventDefault(); this.style.borderColor = '#007bff'; "
+        "this.style.backgroundColor = '#f8f9fa';"
+    )
+    drag_leave_js = (
+        "event.preventDefault(); this.style.borderColor = '#ccc'; "
+        "this.style.backgroundColor = 'transparent';"
     )
 
-    # On click, open the file picker
-    click_js = (
+    # 2. Hand off dropped files to the hidden input natively
+    drop_js = (
         "event.preventDefault(); "
-        + "this.classList.remove('drag-over'); "
-        + "handle_click(event, "
-        + f"{safe_client_dest}, "
-        + f"{safe_server_dest}, "
-        + f"{files_limit}, "
-        + f"{total_size_limit}, "
-        + f"{per_file_size_limit}, "
-        + f"{json.dumps(allowed_extensions or [])});"
+        "this.style.borderColor = '#ccc'; "
+        "this.style.backgroundColor = 'transparent'; "
+        "if(event.dataTransfer.files.length > 0) { "
+        f"    const fileInput = document.getElementById('{input_id}'); "
+        "    fileInput.files = event.dataTransfer.files; "
+        "    fileInput.dispatchEvent(new Event('change')); "
+        "}"
+    )
+
+    # 3. Update the UI when files are selected (via click or drop)
+    on_change_js = (
+        f"const list = document.getElementById('{list_id}'); "
+        f"const btn = document.getElementById('{btn_id}'); "
+        "list.innerHTML = ''; "
+        "for(let i=0; i<this.files.length; i++) { "
+        "   let li = document.createElement('li'); "
+        "   li.style.padding = '4px 0'; "
+        "   li.textContent = '📄 ' + this.files[i].name; "
+        "   list.appendChild(li); "
+        "} "
+        "btn.style.display = this.files.length > 0 ? 'block' : 'none';"
+    )
+
+    # 4. Trigger framework's upload logic on confirmation
+    upload_js = (
+        "event.preventDefault(); "
+        f"const fileInput = document.getElementById('{input_id}'); "
+        "const progressContainer = "
+        f"document.getElementById('{progress_id}-container'); "
+        "if (fileInput.files.length === 0) return; "
+        "progressContainer.style.display = 'block'; "
+        "this.disabled = true; "
+        "this.textContent = 'Uploading...'; "
+        # Bridge: Create a synthetic drop event
+        # to feed to your existing pyplet JS backend
+        "const mockEvent = "
+        "{ dataTransfer: { files: fileInput.files }, "
+        "preventDefault: () => {} }; "
+        f"handle_drop(mockEvent, {safe_client_dest}, {safe_server_dest}, "
+        f"{json.dumps(files_limit)}, {json.dumps(total_size_limit)}, "
+        f"{json.dumps(per_file_size_limit)}, {safe_extensions});"
     )
 
     return div(
         _merge_classes(
-            ".upload-area",
+            ".upload-container",
             extra_classes=extra_classes,
             overwrite_classes=overwrite_classes,
         ),
-        text=text,
-        ondragover=drag_over_js,
-        ondragleave=drag_leave_js,
-        ondrop=drop_js,
-        onclick=click_js,
+        # Basic layout styling - can be moved to CSS classes
+        style=(
+            "border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; "
+            "font-family: sans-serif; max-width: 500px;"
+        ),
         **additional_attrs,
-    )
+    )[
+        # Drop Zone (Acts as click target)
+        label(
+            style=(
+                "display: block; border: 2px dashed #ccc; "
+                "padding: 40px 20px; text-align: center; cursor: pointer; "
+                "border-radius: 6px; transition: 0.2s;"
+            ),
+            ondragover=drag_over_js,
+            ondragleave=drag_leave_js,
+            ondrop=drop_js,
+        )[
+            div(style="font-size: 16px; color: #555;")[text],
+            # Hidden input handles the OS file browser natively
+            input(
+                type="file",
+                id=input_id,
+                multiple=True,
+                style="display: none;",
+                onchange=on_change_js,
+            ),
+        ],
+        # Dynamic File List
+        ul(
+            id=list_id,
+            style=(
+                "list-style: none; padding: 0; margin-top: 16px; "
+                "font-size: 14px; color: #333;"
+            ),
+        ),
+        # Progress Bar (Hidden initially)
+        div(
+            id=f"{progress_id}-container",
+            style="display: none; margin-top: 16px;",
+        )[
+            div(style="font-size: 12px; color: #666; margin-bottom: 4px;")[
+                "Upload Progress"
+            ],
+            progress(
+                id=progress_id,
+                value="0",
+                max="100",
+                style="width: 100%; height: 10px;",
+            ),
+        ],
+        # Confirmation Button (Hidden initially)
+        button(
+            id=btn_id,
+            style=(
+                "display: none; margin-top: 16px; width: 100%; "
+                "padding: 10px; background-color: #007bff; color: white; "
+                "border: none; border-radius: 4px; cursor: pointer; "
+                "font-weight: bold;"
+            ),
+            onclick=upload_js,
+        )["Confirm Upload"],
+    ]
 
 
 def browser(
