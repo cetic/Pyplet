@@ -199,6 +199,22 @@ def _decode_id_token_claims(id_token: str) -> dict:
 SESSION_COOKIE = "pyplet_user"
 
 
+def _use_secure_cookies() -> bool:
+    """Whether auth cookies must carry the ``Secure`` attribute.
+
+    Behind a TLS-terminating edge the VM receives plain http with xheaders
+    OFF, so ``handler.request.protocol`` is unreliably ``"http"`` even for an
+    https client (audit DEPLOY-2). Decide from config, never request.protocol:
+    an explicit ``PYPLET_SECURE_COOKIES`` wins; otherwise derive from the https
+    scheme of ``config.url``. Plain-http local dev (flag unset, no https url)
+    → False, so dev still sets cookies over http.
+    """
+    flag = config.secure_cookies
+    if flag is not None and str(flag).strip() != "":
+        return str(flag).strip().lower() in ("1", "true", "yes", "on")
+    return (config.url or "").lower().startswith("https://")
+
+
 def set_session(handler, user_info: dict) -> None:
     """Write a signed session cookie containing *user_info*."""
     payload = json.dumps({**user_info, "_ts": int(time.time())})
@@ -208,6 +224,7 @@ def set_session(handler, user_info: dict) -> None:
         expires_days=config.session_max_age_days,
         httponly=True,
         samesite="Lax",
+        secure=_use_secure_cookies(),
     )
 
 
@@ -421,6 +438,18 @@ def enforce_startup_auth_policy(magiclink_enabled: bool = False) -> None:
             "boundary. Set PYPLET_ALLOW_MAGICLINK=1 to opt in explicitly."
         )
 
+    # Story 17.7 (PB-9 / SECURI-9): a persistent signing secret is mandatory in
+    # production — without it _server.py:325 falls back to a per-process
+    # secrets.token_hex(32) that invalidates every session on each restart.
+    if production and not config.oauth_cookie_secret:
+        raise AuthConfigError(
+            "PYPLET_REQUIRE_AUTH=1 but PYPLET_COOKIE_SECRET is unset — "
+            "refusing to boot with a per-process random cookie secret "
+            "(it would log out every user on each restart). "
+            "Set a persistent PYPLET_COOKIE_SECRET "
+            '(python -c "import secrets; print(secrets.token_hex(32))").'
+        )
+
 
 # ---------------------------------------------------------------------------
 # OAuth login flow helpers (called by handlers in _server.py)
@@ -448,6 +477,7 @@ async def start_login(handler, provider: str) -> None:
         json.dumps({"state": state, "next": next_url, "provider": provider}),
         httponly=True,
         samesite="Lax",
+        secure=_use_secure_cookies(),
     )
 
     callback_url = _callback_url(handler)
@@ -499,6 +529,7 @@ async def start_drive_consent(handler, next_url: str = "/") -> None:
         ),
         httponly=True,
         samesite="Lax",
+        secure=_use_secure_cookies(),
     )
 
     callback_url = _callback_url(handler)

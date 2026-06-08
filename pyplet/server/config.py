@@ -124,6 +124,15 @@ class PypletConfig:
         ),
         env_var="PYPLET_COOKIE_SECRET",
     )
+    secure_cookies = Param(
+        default=None,
+        description=(
+            "Force the Secure attribute on auth cookies ('1'/'0'). "
+            "When unset, derived from the https scheme of PYPLET_URL "
+            "(the deployed origin)."
+        ),
+        env_var="PYPLET_SECURE_COOKIES",
+    )
     session_max_age_days = Param(
         default=1,
         description=(

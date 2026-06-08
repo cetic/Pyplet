@@ -176,7 +176,9 @@ secret. Set the callback URL to:
 **2. Set environment variables:**
 
 ```bash
-# Required to sign session cookies (generate once and keep it stable):
+# Required & persistent in production — generate once and keep it stable.
+# Under PYPLET_REQUIRE_AUTH=1 the server refuses to boot when this is unset
+# (a per-process random secret logs out every user on each restart):
 export PYPLET_COOKIE_SECRET=$(python -c "import secrets; print(secrets.token_hex(32))")
 
 # Google
@@ -261,6 +263,7 @@ WARNING that every request is served anonymously.
 | Variable | Description |
 | --- | --- |
 | `PYPLET_COOKIE_SECRET` | Secret for signing session cookies |
+| `PYPLET_SECURE_COOKIES` | Force `Secure` attribute on auth cookies: `1`/`0` |
 | `PYPLET_REQUIRE_AUTH` | Fail-closed switch: `1` refuses boot, default `0` |
 | `PYPLET_ALLOW_MAGICLINK` | Opt magic-link IN on require-auth, default `0` |
 | **OAuth — Google** | |
@@ -280,6 +283,10 @@ WARNING that every request is served anonymously.
 | `MAGICLINK_TOKEN_TTL` | Token validity in seconds (default: `900` = 15 min) |
 | **ACL** | |
 | `PYPLET_AUTH_RULES_FILE` | ACL rules path (default: `apps/auth_rules.json`) |
+
+`PYPLET_COOKIE_SECRET` must be persistent and is required under
+`PYPLET_REQUIRE_AUTH=1` (the server refuses to boot when unset);
+`PYPLET_SECURE_COOKIES`, when unset, follows the `PYPLET_URL` scheme.
 
 ## Advanced Features
 

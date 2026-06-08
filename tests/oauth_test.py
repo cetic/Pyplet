@@ -160,6 +160,9 @@ def test_enforce_allows_magiclink_with_explicit_optin(monkeypatch, tmp_path):
     monkeypatch.setenv("OAUTH_GOOGLE_CLIENT_ID", "x")
     monkeypatch.setenv("OAUTH_GOOGLE_CLIENT_SECRET", "y")
     monkeypatch.setenv("PYPLET_AUTH_RULES_FILE", str(rules))
+    # Story 17.7 (PB-9): a fully-configured production profile also requires a
+    # persistent PYPLET_COOKIE_SECRET, else the 4th check refuses to boot.
+    monkeypatch.setenv("PYPLET_COOKIE_SECRET", "x" * 64)
     result = oauth.enforce_startup_auth_policy(magiclink_enabled=True)
     assert result is None
 
@@ -183,5 +186,8 @@ def test_enforce_allows_fully_configured_production_profile(
     monkeypatch.setenv("OAUTH_GOOGLE_CLIENT_ID", "x")
     monkeypatch.setenv("OAUTH_GOOGLE_CLIENT_SECRET", "y")
     monkeypatch.setenv("PYPLET_AUTH_RULES_FILE", str(rules))
+    # Story 17.7 (PB-9): a fully-configured production profile also requires a
+    # persistent PYPLET_COOKIE_SECRET, else the 4th check refuses to boot.
+    monkeypatch.setenv("PYPLET_COOKIE_SECRET", "x" * 64)
     result = oauth.enforce_startup_auth_policy(magiclink_enabled=False)
     assert result is None
