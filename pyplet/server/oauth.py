@@ -24,7 +24,9 @@ Always required when auth is enabled
 PYPLET_COOKIE_SECRET
     Signs session cookies.  Generate with:
         python -c "import secrets; print(secrets.token_hex(32))"
-    Without this, sessions survive only until the server restarts.
+    Without this, a random secret is generated per process, so sessions
+    survive only until the server restarts; under PYPLET_REQUIRE_AUTH=1
+    the server refuses to boot if unset.
 
 Per-app access control (ACL)
 ------------------------------

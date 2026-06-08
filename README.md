@@ -266,6 +266,7 @@ WARNING that every request is served anonymously.
 | `PYPLET_SECURE_COOKIES` | Force `Secure` attribute on auth cookies: `1`/`0` |
 | `PYPLET_REQUIRE_AUTH` | Fail-closed switch: `1` refuses boot, default `0` |
 | `PYPLET_ALLOW_MAGICLINK` | Opt magic-link IN on require-auth, default `0` |
+| `PYPLET_SESSION_TTL_DAYS` | Session cookie lifetime in days, default `1` |
 | **OAuth — Google** | |
 | `OAUTH_GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
 | `OAUTH_GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
