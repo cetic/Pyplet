@@ -119,8 +119,9 @@ class PypletConfig:
     oauth_cookie_secret = Param(
         default=None,
         description=(
-            "Signs session cookies. Without this, a "
-            "random secret is generated at startup."
+            "Signs session cookies. Without this, a random secret is "
+            "generated per process (all sessions drop on restart); under "
+            "PYPLET_REQUIRE_AUTH=1 the server refuses to boot if unset."
         ),
         env_var="PYPLET_COOKIE_SECRET",
     )
