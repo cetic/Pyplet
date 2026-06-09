@@ -438,6 +438,11 @@ _app_spec = {
     # server still works without PYPLET_COOKIE_SECRET
     # (sessions lost on restart).
     "cookie_secret": config.oauth_cookie_secret or secrets.token_hex(32),
+    # Max WebSocket frame size. Tornado defaults to ~10 MB, which a base64'd
+    # document upload exceeds (killing the socket before app code runs). The
+    # default 40 MB carries a 25 MB upload (~33 MB frame) with headroom; raise
+    # PYPLET_WS_MAX_MESSAGE_MB in lockstep with any app's per-document cap.
+    "websocket_max_message_size": config.ws_max_message_mb * 1024 * 1024,
 }
 
 

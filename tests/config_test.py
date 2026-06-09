@@ -1,7 +1,7 @@
 import pytest
 
 # Assuming this is your import path:
-from pyplet.server.config import Param
+from pyplet.server.config import Param, PypletConfig
 
 
 class MockConfig:
@@ -102,3 +102,33 @@ class TestParamDescriptor:
         # 3. Instance explicit set takes precedence over environment
         config.port = 6000
         assert config.port == 6000
+
+
+class TestWsMaxMessageMbParam:
+    """Story 18.17: the PYPLET_WS_MAX_MESSAGE_MB knob on the real config.
+
+    Mirrors the ``port`` Param idiom above but on the concrete
+    ``PypletConfig`` so the real env var name is exercised. The env override is
+    verified on the Param here, not on the import-frozen ``_app_spec``.
+    """
+
+    @pytest.fixture
+    def config(self):
+        """A fresh PypletConfig instance for each test."""
+        return PypletConfig()
+
+    def test_default_is_40(self, config):
+        """Default frame cap is 40 MB (carries a 25 MB base64'd upload)."""
+        assert config.ws_max_message_mb == 40
+
+    def test_env_var_name(self):
+        """The Param binds the PYPLET_WS_MAX_MESSAGE_MB env variable."""
+        assert (
+            PypletConfig.ws_max_message_mb.env_var
+            == "PYPLET_WS_MAX_MESSAGE_MB"
+        )
+
+    def test_env_override_casts_to_int(self, config, monkeypatch):
+        """An env override wins over the default and is cast to int."""
+        monkeypatch.setenv("PYPLET_WS_MAX_MESSAGE_MB", "64")
+        assert config.ws_max_message_mb == 64

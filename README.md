@@ -369,6 +369,7 @@ Available configuration options:
 - `--debug` / `PYPLET_DEBUG` - Debug mode (default: `1`)
 - `--pyodide-url` / `PYPLET_PYODIDE` - Pyodide CDN URL
 - `--url` / `PYPLET_URL` - Custom URL override
+- `PYPLET_WS_MAX_MESSAGE_MB` - Max WebSocket frame size MB (default: `40`)
 
 See the [Authentication](#authentication) section for OAuth-related variables.
 
