@@ -59,8 +59,11 @@ class TestUpload:
         result = upload()
         html = str(result)
         assert "btn-primary btn" in html
-        assert "upload_file" in html
-        assert 'href="#"' in html
+        assert "<label" in html  # Replaced <a> tag
+        assert 'type="file"' in html  # Now uses a native file input
+        assert (
+            "handle_drop" in html
+        )  # Uses the mock event bridge to trigger upload
 
     def test_upload_with_destination(self):
         result = upload(client_destination="/uploads")
@@ -70,6 +73,9 @@ class TestUpload:
     def test_upload_with_filename(self):
         result = upload(filename="my_file.csv")
         html = str(result)
+        # Note: If filename was removed from the handle_drop mock in the
+        # new version, ensure it gets passed down if your backend requires it.
+        # Assuming safe_filename was added to the JS call.
         assert "my_file.csv" in html
 
     def test_upload_with_extensions(self):
@@ -79,9 +85,13 @@ class TestUpload:
         assert "png" in html
 
     def test_upload_wildcard_extensions_cleared(self):
-        result_wildcard = upload(allowed_extensions=["*"])
-        result_none = upload(allowed_extensions=None)
-        assert str(result_wildcard) == str(result_none)
+        result = upload(allowed_extensions=["*"])
+        html = str(result)
+        # Cannot do str() == str() anymore because of unique UUID generation.
+        # Ensure the wildcard '*' was stripped and evaluates to an empty
+        # JS array '[]'.
+        assert '"*"' not in html
+        assert "[]" in html
 
     def test_upload_custom_classes(self):
         result = upload(overwrite_classes=".my-btn")
@@ -92,10 +102,16 @@ class TestUploadArea:
     def test_upload_area_basic(self):
         result = upload_area()
         html = str(result)
-        assert "upload-area" in html
+        assert (
+            "upload-container" in html
+        )  # Class updated in the new implementation
         assert "handle_drop" in html
-        assert "handle_click" in html
-        assert "drag-over" in html
+        assert 'type="file"' in html
+        assert "<progress" in html  # Progress bar exists
+        assert "<button" in html  # Confirmation button exists
+        assert "<ul" in html  # File list exists
+        # handle_click and drag-over class are removed in favor of native file
+        # inputs & inline styles
 
     def test_upload_area_with_destination(self):
         result = upload_area(client_destination="/uploads")
@@ -103,9 +119,11 @@ class TestUploadArea:
         assert "/uploads" in html
 
     def test_upload_area_wildcard_extensions_cleared(self):
-        result_wildcard = upload_area(allowed_extensions=["*"])
-        result_none = upload_area(allowed_extensions=None)
-        assert str(result_wildcard) == str(result_none)
+        result = upload_area(allowed_extensions=["*"])
+        html = str(result)
+        # Check for absence of '*' and presence of empty array fallback
+        assert '"*"' not in html
+        assert "[]" in html
 
     def test_upload_area_size_limits_in_js(self):
         result = upload_area(total_size_limit=1024, per_file_size_limit=512)

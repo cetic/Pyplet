@@ -341,11 +341,13 @@ def upload_area(
 
     # 1. Drag & Drop Visuals
     drag_over_js = (
-        "event.preventDefault(); this.style.borderColor = '#007bff'; "
+        "event.preventDefault(); "
+        "this.style.borderColor = '#007bff'; "
         "this.style.backgroundColor = '#f8f9fa';"
     )
     drag_leave_js = (
-        "event.preventDefault(); this.style.borderColor = '#ccc'; "
+        "event.preventDefault(); "
+        "this.style.borderColor = '#ccc'; "
         "this.style.backgroundColor = 'transparent';"
     )
 
