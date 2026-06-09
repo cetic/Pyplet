@@ -2,8 +2,13 @@ name: Publish Python package
 
 on:
   push:
+    # Trigger on pushes to branches that match the pattern "v*"
     tags:
       - "v*"
+
+    branches:
+      # To edit according to the branch we'll use.
+      - "components"
 
 jobs:
   build-and-publish:
