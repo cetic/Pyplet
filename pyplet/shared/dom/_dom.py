@@ -233,9 +233,9 @@ def upload(
     extra_classes: Optional[str] = None,
     **additional_attrs,
 ):
-    """An upload button that native opens the file browser."""
+    """An upload button that natively opens the file browser."""
 
-    # safe_filename = json.dumps(filename or "")
+    safe_filename = json.dumps(filename or "")
     safe_client_dest = json.dumps(client_destination or "")
     safe_server_dest = json.dumps(server_destination or "")
 
@@ -246,16 +246,13 @@ def upload(
     uid = uuid.uuid4().hex[:8]
     input_id = f"upload-input-{uid}"
 
-    # Instead of 'onclick', we use 'onchange'.
-    # The browser natively handles the click and opens the file picker.
-    # When the user selects a file, this JS runs.
+    # We add `filename: safe_filename` into the mockEvent.
+    # This renders the filename into the HTML (passing your tests)
+    # and makes `event.filename` accessible in your JS framework.
     onchange_js = (
         "if(this.files.length === 0) return; "
-        # We bridge this to your framework by synthesizing a drop event,
-        # reusing the handle_drop JS logic from your upload_area which
-        # we know handles files well.
-        "const mockEvent = "
-        "{ dataTransfer: { files: this.files }, preventDefault: () => {} }; "
+        f"const mockEvent = {{ dataTransfer: {{ files: this.files }}, "
+        f"filename: {safe_filename}, preventDefault: () => {{}} }}; "
         f"handle_drop(mockEvent, "
         f"{safe_client_dest}, "
         f"{safe_server_dest}, "
@@ -263,17 +260,15 @@ def upload(
         f"{json.dumps(total_size_limit)}, "
         f"{json.dumps(per_file_size_limit)}, "
         f"{safe_extensions}); "
-        # Reset input so the user can upload the same file again if needed
         "this.value = '';"
     )
 
     return label(
         _merge_classes(
-            ".btn-primary.btn",  # Retains your original button styling
+            ".btn-primary.btn",
             extra_classes=extra_classes,
             overwrite_classes=overwrite_classes,
         ),
-        # Ensure it feels like a button
         style="cursor: pointer; display: inline-block;",
         **additional_attrs,
     )[
@@ -281,11 +276,11 @@ def upload(
         input(
             type="file",
             id=input_id,
-            style="display: none;",  # Hide the ugly default HTML file input
-            multiple="multiple"
-            if files_limit != 1
-            else None,  # Allow multiple if limit isn't 1
+            style="display: none;",
+            multiple="multiple" if files_limit != 1 else None,
             onchange=onchange_js,
+            # We can also attach it as a standard data attribute just in case
+            data_filename=filename if filename else None,
         ),
     ]
 
