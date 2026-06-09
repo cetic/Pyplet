@@ -11,6 +11,7 @@ import secrets
 import sys
 import textwrap
 import types
+import urllib.parse
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -354,6 +355,39 @@ class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
     closing_message = pyplet.WebSocket.closing_message
     _is_ws = True
 
+    def check_origin(self, origin: str) -> bool:
+        """Allow same-origin WS upgrades OR the deployed ``PYPLET_URL`` origin.
+
+        Story 18.18 (SECURI-4). Tornado's default ``check_origin`` accepts only
+        a request whose ``Origin`` host equals the ``Host`` header — which the
+        edge can break by rewriting ``Host``. We additionally allow an origin
+        whose host matches the configured deployed origin (``config.url`` /
+        ``PYPLET_URL``), compared host-only so the edge's scheme/port do not
+        matter. When ``PYPLET_URL`` is unset (local dev) we fall back to
+        Tornado's default same-origin result, so ``localhost`` still connects.
+
+        Caveat (documented): Tornado invokes ``check_origin`` ONLY when an
+        ``Origin`` header is present, so an Origin-less (non-browser) upgrade
+        is not blocked here — the real gate against anonymous access remains
+        ``_AuthMixin._require_auth`` in ``open``.
+
+        Args:
+            origin: The request's ``Origin`` header value.
+
+        Returns:
+            ``True`` to accept the cross-origin upgrade, ``False`` to reject
+            (Tornado answers the handshake with 403).
+        """
+        if super().check_origin(origin):
+            return True
+        allowed = config.url
+        if not allowed:
+            return False
+        return (
+            urllib.parse.urlparse(origin).hostname
+            == urllib.parse.urlparse(allowed).hostname
+        )
+
     async def open(self, project_name, app_name):
         user = self._require_auth(project_name, app_name)
         if user is None:
@@ -504,6 +538,49 @@ def _load_server_module(path: str) -> str:
     return module.__name__
 
 
+# ---------------------------------------------------------------------------
+# Fail-closed startup policy — production debug guard (Story 18.18, DEPLOY-8)
+# ---------------------------------------------------------------------------
+
+
+class DebugConfigError(RuntimeError):
+    """Raised at startup when the production profile runs with debug on.
+
+    Refusing to boot is intentional: Tornado debug mode enables autoreload and
+    full traceback pages, which must never be exposed on the production profile
+    (``PYPLET_REQUIRE_AUTH=1``). Mirrors ``oauth.AuthConfigError``.
+    """
+
+
+def enforce_startup_debug_policy() -> None:
+    """Refuse to boot the production profile with Tornado debug mode on
+    (DEPLOY-8, Story 18.18).
+
+    On the production profile (``PYPLET_REQUIRE_AUTH=1``) raises
+    ``DebugConfigError`` when ``PYPLET_DEBUG=1`` (the ``config.py`` default),
+    because debug mode enables autoreload and exposes traceback pages — leaking
+    source/stack and re-exec'ing on file change. Off the production profile
+    (``PYPLET_REQUIRE_AUTH`` unset/``0``) it is a no-op, so debug + autoreload
+    stay available for the everyday local dev loop.
+
+    The gate is ``config.require_auth`` — NOT ``oauth.auth_enabled()`` —
+    deliberately mirroring ``oauth.enforce_startup_auth_policy``'s own
+    production gate. Gating on ``auth_enabled()`` would brick the authenticated
+    dev loop (a provider client-id set + debug + autoreload), which is a
+    daily-driver, not production.
+
+    Side effects: reads ``config``.
+    Raises: ``DebugConfigError`` to abort boot on a production-profile breach.
+    """
+    if config.require_auth == "1" and config.debug == "1":
+        raise DebugConfigError(
+            "PYPLET_REQUIRE_AUTH=1 (production profile) but PYPLET_DEBUG=1 — "
+            "refusing to boot. Tornado debug mode enables autoreload and "
+            "exposes traceback pages. Set PYPLET_DEBUG=0 in production, or "
+            "unset PYPLET_REQUIRE_AUTH for an explicitly open local-dev run."
+        )
+
+
 async def astart():
     # Load all server applications FIRST: importing each *_server.py
     # fires ServerApplication.__init_subclass__, which registers the
@@ -523,6 +600,10 @@ async def astart():
     # anonymously. Runs once the modules are loaded, so the policy sees
     # every discovered application.
     oauth.enforce_startup_auth_policy(magiclink_enabled=magiclink.enabled())
+
+    # Story 18.18 (DEPLOY-8): on the production profile, refuse to boot with
+    # Tornado debug on (autoreload + traceback pages must never ship to prod).
+    enforce_startup_debug_policy()
 
     favicon_uri = None
     if config.favicon:
@@ -546,7 +627,10 @@ async def astart():
     _app_spec["favicon_data_uri"] = favicon_uri
 
     app = tornado.web.Application(**_app_spec)
-    app.listen(config.port, config.address)
+    # Story 18.18 (DEPLOY-8): trust the edge's X-Forwarded-For / -Proto so the
+    # app sees the real client IP + https scheme behind the reverse proxy. No
+    # proxy in local dev ⇒ those headers are absent ⇒ behavior unchanged.
+    app.listen(config.port, config.address, xheaders=True)
 
     url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")
