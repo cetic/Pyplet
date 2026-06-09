@@ -106,6 +106,12 @@ _PROVIDER_CONFIGS: dict[str, dict[str, Any]] = {
 # OIDC discovery-doc cache
 _oidc_cache: dict[str, dict] = {}
 
+# JWKS cache, keyed by provider (parallel to ``_oidc_cache``). The provider's
+# signing keys rotate (Google rotates roughly daily), so a verify failure that
+# looks like rotation triggers a single forced refetch — see
+# ``_verify_id_token_claims``.
+_jwks_cache: dict[str, dict] = {}
+
 
 def enabled_providers() -> list[str]:
     """Return the names of providers that have a client_id configured."""
@@ -172,26 +178,127 @@ async def _fetch_oidc_config(provider: str) -> dict:
     return doc
 
 
-# ---------------------------------------------------------------------------
-# JWT / id_token decoding
-# ---------------------------------------------------------------------------
+async def _fetch_jwks(provider: str, *, force_refresh: bool = False) -> dict:
+    """Fetch (and cache) *provider*'s JWKS — its JSON Web Key Set.
 
-
-def _decode_id_token_claims(id_token: str) -> dict:
+    Reads ``jwks_uri`` from the already-cached OIDC discovery document and
+    GETs it with the same ``httpx`` pattern as :func:`_fetch_oidc_config`.
+    The result is cached per provider; ``force_refresh=True`` bypasses the
+    cache to pick up a rotated signing key (Google rotates its JWKS keys).
     """
-    Decode JWT payload without signature verification.
+    if not force_refresh and provider in _jwks_cache:
+        return _jwks_cache[provider]
 
-    Safe here because the token is received directly from the provider
-    over TLS; no MITM is possible.  For higher-assurance deployments
-    swap in full JWKS verification via ``authlib`` or ``python-jose``.
+    oidc = await _fetch_oidc_config(provider)
+    jwks_uri = oidc["jwks_uri"]
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(jwks_uri, timeout=10)
+        resp.raise_for_status()
+        jwks = resp.json()
+
+    _jwks_cache[provider] = jwks
+    logger.debug("Fetched JWKS for %s from %s", provider, jwks_uri)
+    return jwks
+
+
+# ---------------------------------------------------------------------------
+# id_token signature verification (SECURI-8, Story 18.19)
+# ---------------------------------------------------------------------------
+
+
+def _accepted_issuers(issuer: str) -> list[str]:
+    """Return the set of acceptable ``iss`` values for *issuer*.
+
+    Google issues ``iss`` as either the ``https://accounts.google.com`` form or
+    the bare ``accounts.google.com`` host; the discovery document's ``issuer``
+    is the ``https://`` form, so accept both. Microsoft's ``iss`` matches its
+    discovery ``issuer`` exactly, so for it this is effectively a singleton.
     """
-    import base64
+    out = [issuer]
+    if issuer.startswith("https://"):
+        out.append(issuer.removeprefix("https://"))
+    return out
 
-    parts = id_token.split(".")
-    if len(parts) != 3:
-        raise ValueError("Invalid JWT format")
-    payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
-    return json.loads(base64.urlsafe_b64decode(payload_b64))
+
+def _verify_id_token_against_jwks(
+    id_token: str, jwks: dict, *, issuer: str, audience: str
+) -> dict:
+    """Verify the ``id_token`` signature against *jwks*; validate its claims.
+
+    Pure and synchronous (no ``httpx``, no ``config``) so the crypto is
+    unit-testable with crafted JWTs and a stubbed JWKS — no async, no network.
+    Restricts the accepted signing algorithm to RS256 (Google and Microsoft
+    both sign with RS256) to close algorithm-confusion, resolves the signing
+    key from *jwks* by ``kid``, and validates ``iss``/``aud``/``exp``.
+
+    Args:
+        id_token: The compact-serialized JWT from the token endpoint.
+        jwks: The provider JWKS (``{"keys": [...]}`` from ``jwks_uri``).
+        issuer: The discovery ``issuer`` — the expected ``iss`` (the bare-host
+            Google variant is also accepted, see :func:`_accepted_issuers`).
+        audience: The provider ``client_id`` — the expected ``aud``.
+
+    Returns:
+        The validated claims as a plain ``dict``.
+
+    Raises:
+        JoseError: On a bad/absent signature, a wrong/missing ``iss``/``aud``,
+            an expired/absent ``exp``, or a non-RS256 algorithm.
+        ValueError: When no JWKS key matches the token's ``kid`` (rotation).
+    """
+    from authlib.jose import JsonWebKey, JsonWebToken
+
+    key_set = JsonWebKey.import_key_set(jwks)
+    claims = JsonWebToken(["RS256"]).decode(
+        id_token,
+        key_set,
+        claims_options={
+            "iss": {"essential": True, "values": _accepted_issuers(issuer)},
+            "aud": {"essential": True, "value": audience},
+            "exp": {"essential": True},
+        },
+    )
+    claims.validate()
+    return dict(claims)
+
+
+async def _verify_id_token_claims(id_token: str, provider: str) -> dict:
+    """Verify *id_token* against *provider*'s JWKS and return its claims.
+
+    Async wrapper around the pure :func:`_verify_id_token_against_jwks`:
+    resolves the expected ``issuer`` (discovery ``issuer``) and ``audience``
+    (the provider ``client_id``), fetches the JWKS, and verifies. On a
+    signature/key-resolution failure that looks like key rotation (a
+    ``BadSignatureError`` or an unknown-``kid`` ``ValueError``) it refetches
+    the JWKS **once** and retries — Google rotates its signing keys, so a
+    freshly rotated key may post-date the cache. Claim failures (wrong or
+    expired ``iss``/``aud``/``exp``) are NOT retried (the key already
+    resolved; a refetch cannot help) and propagate immediately.
+
+    Raises:
+        Exception: Any verification failure. ``handle_callback``'s ``try``
+            wraps it into the standard error page — no session is set.
+    """
+    from authlib.jose.errors import BadSignatureError
+
+    oidc = await _fetch_oidc_config(provider)
+    issuer = oidc["issuer"]
+    audience = _PROVIDER_CONFIGS[provider]["client_id"]()
+
+    jwks = await _fetch_jwks(provider)
+    try:
+        return _verify_id_token_against_jwks(
+            id_token, jwks, issuer=issuer, audience=audience
+        )
+    except (BadSignatureError, ValueError):
+        # Signature/key-resolution miss — refetch once in case the signing key
+        # rotated past our cache, then retry. A genuinely bad signature fails
+        # again on the fresh keys and propagates.
+        jwks = await _fetch_jwks(provider, force_refresh=True)
+        return _verify_id_token_against_jwks(
+            id_token, jwks, issuer=issuer, audience=audience
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -555,9 +662,10 @@ async def handle_callback(handler) -> None:
     """
     Complete the OAuth authorization-code flow.
 
-    Validates state, exchanges the code for tokens, decodes the id_token,
-    sets the session cookie, and redirects to the originally requested URL.
-    Called by ``OAuthCallbackHandler`` in ``_server.py``.
+    Validates state, exchanges the code for tokens, verifies the id_token
+    signature against the provider JWKS, sets the session cookie, and redirects
+    to the originally requested URL. Called by ``OAuthCallbackHandler`` in
+    ``_server.py``.
     """
     # --- Validate CSRF state ---
     raw_state = handler.get_signed_cookie(_STATE_COOKIE)
@@ -622,10 +730,10 @@ async def handle_callback(handler) -> None:
         return
 
     try:
-        claims = _decode_id_token_claims(id_token)
+        claims = await _verify_id_token_claims(id_token, provider)
     except Exception as exc:
-        logger.error("id_token decode failed: %s", exc)
-        _error(handler, 500, "Could not decode the identity token.")
+        logger.error("id_token verification failed: %s", exc)
+        _error(handler, 500, "Could not verify the identity token.")
         return
 
     user_info = {
