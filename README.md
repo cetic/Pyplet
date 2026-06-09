@@ -258,6 +258,16 @@ when magic-link is enabled **without** `PYPLET_ALLOW_MAGICLINK=1`. Without the
 flag (the default), a deployment with no provider still starts but logs a loud
 WARNING that every request is served anonymously.
 
+Three further production-profile guards ship with this posture. The server
+**refuses to boot when `PYPLET_DEBUG=1` under `PYPLET_REQUIRE_AUTH=1`** —
+Tornado debug mode enables autoreload and exposes traceback pages, so set
+`PYPLET_DEBUG=0` in production. Behind a TLS-terminating reverse proxy,
+`app.listen` trusts `X-Forwarded-For`/`X-Forwarded-Proto` (`xheaders`) and
+WebSocket upgrades are origin-checked against the `PYPLET_URL` host
+(same-origin when `PYPLET_URL` is unset). At login, OIDC `id_token`s are
+verified against the provider JWKS (RS256 signature, issuer, audience and
+expiry) before a session is established.
+
 ### Configuration reference
 
 | Variable | Description |
@@ -366,7 +376,7 @@ Available configuration options:
 - `--address` / `PYPLET_ADDR` - Server address (default: `127.0.0.1`)
 - `--port` / `PYPLET_PORT` - Server port (default: `8080`)
 - `--apps` / `PYPLET_APPS` - Apps directory (default: `apps`)
-- `--debug` / `PYPLET_DEBUG` - Debug mode (default: `1`)
+- `--debug` / `PYPLET_DEBUG` - Debug mode (default `1`; must be `0` in prod)
 - `--pyodide-url` / `PYPLET_PYODIDE` - Pyodide CDN URL
 - `--url` / `PYPLET_URL` - Custom URL override
 - `PYPLET_WS_MAX_MESSAGE_MB` - Max WebSocket frame size MB (default: `40`)
