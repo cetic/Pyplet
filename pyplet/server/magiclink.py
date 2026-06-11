@@ -40,8 +40,8 @@ import smtplib
 import time
 from urllib.parse import urljoin
 
-from . import config
 from . import oauth  # for set_session and _error
+from .config import config
 
 logger = logging.getLogger("pyplet.server.magiclink")
 
@@ -138,8 +138,9 @@ def _send_email_sync(to_addr: str, base: str, magic_url: str) -> None:
     plain = (
         f"Click the link below to sign in to Pyplet.\n\n"
         f"{magic_url}\n\n"
-        f"This link expires in {ttl_min} minute(s) and can only be used once.\n"
-        f"If you did not request this, you can safely ignore this e-mail."
+        f"This link expires in {ttl_min} minute(s) and "
+        "can only be used once.\nIf you did not request "
+        "this, you can safely ignore this e-mail."
     )
     html = f"""\
 <html><body>
@@ -183,7 +184,9 @@ def _send_email_sync(to_addr: str, base: str, magic_url: str) -> None:
 async def _send_email(to_addr: str, base: str, magic_url: str) -> None:
     """Async wrapper — runs the blocking SMTP call in a thread pool."""
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, _send_email_sync, to_addr, base, magic_url)
+    await loop.run_in_executor(
+        None, _send_email_sync, to_addr, base, magic_url
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -217,15 +220,19 @@ async def handle_request(handler) -> None:
         oauth._error(
             handler,
             502,
-            "Could not send the sign-in e-mail. Please try again or use another sign-in method.",
+            "Could not send the sign-in e-mail. "
+            "Please try again or use another sign-in method.",
         )
         return
 
     # Show confirmation — don't reveal whether the address exists in any ACL.
     from . import templates
-    from ..shared import dom as d
 
-    handler.write(d.render_html(templates.magiclink_sent_template(handler, email_addr)))
+    handler.write(
+        str(templates.magiclink_sent_template(handler, email_addr)).encode(
+            "UTF-8"
+        )
+    )
 
 
 async def handle_verify(handler) -> None:

@@ -1,0 +1,73 @@
+name: Publish Python package
+
+on:
+  push:
+    # Trigger on pushes to branches that match the pattern "v*"
+    tags:
+      - "v*"
+
+    branches:
+      # To edit according to the branch we'll use.
+      - "components"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pyplet/
+
+    permissions:
+      checks: read
+      contents: read
+      id-token: write
+
+    steps:
+      # 1. Wait for 'prek' to succeed
+      - name: Wait for prek
+        uses: lewagon/wait-on-check-action@v1.8.0
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'Prek checks'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      # 2. Wait for 'test' to succeed
+      - name: Wait for test
+        uses: lewagon/wait-on-check-action@v1.8.0
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'Test Suite'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Inject version into pyproject.toml
+        # Only run this if the workflow was triggered by a tag push
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          # Strip the 'v' from the tag name (e.g., v1.2.3 -> 1.2.3)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "Setting version to $VERSION"
+
+          # Replace the version line in pyproject.toml
+          sed -i "s/^version *=.*/version = \"$VERSION\"/" pyproject.toml
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI (Trusted Publisher)
+        uses: pypa/gh-action-pypi-publish@release/v1

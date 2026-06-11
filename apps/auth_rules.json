@@ -1,6 +1,6 @@
 [
-    [
-        "template/template",
-        ".*@hotmail\\.com"
-    ]
+  [
+    "template/template",
+    ".*@hotmail\\.com"
+  ]
 ]

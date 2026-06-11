@@ -30,10 +30,7 @@ Per-app access control (ACL)
 ------------------------------
 Create ``<apps_dir>/auth_rules.json`` — a JSON array of two-element arrays::
 
-    [
-        ["project/app_regex", "email_regex"],
-        ...
-    ]
+    [["project/app_regex", "email_regex"], ...]
 
 The first regex is matched against the combined ``"project/app"`` string;
 the second is matched against the user's email address.
@@ -42,10 +39,7 @@ If no rule matches, access is denied.
 
 Example::
 
-    [
-        [".*",           "@mycompany\\.com$"],
-        ["public/demo",  ".*"]
-    ]
+    [[".*", "@mycompany\\.com$"], ["public/demo", ".*"]]
 
 If the file does not exist, **any authenticated user** can see **all** apps.
 
@@ -65,7 +59,7 @@ from urllib.parse import urlencode, urljoin
 
 import httpx
 
-from . import config
+from .config import config
 
 logger = logging.getLogger("pyplet.server.oauth")
 
@@ -77,7 +71,8 @@ _GOOGLE_OPENID_CONFIG_URL = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
 _MICROSOFT_OPENID_CONFIG_URL = (
-    "https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration"
+    "https://login.microsoftonline.com/"
+    "{tenant}/v2.0/.well-known/openid-configuration"
 )
 
 _PROVIDER_CONFIGS: dict[str, dict[str, Any]] = {
@@ -105,7 +100,9 @@ _oidc_cache: dict[str, dict] = {}
 
 def enabled_providers() -> list[str]:
     """Return the names of providers that have a client_id configured."""
-    return [name for name, meta in _PROVIDER_CONFIGS.items() if meta["client_id"]()]
+    return [
+        name for name, meta in _PROVIDER_CONFIGS.items() if meta["client_id"]()
+    ]
 
 
 # Extra auth-enabled checks registered by other modules (e.g. magiclink)
@@ -114,12 +111,14 @@ _extra_auth_checks: list = []
 
 
 def register_auth_check(fn) -> None:
-    """Register a zero-argument callable that returns True when its auth method is active."""
+    """Register a zero-argument callable
+    that returns True when its auth method is active."""
     _extra_auth_checks.append(fn)
 
 
 def auth_enabled() -> bool:
-    """True when at least one authentication method (OAuth or magic-link) is configured."""
+    """True when at least one authentication method (OAuth or magic-link)
+    is configured."""
     return bool(enabled_providers()) or any(fn() for fn in _extra_auth_checks)
 
 
@@ -192,7 +191,9 @@ def set_session(handler, user_info: dict) -> None:
 
 def get_session(handler) -> dict | None:
     """Return the user dict from the signed cookie, or ``None``."""
-    raw = handler.get_signed_cookie(SESSION_COOKIE, max_age_days=_SESSION_MAX_AGE_DAYS)
+    raw = handler.get_signed_cookie(
+        SESSION_COOKIE, max_age_days=_SESSION_MAX_AGE_DAYS
+    )
     if raw is None:
         return None
     try:
@@ -225,7 +226,8 @@ def _load_acl_rules() -> None:
     rules_path = config.auth_rules_file
     if not os.path.isfile(rules_path):
         logger.info(
-            "No ACL rules file found at %s — all authenticated users can access all apps.",
+            "No ACL rules file found at %s — all authenticated users"
+            " can access all apps.",
             rules_path,
         )
         _acl_rules = []
@@ -364,7 +366,9 @@ async def handle_callback(handler) -> None:
     # --- Validate CSRF state ---
     raw_state = handler.get_signed_cookie(_STATE_COOKIE)
     if not raw_state:
-        _error(handler, 400, "OAuth state cookie is missing. Please try again.")
+        _error(
+            handler, 400, "OAuth state cookie is missing. Please try again."
+        )
         return
 
     state_data = json.loads(raw_state)
@@ -373,7 +377,11 @@ async def handle_callback(handler) -> None:
     provider = state_data.get("provider")
 
     if handler.get_argument("state", None) != expected_state:
-        _error(handler, 400, "OAuth state mismatch — possible CSRF. Please try again.")
+        _error(
+            handler,
+            400,
+            "OAuth state mismatch — possible CSRF. Please try again.",
+        )
         return
 
     # --- Check for provider-side errors ---
@@ -438,7 +446,10 @@ async def handle_callback(handler) -> None:
 
     set_session(handler, user_info)
     logger.info(
-        "Login: %s (%s) via %s", user_info["name"], user_info["email"], provider
+        "Login: %s (%s) via %s",
+        user_info["name"],
+        user_info["email"],
+        provider,
     )
     handler.clear_cookie(_STATE_COOKIE)
     handler.redirect(next_url)

@@ -1,4 +1,4 @@
-from typing import Union, Protocol
+from typing import Protocol, Union
 
 
 class _ClosingMessageType:

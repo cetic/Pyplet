@@ -1,10 +1,12 @@
 # Pyplet Tests
 
-This directory contains comprehensive tests for Pyplet, including unit tests and end-to-end tests.
+This directory contains comprehensive tests for Pyplet, including unit tests
+ and end-to-end tests.
 
 ## Overview
 
 The test suite verifies:
+
 - **CLI functionality**: Project creation, argument parsing, logging
 - **Server functionality**: Server startup and routing
 - **Client functionality**: Pyodide initialization in the browser
@@ -17,9 +19,11 @@ The test suite verifies:
 ### Unit Tests
 
 #### `test_cli.py`
+
 Unit tests for the CLI module (`pyplet.server.cli`):
 
 **Test Classes:**
+
 1. **`TestCreateProject`**: Project creation functionality
    - Successful project creation
    - Invalid project name validation
@@ -50,12 +54,15 @@ Unit tests for the CLI module (`pyplet.server.cli`):
 ### End-to-End Tests
 
 #### `conftest.py`
+
 Contains pytest fixtures for:
+
 - **`server`**: Starts the Pyplet server in a separate process for the test session
 - **`driver`**: Creates a Selenium WebDriver instance for each test (headless Chrome)
 - **`wait`**: Provides a WebDriverWait instance with a 30-second timeout
 
 #### `test_template_app.py`
+
 Contains three test classes:
 
 1. **`TestTemplateApp`**: Core functionality tests
@@ -93,56 +100,66 @@ pip install -e ".[test]"
 - **ChromeDriver**: Should be installed and in PATH
   - On Ubuntu/Debian: `sudo apt-get install chromium-chromedriver`
   - On macOS: `brew install chromedriver`
-  - Or download from: https://chromedriver.chromium.org/
+  - Or download from: <https://chromedriver.chromium.org/>
 
 ## Running Tests
 
 ### Run all tests
+
 ```bash
 pytest tests/
 ```
 
 ### Run unit tests only
+
 ```bash
 pytest tests/test_cli.py
 ```
 
 ### Run end-to-end tests only
+
 ```bash
 pytest tests/test_template_app.py
 ```
 
 ### Run specific test file
+
 ```bash
 pytest tests/test_template_app.py
 ```
 
 ### Run CLI tests with coverage
+
 ```bash
 pytest tests/test_cli.py --cov=pyplet.server.cli --cov-report=term-missing
 ```
 
 ### Run specific test class
+
 ```bash
 pytest tests/test_template_app.py::TestTemplateApp
 ```
 
 ### Run specific test
+
 ```bash
 pytest tests/test_template_app.py::TestTemplateApp::test_websocket_message_display
 ```
 
 ### Run with verbose output
+
 ```bash
 pytest tests/ -v
 ```
 
 ### Run with browser console output
+
 ```bash
 pytest tests/ -s
 ```
 
 ### Run with coverage
+
 ```bash
 pytest tests/ --cov=pyplet --cov-report=html
 ```
@@ -157,6 +174,7 @@ Tests can be configured via environment variables:
 - `PYPLET_DEBUG`: Debug mode (default: `1`)
 
 Example:
+
 ```bash
 PYPLET_PORT=9000 pytest tests/
 ```
@@ -164,13 +182,17 @@ PYPLET_PORT=9000 pytest tests/
 ## Debugging Tests
 
 ### View browser in non-headless mode
+
 Modify `conftest.py` and comment out the headless option:
+
 ```python
 # chrome_options.add_argument("--headless")
 ```
 
 ### Capture screenshots on failure
+
 Add this to your test:
+
 ```python
 def test_something(driver, server):
     try:
@@ -181,29 +203,33 @@ def test_something(driver, server):
 ```
 
 ### View browser console logs
+
 Browser console logs are automatically printed when tests complete. Look for:
-```
+
+```js
 Browser console: {'level': 'INFO', 'message': '...', ...}
 ```
 
 ## Writing New Tests
 
 ### Basic test structure
+
 ```python
 def test_my_feature(driver, server, wait):
     # Navigate to the app
     driver.get(f"{server}/apps/myapp/myapp")
-    
+
     # Wait for an element
     element = wait.until(
         EC.presence_of_element_located((By.ID, "my-element"))
     )
-    
+
     # Assert expected behavior
     assert element.text == "Expected value"
 ```
 
 ### Common assertions
+
 ```python
 # Check element exists
 assert driver.find_element(By.ID, "container") is not None
@@ -223,11 +249,13 @@ assert len(errors) == 0
 ## Continuous Integration
 
 These tests are designed to run in CI environments. Ensure your CI configuration:
+
 1. Installs Chrome/Chromium and ChromeDriver
 2. Installs Python dependencies including test group
 3. Sets appropriate environment variables if needed
 
 Example GitHub Actions workflow:
+
 ```yaml
 - name: Install Chrome
   run: |
@@ -244,23 +272,28 @@ Example GitHub Actions workflow:
 ## Troubleshooting
 
 ### ChromeDriver version mismatch
+
 Ensure ChromeDriver version matches your Chrome version:
+
 ```bash
 chromedriver --version
 google-chrome --version
 ```
 
 ### Timeout errors
+
 - Increase wait timeout in `conftest.py`
 - Check if Pyodide is loading correctly (slow network)
 - Verify server started successfully
 
 ### WebSocket connection failures
+
 - Check firewall settings
 - Verify server is listening on correct port
 - Check browser console for CORS or connection errors
 
 ### Pyodide initialization failures
+
 - Verify internet connection (Pyodide loads from CDN)
 - Check browser compatibility
 - Review browser console logs for specific errors

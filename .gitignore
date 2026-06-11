@@ -18,3 +18,8 @@ htmlcov/
 *.pyc
 .tox/
 *.log
+coverage.xml
+
+apps/
+build/
+.DS_Store

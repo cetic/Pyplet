@@ -1,2 +1,2 @@
-from ._server import *
-from . import cli
+from . import cli  # noqa: F401
+from ._server import *  # noqa: F401, F403

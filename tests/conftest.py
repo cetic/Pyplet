@@ -2,18 +2,18 @@
 Pytest configuration and fixtures for Pyplet end-to-end tests.
 """
 
-import pytest
 import asyncio
 import multiprocessing
+import os
 import time
+
+import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
+
 from pyplet.server._server import astart
-from pyplet.server import config
+from pyplet.server.config import config
 
 
 def run_server():
@@ -40,6 +40,38 @@ def server():
         server_process.kill()
 
 
+# @pytest.fixture(scope="function")
+# def driver():
+#     chrome_options = Options()
+#     chrome_options.add_argument("--headless=new")
+#     chrome_options.add_argument("--no-sandbox")
+#     chrome_options.add_argument("--disable-dev-shm-usage")
+
+#     # 1. Use the environment (from GitHub Actions)
+#     # or fallback to system PATH for Chrome binary
+#     chrome_bin = os.environ.get("CHROME_BIN") or shutil.which("chromium")
+
+#     if chrome_bin:
+#         chrome_options.binary_location = chrome_bin
+
+#     # 2. Use the corrected ChromeDriver path
+#     chromedriver_path = os.environ.get("CHROMEDRIVER") or shutil.which(
+#         "chromedriver"
+#     )
+
+#     service = (
+#         Service(executable_path=chromedriver_path)
+#         if chromedriver_path
+#         else Service()
+#     )
+
+#     driver = webdriver.Chrome(service=service, options=chrome_options)
+#     driver.implicitly_wait(10)
+
+#     yield driver
+#     driver.quit()
+
+
 @pytest.fixture(scope="function")
 def driver():
     """Create a Selenium WebDriver instance for each test."""
@@ -49,7 +81,8 @@ def driver():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
-
+    if os.environ.get("CI"):
+        chrome_options.binary_location = "/usr/bin/chromium-browser"
     # Enable browser logging
     chrome_options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
 

@@ -1,6 +1,6 @@
 [project]
 name = "pyplet"
-version = "0.0.1"
+version = "0.1.2"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -8,11 +8,14 @@ dependencies = [
     "authlib>=1.3.0",
     "build~=1.2.0",
     "cython>=3.1.2",
+    "htpy>=25.12.0",
     "httpx>=0.27.0",
+    "markupsafe>=3.0.3",
     "pyodide-build>=0.30.5",
     "python-minifier>=2.11.3",
     "tornado>=6.5.1",
 ]
+
 authors = [
   {name = "Maxime Istasse", email = "istassem@gmail.com"},
 ]
@@ -22,10 +25,10 @@ test = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
     "selenium>=4.16.0",
+    "pytest-xdist>=3.8.0",
 ]
 
 [tool.setuptools]
-packages = ["pyplet"]
 include-package-data = true
 
 [project.scripts]
@@ -34,3 +37,50 @@ pyplet = "pyplet.server.cli:script_main"
 [tool.setuptools.package-data]
 # Include apps/examples into pip package
 pyplet = ["../apps/**/*"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pyplet*"]
+
+[tool.black]
+verbose = true
+line-length = 79
+target-version = ['py312', 'py313', 'py314']
+include = '.pyi?$'
+exclude = '''
+/(
+    .git
+    | .hg
+    | .mypy_cache
+    | .tox
+    | .venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
+
+[tool.ruff]
+builtins = ["_"]
+# cache-dir = "~/.cache/ruff"
+exclude = [".venv", "**/build"]
+line-length = 79
+fix = true
+indent-width = 4
+respect-gitignore = false
+show-fixes = true
+src = ["src"]
+target-version = "py312"
+unsafe-fixes = false
+
+[tool.ruff.analyze]
+detect-string-imports = true
+
+[tool.ruff.format]
+# Enable reformatting of code snippets in docstrings.
+docstring-code-format = true
+docstring-code-line-length = 79
+# Enable reformatting of code snippets in comments.
+indent-style = "space"
+line-ending = "lf"
