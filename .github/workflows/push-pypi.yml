@@ -1,14 +1,20 @@
 name: Publish Python package
 
+# How to release a new version:
+# - git tag -a v1.2.3 -m "Release version 1.2.3"
+# - git push origin v1.2.3
+# - git push
+
 on:
   push:
     # Trigger on pushes to branches that match the pattern "v*"
     tags:
       - "v*"
 
-    branches:
-      # To edit according to the branch we'll use.
-      - "components"
+    # Don't trigger on
+    # branches:
+    #   # To edit according to the branch we'll use.
+    #   - "components"
 
 jobs:
   build-and-publish:
