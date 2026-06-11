@@ -26,7 +26,7 @@ jobs:
     steps:
       # 1. Wait for 'prek' to succeed
       - name: Wait for prek
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.8.0
         with:
           ref: ${{ github.sha }}
           check-name: 'Prek checks'
@@ -35,7 +35,7 @@ jobs:
 
       # 2. Wait for 'test' to succeed
       - name: Wait for test
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.8.0
         with:
           ref: ${{ github.sha }}
           check-name: 'Test Suite'
