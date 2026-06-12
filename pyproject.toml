@@ -40,7 +40,7 @@ pyplet = ["../apps/**/*"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pyplet*"]
+include = ["pyplet*", "apps*"]
 
 [tool.black]
 verbose = true

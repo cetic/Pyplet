@@ -1,9 +1,22 @@
 name: Prek checks
-on: [push, pull_request, workflow_dispatch]
+
+on:
+  push:
+    branches: [ main, components, develop ]
+
+  pull_request:
+    branches: [ main, components, develop ]
+
+  workflow_dispatch:
+  workflow_call:
 
 jobs:
   prek:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: j178/prek-action@v2
