@@ -154,7 +154,8 @@ def main() -> None:
         if not projects_dir.exists():
             logger.error(
                 "No projects directory found in the current directory.\n"
-                "Run 'pyplet init' first or move to the projects directory."
+                "Run 'pyplet init <project_name>' first or move to the "
+                "projects directory."
             )
             sys.exit(2)
 
