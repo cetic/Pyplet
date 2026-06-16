@@ -25,51 +25,25 @@ client-server interaction
 
 ### Installation
 
-1. **Clone the repository**
+The recommended way to install Pyplet is via uv.
 
-   ```bash
-   git clone <repository_url>
-   cd pyplet
-   ```
+1. Install venv
 
-2. **Download Pyodide** (optional - for local development)
+```bash
+uv venv
+```
 
-   Pyplet uses Pyodide from CDN by default. For offline development,
-   download it locally:
+1. Activate the venv
 
-   ```bash
-   wget https://github.com/pyodide/pyodide/releases/download/0.29.0/pyodide-0.29.0.tar.bz2
-   tar -xvjf pyodide-0.29.0.tar.bz2
-   ```
+```bash
+source ./venv/bin/activate
+```
 
-   Then configure Pyplet to use the local version:
+1. Install Pyplet
 
-   ```bash
-   export PYPLET_PYODIDE=/path/to/pyodide/pyodide.js
-   ```
-
-3. **Install Pyplet**
-
-   With `uv` (recommended):
-
-   ```bash
-   uv venv
-   uv sync
-   ```
-
-   Or with `pip`:
-
-   ```bash
-   pip install -e .
-   ```
-
-   To install with test dependencies:
-
-   ```bash
-   uv sync --extra test
-   # or with pip
-   pip install -e .[test]
-   ```
+```bash
+uv pip install pyplet
+```
 
 ### Create Your First App
 
