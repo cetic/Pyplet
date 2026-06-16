@@ -108,7 +108,8 @@ if (!globalThis.create_deferred) {
                     yield self.promise
 
             while not self._queue:
-                # Safely yield the JS Promise out to our Polyfill task driver
+                # Safely yield the JS Promise out
+                # to our Polyfill task driver
                 await AwaitPromise(self._promise)
                 self._reset_promise()
 
@@ -121,6 +122,10 @@ if (!globalThis.create_deferred) {
 
 
 import pyplet
+
+VFS_UPLOAD_JAIL = "/vfs_uploads"
+SERVER_UPLOAD_JAIL = "server_uploads"
+MAX_UPLOAD_SIZE = 50 * 2**20  # 50 MiB
 
 _apps = None
 client_applications: Dict[Tuple[str, str], "ClientApplication"] = {}
@@ -254,29 +259,99 @@ def _setup_vfs_bindings():  # noqa: F811, C901
             # 5. Read and Save
             reader = js.window.FileReader.new()
 
-            # Closure to lock in the correct filename for the async callback
-            def make_onload(fname):
+            # Closure to lock in the correct filename AND file object
+            # for the async callback
+            def make_onload(fname, file_obj):
                 def on_load(load_event):
                     array_buffer = load_event.target.result
                     uint8_array = js.Uint8Array.new(array_buffer)
                     file_bytes = bytes(uint8_array)
 
+                    # 6. Hard limit size check (Security)
+                    if len(file_bytes) > MAX_UPLOAD_SIZE:
+                        js.console.error(
+                            f"Upload rejected: '{fname}' exceeds the "
+                            "hard limit of "
+                            f"{MAX_UPLOAD_SIZE / (1024 * 1024):.0f}MB."
+                        )
+                        return
+
                     if client_dest:
-                        path = f"{client_dest.rstrip('/')}/{fname}"
-                        ensure_dir(client_dest)
-                        with open(path, "wb") as f:
+                        # 7. Jail the path to VFS_UPLOAD_JAIL (Security)
+                        raw_path = f"{client_dest.rstrip('/')}/{fname}"
+                        safe_relative_path = raw_path.lstrip("/")
+
+                        jail = os.path.abspath(VFS_UPLOAD_JAIL)
+                        resolved_path = os.path.abspath(
+                            os.path.join(jail, safe_relative_path)
+                        )
+
+                        jail_prefix = (
+                            jail if jail.endswith("/") else jail + "/"
+                        )
+                        if not resolved_path.startswith(jail_prefix):
+                            js.console.error(
+                                f"Access denied: Attempted to upload"
+                                f" '{fname}' outside of {jail}"
+                            )
+                            return
+
+                        ensure_dir(os.path.dirname(resolved_path))
+                        with open(resolved_path, "wb") as f:
                             f.write(file_bytes)
-                        js.console.log(f"Uploaded to VFS: {path}")
+                        js.console.log(f"Uploaded to VFS: {resolved_path}")
 
                     if server_dest:
                         js.console.log(
-                            f"Ready to POST {fname} to server at {server_dest}"
+                            f"Uploading {fname} to server destination:"
+                            f" {server_dest}"
                         )
-                        # Future server POST logic
+
+                        # Build standard multipart/form-data payload
+                        form_data = js.window.FormData.new()
+                        form_data.append("file", file_obj, fname)
+                        form_data.append("server_destination", server_dest)
+
+                        # js.eval is used here to safely build
+                        # the JS object literal.
+                        # This works flawlessly across both CPython/Pyodide
+                        # and MicroPython FFI boundaries.
+                        opts = js.eval("({method: 'POST'})")
+                        opts.body = form_data
+
+                        # POST to the current app endpoint.
+                        # Your Pyplet backend will need a route handler
+                        # to intercept POST requests here.
+                        endpoint = js.window.location.pathname
+
+                        promise = js.window.fetch(endpoint, opts)
+
+                        def on_success(response):
+                            # Pyodide proxies use getattr to safely
+                            # check JS properties
+                            if getattr(response, "ok", False):
+                                js.console.log(
+                                    f"Server upload complete: {fname}"
+                                )
+                            else:
+                                js.console.error(
+                                    f"Server upload failed for {fname}:"
+                                    f" HTTP {response.status}"
+                                )
+
+                        def on_error(error):
+                            js.console.error(
+                                f"Server upload network error for {fname}:"
+                                f" {error}"
+                            )
+
+                        promise.then(on_success).catch(on_error)
 
                 return on_load
 
-            reader.onload = make_onload(final_name)
+            # Pass both the resolved filename and the JS file object
+            # into the closure
+            reader.onload = make_onload(final_name, selected_file)
             reader.readAsArrayBuffer(selected_file)
 
     # --- Updated Handlers ---

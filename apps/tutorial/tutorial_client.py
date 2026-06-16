@@ -70,7 +70,12 @@ class MyClientApp(pyplet.client.ClientApplication):
                     ],
                     # Standard Button Upload
                     div(style="margin-bottom: 30px;")[
-                        upload("path/to/file.txt", "⇧ Standard Upload Button"),
+                        upload(
+                            "path/to/file.txt",
+                            "⇧ Standard Upload Button",
+                            server_destination="/uploads",
+                            client_destination="./public/uploads",
+                        ),
                     ],
                     # Drag and Drop Area
                     div[
