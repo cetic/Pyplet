@@ -23,8 +23,8 @@ authors = [
   {name = "Erwan Henin", email = "erwan.henin@cetic.be"},
 ]
 
-license = "Apache-2.0 license"
-license-files = ["./LICENSE"]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 
 [project.optional-dependencies]
 test = [
