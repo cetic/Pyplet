@@ -1,6 +1,6 @@
 [project]
 name = "pyplet"
-version = "0.1.2"
+version = "x.y.z"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -18,7 +18,13 @@ dependencies = [
 
 authors = [
   {name = "Maxime Istasse", email = "istassem@gmail.com"},
+  {name = "Vincent Stragier", email = "vincent.stragier@cetic.be"},
+  {name = "Arthur Lorin", email = "arthur.lorin@cetic.be"},
+  {name = "Erwan Henin", email = "erwan.henin@cetic.be"},
 ]
+
+license = "Apache-2.0 license"
+license-files = ["./LICENSE"]
 
 [project.optional-dependencies]
 test = [

@@ -29,21 +29,21 @@ The recommended way to install Pyplet is via uv.
 
 1. Install venv
 
-```bash
-uv venv
-```
+    ```bash
+    uv venv
+    ```
 
 1. Activate the venv
 
-```bash
-source ./venv/bin/activate
-```
+    ```bash
+    source ./venv/bin/activate
+    ```
 
 1. Install Pyplet
 
-```bash
-uv pip install pyplet
-```
+    ```bash
+    uv pip install pyplet
+    ```
 
 ### Create Your First App
 
