@@ -396,7 +396,12 @@ Apache License 2.0 - See [LICENSE](LICENSE) for details
 
 ## Support
 
-- **Author**: Maxime Istasse (<istassem@gmail.com>)
+- **Authors**:
+  - Maxime Istasse (<istassem@gmail.com>)
+  - Arthur Lorin (<arthur.lorin@cetic.be>)
+  - Erwan Henin (<erwan.henin@cetic.be>)
+  - Vincent Stragier (<vincent.stragier@cetic.be>)
+
 - **Issues**: Please report bugs and feature requests via the issue tracker
 
 ## Roadmap

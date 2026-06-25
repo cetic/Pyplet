@@ -18,9 +18,9 @@ dependencies = [
 
 authors = [
   {name = "Maxime Istasse", email = "istassem@gmail.com"},
-  {name = "Vincent Stragier", email = "vincent.stragier@cetic.be"},
   {name = "Arthur Lorin", email = "arthur.lorin@cetic.be"},
   {name = "Erwan Henin", email = "erwan.henin@cetic.be"},
+  {name = "Vincent Stragier", email = "vincent.stragier@cetic.be"},
 ]
 
 license = "Apache-2.0"
