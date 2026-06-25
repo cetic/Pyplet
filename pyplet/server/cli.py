@@ -129,7 +129,7 @@ def main() -> None:
             f"--{name.replace('_', '-')}",
             required=False,
             help=f"{param_obj.description} [Env: {param_obj.env_var}]",
-            default=argparse.SUPPRESS,
+            default=os.environ.get(param_obj.env_var, argparse.SUPPRESS),
             type=param_obj.type_cast,
         )
 
