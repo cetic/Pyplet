@@ -501,6 +501,15 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
     ):
         await client_application.client_init()
 
+    # Drop the boot splash (server-rendered into #container) now that the app
+    # module has loaded and any client_init UI has mounted. Apps that replace
+    # #container's contents already removed it; this by-id removal also covers
+    # apps that append to #container, so the spinner never lingers. Gate on
+    # truthiness — getElementById yields a falsy JS null when already gone.
+    splash = js.document.getElementById("pyplet-boot-splash")
+    if splash:
+        splash.remove()
+
     if (
         client_application.__class__.websocket_client_loop
         is not ClientApplication.websocket_client_loop
