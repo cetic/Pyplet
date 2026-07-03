@@ -142,6 +142,50 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
         )
         assert b"SECRET" not in resp.body
 
+    def test_head_legit_static_file_is_served(self):
+        """HEAD on a real asset: 200, empty body, matching Content-Length.
+
+        Tornado dispatches every method as ``method(*path_args)``; the
+        two-group route means HEAD is called with (project, tail). Without a
+        matching ``head`` override the inherited
+        ``StaticFileHandler.head(self, path)`` got two positional args and
+        raised TypeError -> HTTP 500. This pins the fix: HEAD works and its
+        Content-Length matches the GET body length.
+        """
+        get_resp = self.fetch("/apps/DemoApp/static/d3.v7.min.js")
+        assert get_resp.code == 200
+        head_resp = self.fetch(
+            "/apps/DemoApp/static/d3.v7.min.js", method="HEAD"
+        )
+        assert head_resp.code == 200, (
+            "HEAD on a legit static file should serve 200, got "
+            f"{head_resp.code} (body={head_resp.body!r})"
+        )
+        assert head_resp.body == b"", (
+            f"HEAD response body must be empty, got {head_resp.body!r}"
+        )
+        assert head_resp.headers.get("Content-Length") == str(
+            len(get_resp.body)
+        ), (
+            "HEAD Content-Length must match GET body length; got "
+            f"{head_resp.headers.get('Content-Length')!r} vs "
+            f"{len(get_resp.body)}"
+        )
+
+    def test_head_traversal_to_sibling_server_source_blocked(self):
+        """HEAD ``..`` to the sibling ``*_server.py`` must NOT return 200."""
+        resp = self.fetch(
+            "/apps/DemoApp/static/../DemoApp_server.py",
+            method="HEAD",
+            follow_redirects=False,
+        )
+        assert resp.code != 200, (
+            "HEAD traversal to *_server.py must be refused, got 200"
+        )
+        assert resp.code in (403, 404), (
+            f"expected 403/404 for HEAD traversal, got {resp.code}"
+        )
+
     def test_app_without_static_dir_does_not_crash(self):
         """An app with no static/ dir 404s rather than erroring."""
         resp = self.fetch(
