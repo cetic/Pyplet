@@ -162,6 +162,15 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
         self.root = os.path.join(self._apps_root, project, "static")
         await super().get(path, include_body=include_body)
 
+    async def head(  # noqa: A003 - Tornado handler hook
+        self, project: str, path: str
+    ) -> None:
+        # Tornado dispatches every method as method(*path_args), so HEAD must
+        # accept both capture groups too (project, tail). Delegate to the
+        # body-less GET path (which sets the per-request ``self.root``),
+        # mirroring StaticFileHandler.head -> get(path, include_body=False).
+        await self.get(project, path, include_body=False)
+
 
 # ---------------------------------------------------------------------------
 # Application handlers
