@@ -1,7 +1,7 @@
 [project]
 name = "pyplet"
 version = "0.0.1"
-description = "Build full-stack web applications entirely in Python."
+description = "Python everywhere!"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

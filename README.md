@@ -1,8 +1,8 @@
-<!-- markdownlint-disable MD033 MD041 -->
-<img src="./images/pyplet_logo_with_text_no_bg.svg" alt="Pyplet logo" width="700">
-<!-- markdownlint-enable MD033 MD041 -->
+<!-- markdownlint-disable MD033 MD041 MD013 -->
+<img src="https://raw.githubusercontent.com/cetic/Pyplet/refs/heads/main/images/pyplet_logo_with_text_no_bg.svg" alt="Pyplet logo" width="700">
+<!-- markdownlint-enable MD033 MD041 MD013 -->
 
-**Build full-stack web applications entirely in Python.**
+## Python everywhere
 
 Pyplet is an application server that lets you create interactive web
 applications using Python on both the client and server side.
