@@ -1,6 +1,7 @@
 import collections
 import datetime
 import glob
+import logging
 from typing import Optional
 
 from tornado.web import RequestHandler
@@ -38,6 +39,9 @@ from . import magiclink, oauth
 from .config import config
 
 current_year = datetime.datetime.now().year
+
+# Configure logging
+logger = logging.getLogger("pyplet.server.templates")
 
 
 def base_template(
@@ -315,12 +319,14 @@ def index_template(
             projects[project].append(
                 li[a(href=f"apps/{project}/{app_name}")[app_name]]
             )
+
     else:
         # Auth disabled — show everything
         raw = [
             "/" + p[:-10]
             for p in sorted(glob.glob("*/*_client.py", root_dir=config.apps))
         ]
+
         for application in raw:
             project, app_name = application.split("/")[-2:]
             projects[project].append(

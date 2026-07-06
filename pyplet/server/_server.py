@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import secrets
+import sys
 import textwrap
 from importlib import import_module
 from pathlib import Path
@@ -330,10 +331,25 @@ async def astart():
     app = tornado.web.Application(**_app_spec)
     app.listen(config.port, config.address)
 
+    # Ensure the apps directory is in sys.path so
+    # import_module can find it
+    if config.apps not in sys.path:
+        sys.path.insert(0, config.apps)
+
     # Load all server applications
-    server_modules = glob.glob(f"{config.apps}/*/*_server.py")
+    server_modules = glob.glob(os.path.join(config.apps, "*", "*_server.py"))
+
     for path in server_modules:
-        module_name = path[:-3].replace("/", ".")
+        # Calculate the path relative to config.apps,
+        # NOT the current working directory
+        rel_path = os.path.relpath(path, config.apps)
+
+        # Convert path to module format
+        # (e.g.,
+        # 'dashboard/dashboard_server.py' -> 'dashboard.dashboard_server')
+        # Using os.sep ensures this works on Windows (\) and Unix (/)
+        module_name = rel_path[:-3].replace(os.sep, ".")
+
         try:
             import_module(module_name)
             logger.debug(f"Loaded module: {module_name}")
@@ -345,6 +361,7 @@ async def astart():
     url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")
     logger.info(f"Loaded {len(server_applications)} application(s)")
+
     methods = oauth.enabled_providers()
     if magiclink.enabled():
         methods.append("magic-link")
