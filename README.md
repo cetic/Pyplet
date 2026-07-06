@@ -1,4 +1,6 @@
-# Pyplet
+<!-- markdownlint-disable MD033 MD041 -->
+<img src="./images/pyplet_logo_with_text_no_bg.svg" alt="Pyplet logo" width="700">
+<!-- markdownlint-enable MD033 MD041 -->
 
 **Build full-stack web applications entirely in Python.**
 
