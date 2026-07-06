@@ -2,10 +2,10 @@ name: Prek checks
 
 on:
   push:
-    branches: [ main, components, develop ]
+    branches: [ main, dev ]
 
   pull_request:
-    branches: [ main, components, develop ]
+    branches: [ main, dev ]
 
   workflow_dispatch:
   workflow_call:
