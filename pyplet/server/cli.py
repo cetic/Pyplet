@@ -113,7 +113,9 @@ def main() -> None:
 
     # start command
     parser_start = subparsers.add_parser(
-        "start", aliases=["run", "server"], help="Launch pyplet.server.main()"
+        "start",
+        # aliases=["run", "server"],
+        help="Launch pyplet.server.main()",
     )
 
     # Tutorial
@@ -143,7 +145,7 @@ def main() -> None:
     if args.command == "init":
         create_project(args.project_name)
 
-    elif args.command in ("start", "run", "server"):
+    elif args.command in ("start"):  # , "run", "server"):
         projects_dir = Path(config.apps)
 
         # If path is relative, make it absolute

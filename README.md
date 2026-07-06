@@ -299,8 +299,6 @@ pyplet init <project_name>
 
 # Start the development server
 pyplet start
-pyplet run
-pyplet server
 
 # Start server with custom options
 pyplet start --port 3000 --address 0.0.0.0
