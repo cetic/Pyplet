@@ -109,7 +109,18 @@ repos:
     rev: v0.48.0
     hooks:
       - id: markdownlint
+        name: markdownlint (fix)
         args: ['--fix']
+        exclude: ^docs/
+
+    # Markdown
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.48.0
+    hooks:
+      - id: markdownlint
+        name: markdownlint (fix, relaxed for docs)
+        args: ['--fix', '--config', '.markdownlint-docs.yaml']
+        files: ^docs/
 
   # Shell
   - repo: https://github.com/shellcheck-py/shellcheck-py
