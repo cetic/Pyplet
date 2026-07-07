@@ -1,6 +1,7 @@
 [project]
 site_name = "Pyplet"
 site_description = "Python everywhere!"
+site_url = "https://pyplet.readthedocs.io/"
 
 [project.theme]
 variant = "modern"
