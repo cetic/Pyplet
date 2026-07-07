@@ -4,7 +4,16 @@ title: Welcome to Pyplet
 
 # Pyplet
 
-Serve interactive web applications entirely in Python. Pyplet couples a Tornado backend with a Pyodide-powered (via PyScript) client runtime, so you can write browser code, DOM manipulation, plotting, and real‑time messaging without leaving Python.
+<!-- markdownlint-disable MD033 MD041 MD013 -->
+<img src="https://raw.githubusercontent.com/cetic/Pyplet/refs/heads/main/images/pyplet_logo_with_text_no_bg.svg" alt="Pyplet logo" width="700">
+<!-- markdownlint-enable MD033 MD041 MD013 -->
+
+## Python everywhere
+
+Serve interactive web applications entirely in Python.
+Pyplet couples a Tornado backend with a Pyodide-powered (via PyScript) client runtime,
+so you can write browser code, DOM manipulation, plotting,
+and real‑time messaging without leaving Python.
 
 ![Pyplet Home](assets/homepage.jpg)
 
@@ -36,8 +45,12 @@ Then open <http://127.0.0.1:8080> to browse available apps.
 
 Next steps:
 
-- Follow [Getting Started](getting-started.md) to configure assets and explore the example apps
-- See [Examples](examples/index.md) to clone the examples repo and tour the available micro-apps
+- Follow [Getting Started](getting-started.md) to configure assets
+and explore the example apps
+- See [Examples](examples/index.md) to clone the examples repo
+and tour the available micro-apps
 - See [Micro Apps](micro-apps.md) for app structure and packaging details
-- Try the Tutorials ([Frontend-only](tutorials/frontend-only.md), [WebSocket](tutorials/websocket-app.md)) to build your first apps end to end
-- Browse the [API Reference](api/dom.md) for the [DOM DSL](api/dom.md), [client bootstrap](api/bootstrap.md), and [server internals](api/server.md)
+- Try the Tutorials ([Frontend-only](tutorials/frontend-only.md),
+[WebSocket](tutorials/websocket-app.md)) to build your first apps end to end
+- Browse the [API Reference](api/dom.md) for the [DOM DSL](api/dom.md),
+[client bootstrap](api/bootstrap.md), and [server internals](api/server.md)

@@ -62,7 +62,6 @@ restrict_base_path = true
 [markdown_extensions."pymdownx.superfences"]
 
 # --- Navigation ---
-# In TOML, deep navigation trees are best represented as an array of inline tables
 nav = [
   { "Home" = "index.md" },
   { "Getting Started" = "getting-started.md" },
@@ -91,5 +90,6 @@ nav = [
       { "WebSocket Protocol" = "api/websocket.md" },
       { "Client Utils" = "api/client-utils.md" }
   ]},
-  { "Troubleshooting" = "troubleshooting.md" }
+  { "Troubleshooting" = "troubleshooting.md" },
+  { "License" = "../LICENSE" }
 ]
