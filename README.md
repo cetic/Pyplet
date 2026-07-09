@@ -9,6 +9,13 @@ applications using Python on both the client and server side.
 Powered by [PyScript](https://pyscript.net/) (Python compiled to WebAssembly),
 Pyplet brings the full power of Python to the browser.
 
+### Resources
+
+- [Pyplet sources](https://github.com/cetic/Pyplet/)
+- [Pyplet doc](https://pyplet.readthedocs.io)
+- [Pyplet on PyPI](https://pypi.org/project/pyplet/)
+- [Pyplet examples](https://github.com/cetic/pyplet_examples)
+
 ## Why Pyplet?
 
 - **Pure Python**: Write your entire application in Python - no JavaScript required

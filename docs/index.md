@@ -15,6 +15,13 @@ Pyplet couples a Tornado backend with a Pyodide-powered (via PyScript) client ru
 so you can write browser code, DOM manipulation, plotting,
 and real‑time messaging without leaving Python.
 
+### Resources
+
+- [Pyplet sources](https://github.com/cetic/Pyplet/)
+- [Pyplet on PyPI](https://pypi.org/project/pyplet/)
+- [Pyplet examples](https://github.com/cetic/pyplet_examples)
+- [Pyplet Apache 2 license](https://github.com/cetic/Pyplet/blob/main/LICENSE)
+
 ![Pyplet Home](assets/homepage.jpg)
 
 Key capabilities:
