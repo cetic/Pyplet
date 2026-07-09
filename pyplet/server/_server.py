@@ -388,6 +388,20 @@ class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
             == urllib.parse.urlparse(allowed).hostname
         )
 
+    def get_compression_options(self):
+        """Enable WebSocket ``permessage-deflate`` compression.
+
+        Returning a (possibly empty) dict opts the connection into Tornado's
+        per-message deflate extension; the client offers the extension and this
+        handler accepts it during the handshake. ``compression_level`` 6 is
+        zlib's default speed/ratio trade-off — a good fit for the app's
+        chatty JSON/text frames without excessive CPU per message.
+
+        Returns:
+            A dict of compression options enabling ``permessage-deflate``.
+        """
+        return {"compression_level": 6}
+
     async def open(self, project_name, app_name):
         user = self._require_auth(project_name, app_name)
         if user is None:
