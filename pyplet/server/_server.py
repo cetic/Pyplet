@@ -393,6 +393,7 @@ class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
         if user is None:
             self.close(1008, "Unauthorized")
             return
+        self.login = user["email"]
 
         application = server_applications[project_name, app_name]
         self.queue = asyncio.Queue()
