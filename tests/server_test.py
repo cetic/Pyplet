@@ -10,12 +10,15 @@ These tests verify that:
    `<head>` when none is declared, leaves an existing favicon alone,
    skips injection entirely when no favicon is configured, and does
    not crash on HTML that has no `<head>` tag.
+4. The injected tag is real markup, not HTML-escaped text: htpy nodes
+   and `markupsafe.Markup` render `str()` into a `Markup` instance, and
+   splicing a plain `str` onto a `Markup` auto-escapes it, which used to
+   turn the injected `<link>` into a visible `&lt;link ...&gt;` string.
 """
 
 import base64
 import logging
 
-import markupsafe
 import pytest
 import tornado.testing
 import tornado.web
@@ -25,6 +28,7 @@ from pyplet.server._server import (
     _has_favicon_link,
     load_favicon_as_data_uri,
 )
+from pyplet.shared.dom import body, head, html, title
 
 SVG_BYTES = b"<svg xmlns='http://www.w3.org/2000/svg'></svg>"
 FAVICON_URI = (
@@ -121,14 +125,13 @@ class _NoHeadHandler(BaseHandler):
 
 
 class _MarkupHandler(BaseHandler):
-    """Exercises the non-bytes/non-str (markupsafe.Markup) content path."""
+    """Exercises the htpy-Node content path (as real templates use):
+    `str(node)` renders to a `markupsafe.Markup` instance, which used to
+    cause the injected `<link>` tag to be HTML-escaped into visible
+    text (e.g. "&lt;link ...&gt;") instead of parsed as markup."""
 
     def get(self):
-        self.write_html(
-            markupsafe.Markup(
-                "<html><head><title>t</title></head><body>hi</body></html>"
-            )
-        )
+        self.write_html(html[head[title["t"]], body["hi"]])
 
 
 def _make_app(favicon_data_uri):
@@ -173,9 +176,18 @@ class TestWriteHtmlFaviconEnabled(tornado.testing.AsyncHTTPTestCase):
         response = self.fetch("/no-head")
         assert response.body.decode() == "<html><body>hi</body></html>"
 
-    def test_markup_content_is_injected(self):
+    def test_markup_content_is_injected_as_real_markup(self):
         response = self.fetch("/markup")
-        assert FAVICON_URI in response.body.decode()
+        body = response.body.decode()
+
+        expected_tag = (
+            f'<link rel="icon" type="image/svg+xml" href="{FAVICON_URI}">'
+        )
+        assert expected_tag in body
+        # Regression guard: the tag must be real markup, not HTML-escaped
+        # text sitting inside <head> (e.g. "&lt;link rel=&#34;icon&#34;").
+        assert "&lt;link" not in body
+        assert "&#34;" not in body
 
 
 @pytest.mark.unit

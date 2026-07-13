@@ -8,8 +8,9 @@ import logging
 import os
 import re
 import secrets
+import sys
 import textwrap
-from importlib import import_module
+import types
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -30,6 +31,22 @@ logger = logging.getLogger("pyplet.server")
 
 
 server_applications: Dict[Tuple[str, str], "ServerApplication"] = {}
+
+# Synthetic module-name prefix used when loading `*_server.py` app modules.
+# App discovery loads modules directly from their file path (see
+# `_load_server_module`) rather than importing them via a dotted name
+# derived from `config.apps`, so registration keeps working regardless of
+# whether `config.apps` is a bare relative folder, a nested path, or an
+# absolute path.
+_APPS_MODULE_PREFIX = "_pyplet_apps"
+
+# Fixed virtual directory name for app files inside the browser-side
+# (Pyodide/MicroPython) virtual filesystem — see `ServerApplication.package`
+# and `ServerApplication.serve`. Kept separate from `config.apps` (the
+# *server's* on-disk apps directory, which may be relative, nested, or
+# absolute) so the client-side VFS layout and import path stay portable
+# regardless of how `config.apps` is configured.
+_APPS_VFS_ROOT = "apps"
 
 # ---------------------------------------------------------------------------
 # Auth gate mixin
@@ -168,11 +185,17 @@ class BaseHandler(tornado.web.RequestHandler):
             self.write(html_content)
             return
 
-        # 2. Normalize content to string
+        # 2. Normalize content to a plain `str`. Going through bytes
+        # matters here: htpy nodes/markupsafe.Markup render via `str()`
+        # into a `Markup` instance, and slicing/concatenating a plain str
+        # onto a `Markup` auto-*escapes* that plain str (e.g. our raw
+        # <link> tag below would come out as "&lt;link ...&gt;"). Encoding
+        # then decoding strips the Markup type, leaving a genuine str.
         if isinstance(html_content, bytes):
-            html_str = html_content.decode("utf-8")
+            html_bytes = html_content
         else:
-            html_str = str(html_content)
+            html_bytes = str(html_content).encode("utf-8")
+        html_str = html_bytes.decode("utf-8")
 
         # 3. Inject the favicon right after <head>, unless one is
         # already present anywhere in the document.
@@ -400,6 +423,64 @@ _app_spec = {
 }
 
 
+def _ensure_namespace_package(name: str, search_path: Optional[list] = None):
+    """Get-or-create a namespace package registered in `sys.modules`.
+
+    `search_path`, when given, becomes the package's `__path__`, which
+    lets Python's own import machinery locate real submodules under that
+    directory on demand — this is what makes ordinary intra-project
+    imports (e.g. `from . import other_server`) work for modules loaded
+    by `_load_server_module`.
+    """
+    module = sys.modules.get(name)
+    if module is None:
+        module = types.ModuleType(name)
+        module.__path__ = search_path if search_path is not None else []
+        module.__package__ = name
+        sys.modules[name] = module
+    elif search_path is not None:
+        module.__path__ = search_path
+    return module
+
+
+def _load_server_module(path: str) -> str:
+    """Import a `<project>/<app>_server.py` module under a synthetic,
+    stable package hierarchy (`_pyplet_apps.<project>.<app>_server`) and
+    return the module name it was loaded under.
+
+    A real (if synthetic) package hierarchy is registered in
+    `sys.modules` — rather than loading the file in isolation via
+    `spec_from_file_location` — so Python's own import machinery handles
+    the module. That is what makes ordinary intra-project imports (e.g.
+    `from . import other_server`) keep working: the project package's
+    `__path__` points at its real on-disk directory, so Python can find
+    sibling `*_server.py` modules there when such an import is resolved.
+
+    This stays independent of `config.apps`'s literal shape (bare
+    relative folder, nested path, or absolute path) since the synthetic
+    prefix is never derived from it.
+    """
+    file_path = Path(path)
+    project_dir = file_path.parent.resolve()
+    project_name = file_path.parent.name
+
+    _ensure_namespace_package(_APPS_MODULE_PREFIX)
+    _ensure_namespace_package(
+        f"{_APPS_MODULE_PREFIX}.{project_name}",
+        # Must be an absolute path: Python's import machinery caches a
+        # per-directory finder in `sys.path_importer_cache` keyed by the
+        # literal path string, so a relative string reused under a
+        # different cwd (e.g. across server restarts, or two projects
+        # that both happen to be named "apps/<project>") would return a
+        # stale finder pointing at the wrong (or now-gone) directory.
+        search_path=[str(project_dir)],
+    )
+
+    module_name = f"{_APPS_MODULE_PREFIX}.{project_name}.{file_path.stem}"
+    module = importlib.import_module(module_name)
+    return module.__name__
+
+
 async def astart():
     favicon_uri = None
     if config.favicon:
@@ -428,14 +509,11 @@ async def astart():
     # Load all server applications
     server_modules = glob.glob(f"{config.apps}/*/*_server.py")
     for path in server_modules:
-        module_name = path[:-3].replace("/", ".")
         try:
-            import_module(module_name)
+            module_name = _load_server_module(path)
             logger.debug(f"Loaded module: {module_name}")
         except Exception as e:
-            logger.error(
-                f"Failed to load module {module_name}: {e}", exc_info=True
-            )
+            logger.error(f"Failed to load module {path}: {e}", exc_info=True)
 
     url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")
@@ -489,7 +567,16 @@ class ServerApplication:
             (pyplet_root, "pyplet/*", ""),
             (pyplet_root, "pyplet/shared/**", ""),
             (pyplet_root, "pyplet/client/**", ""),
-            (".", f"{config.apps}/{project}/**", ""),
+            # root_dir is resolved to an absolute path and the pattern
+            # kept relative to it, so the resulting VFS keys are always
+            # "apps/<project>/..." — never leaking `config.apps`'s own
+            # (possibly absolute, nested, etc.) on-disk shape into the
+            # browser-side virtual filesystem.
+            (
+                str(Path(config.apps).resolve()),
+                f"{project}/**",
+                _APPS_VFS_ROOT,
+            ),
             # Inject htpy dynamically!
             (htpy_parent, "htpy/**", ""),
             (markupsafe_parent, "markupsafe/**", ""),
@@ -932,7 +1019,7 @@ else:
     # Boot the application
     from pyplet.client import bootstrap_client
     await bootstrap_client(
-        '{config.apps}',
+        '{_APPS_VFS_ROOT}',
         '{project}',
         '{app}',
         {self.client_libraries},
@@ -943,7 +1030,15 @@ else:
         script_tag = getattr(self, "interpreter", "py")
 
         py_config = {
-            "packages": [] if script_tag == "mpy" else ["htpy", "markupsafe"]
+            # `micropip` itself isn't auto-loaded by Pyodide; it must be
+            # requested like any other package, or the runtime
+            # `import micropip` in `bootstrap_client` (used to install
+            # `self.client_libraries`) raises ModuleNotFoundError.
+            "packages": (
+                []
+                if script_tag == "mpy"
+                else ["htpy", "markupsafe", "micropip"]
+            )
         }
 
         content = {
@@ -966,7 +1061,7 @@ else:
     def __init_subclass__(cls):
         qualname = cls.__module__.split(".")
         if (
-            qualname[0] == config.apps
+            qualname[0] == _APPS_MODULE_PREFIX
             and len(qualname) == 3
             and qualname[2].endswith("_server")
         ):

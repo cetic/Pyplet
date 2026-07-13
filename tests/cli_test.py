@@ -774,6 +774,34 @@ class TestCLIConfigOverrides:
             config.port = original_port
             config.address = original_host
 
+    @patch("pyplet.server.cli.start_server")
+    def test_start_checks_directory_for_custom_apps_value(
+        self, mock_start_server, tmp_path, monkeypatch
+    ):
+        """Regression test: `--apps` must be applied to `config` *before*
+        the projects-directory existence check. Previously the check ran
+        against the stale default/env-var value, so passing `--apps` for
+        a directory other than "./apps" could fail even though the given
+        directory exists (here, only "custom_apps" exists, not "apps")."""
+        from pyplet.server.cli import main
+        from pyplet.server.config import config
+
+        monkeypatch.delenv("PYPLET_APPS", raising=False)
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "custom_apps").mkdir()
+
+        original_apps = config.apps
+        try:
+            with patch(
+                "sys.argv", ["pyplet", "start", "--apps", "custom_apps"]
+            ):
+                main()
+
+            assert config.apps == "custom_apps"
+            mock_start_server.assert_called_once()
+        finally:
+            config.apps = original_apps
+
 
 @pytest.mark.unit
 class TestCLIIntegration:

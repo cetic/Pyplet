@@ -146,6 +146,14 @@ def main() -> None:
         create_project(args.project_name)
 
     elif args.command in ("start"):  # , "run", "server"):
+        # Apply CLI overrides (e.g. --apps) to config first, so the
+        # directory check below validates the directory the server will
+        # actually use instead of a stale default/env-var value.
+        for name in config.params:
+            value = getattr(args, name, ...)
+            if value is not ...:
+                setattr(config, name, value)
+
         projects_dir = Path(config.apps)
 
         # If path is relative, make it absolute
@@ -160,11 +168,6 @@ def main() -> None:
                 "projects directory."
             )
             sys.exit(2)
-
-        for name in config.params:
-            value = getattr(args, name, ...)
-            if value is not ...:
-                setattr(config, name, value)
 
         start_server()
 
