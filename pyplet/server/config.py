@@ -94,6 +94,17 @@ class PypletConfig:
         env_var="PYPLET_URL",
     )
 
+    favicon = Param(
+        default="../images/pyplet_logo_no_bg.svg",
+        description=(
+            "Path to the default favicon SVG, injected inline into "
+            "served HTML. Relative paths are resolved against the "
+            "pyplet package directory. Set to an empty string to "
+            "disable the default favicon."
+        ),
+        env_var="PYPLET_FAVICON",
+    )
+
     # ── Authentication ───────────────────────────────────────────────────────
     oauth_cookie_secret = Param(
         default=None,

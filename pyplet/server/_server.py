@@ -6,6 +6,7 @@ import importlib.util
 import json
 import logging
 import os
+import re
 import secrets
 import textwrap
 from importlib import import_module
@@ -115,9 +116,80 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
 # ---------------------------------------------------------------------------
 # Application handlers
 # ---------------------------------------------------------------------------
+def load_favicon_as_data_uri(filepath):
+    """Reads the SVG file and converts it to a Base64 Data URI."""
+    if not os.path.exists(filepath):
+        logger.warning(f"Favicon not found at {filepath}")
+        return None
+
+    with open(filepath, "rb") as f:
+        svg_data = f.read()
+
+    # Encode the binary SVG data to a base64 string
+    b64_encoded = base64.b64encode(svg_data).decode("utf-8")
+
+    # Format it as a Data URI for SVG
+    return f"data:image/svg+xml;base64,{b64_encoded}"
 
 
-class AboutHandler(_AuthMixin, tornado.web.RequestHandler):
+# Matches the opening <head ...> tag so the favicon can be inserted
+# right after it.
+_HEAD_OPEN_RE = re.compile(r"<head\b[^>]*>", re.IGNORECASE)
+# Matches any <link ...> tag so its `rel` attribute can be inspected.
+_LINK_TAG_RE = re.compile(r"<link\b[^>]*>", re.IGNORECASE)
+# Matches a `rel` attribute, quoted or unquoted, inside a tag.
+_REL_ATTR_RE = re.compile(
+    r"""rel\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))""", re.IGNORECASE
+)
+
+
+def _has_favicon_link(html_str: str) -> bool:
+    """Whether `html_str` already declares a favicon `<link>` tag."""
+    for link_tag in _LINK_TAG_RE.findall(html_str):
+        match = _REL_ATTR_RE.search(link_tag)
+        if not match:
+            continue
+        rel_value = next(g for g in match.groups() if g is not None)
+        if "icon" in rel_value.lower():
+            return True
+    return False
+
+
+class BaseHandler(tornado.web.RequestHandler):
+    """
+    A base handler that provides a custom method to inject
+    an inline Base64 SVG favicon into raw HTML strings.
+    """
+
+    def write_html(self, html_content):
+        # 1. Check if we actually have a favicon loaded in settings
+        favicon_uri = self.application.settings.get("favicon_data_uri")
+        if not favicon_uri:
+            self.write(html_content)
+            return
+
+        # 2. Normalize content to string
+        if isinstance(html_content, bytes):
+            html_str = html_content.decode("utf-8")
+        else:
+            html_str = str(html_content)
+
+        # 3. Inject the favicon right after <head>, unless one is
+        # already present anywhere in the document.
+        head_match = _HEAD_OPEN_RE.search(html_str)
+        if head_match and not _has_favicon_link(html_str):
+            favicon_tag = (
+                f'<link rel="icon" type="image/svg+xml" href="{favicon_uri}">'
+            )
+            insert_at = head_match.end()
+            html_str = (
+                html_str[:insert_at] + favicon_tag + html_str[insert_at:]
+            )
+
+        self.write(html_str.encode("utf-8"))
+
+
+class AboutHandler(_AuthMixin, BaseHandler):
     """
     GET  /about  — show the about page.
     """
@@ -126,7 +198,7 @@ class AboutHandler(_AuthMixin, tornado.web.RequestHandler):
         user = self._require_auth()
         if user is None:
             return
-        self.write(
+        self.write_html(
             str(
                 markupsafe.Markup(  # nosec
                     templates.about_template(self, user)
@@ -135,7 +207,7 @@ class AboutHandler(_AuthMixin, tornado.web.RequestHandler):
         )
 
 
-class PackageHandler(_AuthMixin, tornado.web.RequestHandler):
+class PackageHandler(_AuthMixin, BaseHandler):
     """A handler for serving package resources."""
 
     async def get(self, project_name: str, app_name: str) -> None:
@@ -154,7 +226,7 @@ class PackageHandler(_AuthMixin, tornado.web.RequestHandler):
         application.package(self)
 
 
-class LoginHandler(_AuthMixin, tornado.web.RequestHandler):
+class LoginHandler(_AuthMixin, BaseHandler):
     """
     GET  /login  — show login page (provider buttons) or redirect to / if
                    already authenticated.
@@ -164,10 +236,10 @@ class LoginHandler(_AuthMixin, tornado.web.RequestHandler):
         if oauth.auth_enabled() and oauth.get_session(self) is not None:
             self.redirect("/")
             return
-        self.write(str(templates.login_template(self)).encode("UTF-8"))
+        self.write_html(str(templates.login_template(self)).encode("UTF-8"))
 
 
-class IndexHandler(_AuthMixin, tornado.web.RequestHandler):
+class IndexHandler(_AuthMixin, BaseHandler):
     """
     GET  /  — show the index page with the apps the user is allowed to see.
     """
@@ -176,7 +248,9 @@ class IndexHandler(_AuthMixin, tornado.web.RequestHandler):
         user = self._require_auth()
         if user is None:
             return
-        self.write(str(templates.index_template(self, user)).encode("UTF-8"))
+        self.write_html(
+            str(templates.index_template(self, user)).encode("UTF-8")
+        )
 
 
 class LogoutHandler(tornado.web.RequestHandler):
@@ -227,7 +301,7 @@ class MagicLinkVerifyHandler(tornado.web.RequestHandler):
         await magiclink.handle_verify(self)
 
 
-class AppHandler(_AuthMixin, tornado.web.RequestHandler):
+class AppHandler(_AuthMixin, BaseHandler):
     async def get(self, project_name, app_name):
         user = self._require_auth(project_name, app_name)
         if user is None:
@@ -327,6 +401,27 @@ _app_spec = {
 
 
 async def astart():
+    favicon_uri = None
+    if config.favicon:
+        # Relative paths (e.g. the default "../images/...") are resolved
+        # against the pyplet package directory, not the process CWD, so
+        # the bundled favicon is found regardless of where the server
+        # is launched from.
+        favicon_path = Path(config.favicon)
+        if not favicon_path.is_absolute():
+            favicon_path = Path(pyplet.__file__).parent / favicon_path
+        favicon_path = favicon_path.resolve()
+
+        favicon_uri = load_favicon_as_data_uri(str(favicon_path))
+        logger.info(
+            "Using favicon: %s (Data URI length: %s)",
+            favicon_path,
+            len(favicon_uri) if favicon_uri else "N/A",
+        )
+
+    # Inject it into the Tornado settings so the Handlers can find it
+    _app_spec["favicon_data_uri"] = favicon_uri
+
     app = tornado.web.Application(**_app_spec)
     app.listen(config.port, config.address)
 
@@ -345,7 +440,9 @@ async def astart():
     url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")
     logger.info(f"Loaded {len(server_applications)} application(s)")
+
     methods = oauth.enabled_providers()
+
     if magiclink.enabled():
         methods.append("magic-link")
     if methods:
@@ -491,6 +588,7 @@ class ServerApplication:
         project, app = handler.path_args
 
         # Update the extension to .json
+        # COULD BE THE EXAMPLE RELATED BUG
         app_package = f"/apps/{project}/{app}.json"
 
         # Inject PyScript core scripts
@@ -863,7 +961,7 @@ else:
         tree = templates.application_template(
             f"{project}/{app}", handler, content
         )
-        handler.write(str(tree).encode("UTF-8"))
+        handler.write_html(tree)
 
     def __init_subclass__(cls):
         qualname = cls.__module__.split(".")

@@ -42,7 +42,7 @@ pyplet = "pyplet.server.cli:script_main"
 
 [tool.setuptools.package-data]
 # Include apps/examples into pip package
-pyplet = ["../apps/**/*"]
+pyplet = ["../apps/**/*", "../images/*"]
 
 [tool.setuptools.packages.find]
 where = ["."]
