@@ -682,18 +682,18 @@ class ServerApplication:
         head_content = [
             link(
                 rel="stylesheet",
-                href="https://pyscript.net/releases/2026.3.1/core.css",
+                href="https://pyscript.net/releases/2026.7.2/core.css",
             ),
             script(
                 type="module",
-                src="https://pyscript.net/releases/2026.3.1/core.js",
+                src="https://pyscript.net/releases/2026.7.2/core.js",
             ),
-            # link(
-            #     rel="stylesheet",
-            #     href="https://code.jquery.com/ui/1.14.1/themes/base/jquery-ui.css",  # noqa: E501
-            # ),
-            # script(src="https://code.jquery.com/jquery-3.7.1.min.js"),
-            # script(src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"),
+            link(
+                rel="stylesheet",
+                href="https://code.jquery.com/ui/1.14.2/themes/base/jquery-ui.css",  # noqa: E501
+            ),
+            script(src="https://code.jquery.com/jquery-4.0.0.min.js"),
+            script(src="https://code.jquery.com/ui/1.14.2/jquery-ui.min.js"),
         ]
 
         # The Python script to run on the client
