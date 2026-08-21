@@ -105,6 +105,16 @@ class PypletConfig:
         env_var="PYPLET_FAVICON",
     )
 
+    site_name = Param(
+        default="Pyplet",
+        description=(
+            "Product name shown to users: page titles, navbar wordmark, "
+            "sign-in page and magic-link e-mails. Set this to deploy "
+            "under your own name without patching the code."
+        ),
+        env_var="PYPLET_SITE_NAME",
+    )
+
     # ── Authentication ───────────────────────────────────────────────────────
     oauth_cookie_secret = Param(
         default=None,
