@@ -117,5 +117,7 @@ oauth.register_consent_flow("drive", {
 })
 ```
 
-The authorization request this produces is byte-for-byte the one
-`start_drive_consent` used to build.
+The authorization request this produces is equivalent to the one
+`start_drive_consent` used to build — same endpoint, same scopes, same
+parameters and values. Only the order in which the query string encodes
+them differs, which OAuth does not treat as significant.
