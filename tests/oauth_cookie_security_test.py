@@ -7,7 +7,7 @@ the deployed origin) and SECURI-9 (fail-fast on a missing persistent
 Mirrors ``tests/config_test.py`` / ``tests/oauth_test.py``: env-driven via the
 ``monkeypatch`` fixture, no live server. ``_use_secure_cookies`` and
 ``set_session`` are sync; the two OAuth-state writers (``start_login`` /
-``start_drive_consent``) are async and use ``@pytest.mark.asyncio`` (asyncio is
+``start_consent``) are async and use ``@pytest.mark.asyncio`` (asyncio is
 in STRICT mode — pytest-asyncio 1.4.0 is installed).
 
 The Secure decision is gated on ``config.url`` / ``PYPLET_SECURE_COOKIES`` and
@@ -69,6 +69,27 @@ async def _stub_oidc(provider):
             "https://accounts.google.com/o/oauth2/v2/auth"
         )
     }
+
+
+def _register_consent_flow(monkeypatch, name="extra-scope"):
+    """Register a throwaway incremental-consent flow and return its name.
+
+    The cookie contract under test belongs to ``start_consent`` itself, not to
+    any particular flow, so this registers a minimal one against the built-in
+    ``google`` provider. Restored on teardown via ``monkeypatch.setitem`` so
+    the module-level registry does not leak between tests.
+    """
+    monkeypatch.setitem(
+        oauth._CONSENT_FLOWS,
+        name,
+        {"provider": "google", "on_complete": _noop_complete},
+    )
+    return name
+
+
+async def _noop_complete(handler, user_info, tokens):
+    """Consent-flow completion that does nothing (cookie tests ignore it)."""
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -141,13 +162,14 @@ async def test_start_login_forwards_secure_true_on_https(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_start_drive_consent_forwards_secure_true_on_https(monkeypatch):
-    """The drive-consent OAuth-state cookie carries secure=True on https."""
+async def test_start_consent_forwards_secure_true_on_https(monkeypatch):
+    """The consent-flow OAuth-state cookie carries secure=True on https."""
     monkeypatch.setenv("PYPLET_URL", "https://pyplet.example.com")
     _enable_oauth(monkeypatch)
     monkeypatch.setattr(oauth, "_fetch_oidc_config", _stub_oidc)
+    flow = _register_consent_flow(monkeypatch)
     handler = MagicMock()
-    await oauth.start_drive_consent(handler, "/")
+    await oauth.start_consent(handler, flow, "/")
     assert handler.set_signed_cookie.call_args.kwargs.get("secure") is True
 
 
@@ -164,13 +186,14 @@ async def test_start_login_no_secure_on_plain_http(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_start_drive_consent_no_secure_on_plain_http(monkeypatch):
-    """The drive-consent OAuth-state cookie omits Secure in plain-http dev."""
+async def test_start_consent_no_secure_on_plain_http(monkeypatch):
+    """The consent-flow OAuth-state cookie omits Secure in plain-http dev."""
     monkeypatch.setenv("PYPLET_URL", "http://127.0.0.1:8080")
     _enable_oauth(monkeypatch)
     monkeypatch.setattr(oauth, "_fetch_oidc_config", _stub_oidc)
+    flow = _register_consent_flow(monkeypatch)
     handler = MagicMock()
-    await oauth.start_drive_consent(handler, "/")
+    await oauth.start_consent(handler, flow, "/")
     assert not handler.set_signed_cookie.call_args.kwargs.get("secure")
 
 

@@ -208,7 +208,10 @@ _PROVIDER_ICONS = {
     ],
 }
 
-_PROVIDER_LABEL = {"google": "Google", "microsoft": "Microsoft"}
+# Labels come from the provider registry (oauth.provider_label), so a provider
+# an application registers renders its own name here without touching this
+# module. Only the icons stay local: they are presentation assets, and an
+# unknown provider simply renders label-only.
 
 
 def login_template(handler: RequestHandler) -> Node:
@@ -222,7 +225,7 @@ def login_template(handler: RequestHandler) -> Node:
     # ── OAuth provider buttons ──────────────────────────────────────────
     for provider in providers:
         icon_node = _PROVIDER_ICONS.get(provider, "")
-        label_text = _PROVIDER_LABEL.get(provider, provider.title())
+        label_text = oauth.provider_label(provider)
         card_children.append(
             a(
                 ".btn.btn-outline-secondary.btn-lg.w-100"
