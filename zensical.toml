@@ -88,6 +88,7 @@ nav = [
       { "Bootstrap Helpers" = "api/bootstrap.md" },
       { "Client Runtime" = "api/client.md" },
       { "Server" = "api/server.md" },
+      { "OAuth Providers" = "api/oauth-providers.md" },
       { "WebSocket Protocol" = "api/websocket.md" },
       { "Client Utils" = "api/client-utils.md" }
   ]},
