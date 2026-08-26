@@ -82,6 +82,17 @@ class PypletConfig:
         type_cast=int,
         env_var="PYPLET_PORT",
     )
+    ws_max_message_mb = Param(
+        default=40,
+        description=(
+            "Max WebSocket frame size in MB (Tornado "
+            "websocket_max_message_size). 40 MB carries a 25 MB base64'd "
+            "upload (~33 MB frame) with headroom. Raise in lockstep with "
+            "any app's per-document upload cap."
+        ),
+        type_cast=int,
+        env_var="PYPLET_WS_MAX_MESSAGE_MB",
+    )
     # pyodide_url = Param(
     #     default="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js",
     #     description="The URL to fetch Pyodide from.",
