@@ -388,11 +388,26 @@ class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
             == urllib.parse.urlparse(allowed).hostname
         )
 
+    def get_compression_options(self):
+        """Enable WebSocket ``permessage-deflate`` compression.
+
+        Returning a (possibly empty) dict opts the connection into Tornado's
+        per-message deflate extension; the client offers the extension and this
+        handler accepts it during the handshake. ``compression_level`` 6 is
+        zlib's default speed/ratio trade-off — a good fit for the app's
+        chatty JSON/text frames without excessive CPU per message.
+
+        Returns:
+            A dict of compression options enabling ``permessage-deflate``.
+        """
+        return {"compression_level": 6}
+
     async def open(self, project_name, app_name):
         user = self._require_auth(project_name, app_name)
         if user is None:
             self.close(1008, "Unauthorized")
             return
+        self.login = user["email"]
 
         application = server_applications[project_name, app_name]
         self.queue = asyncio.Queue()
@@ -581,6 +596,47 @@ def enforce_startup_debug_policy() -> None:
         )
 
 
+def _merge_app_declared_routes() -> list[tuple]:
+    """Splice app-declared ``routes()`` into ``_app_spec["handlers"]``.
+
+    Every registered application is asked for its ``routes()`` and the
+    result is inserted BEFORE the catch-all ``r"/.*"`` redirect, which is
+    the LAST entry of ``_app_spec["handlers"]`` (see the module-level
+    definition) — a route listed after it would be shadowed into a
+    redirect and never reached. Insertion is a ``[-1:-1]`` slice
+    assignment, so the catch-all stays last.
+
+    Called from ``astart()`` once the app modules are loaded (that is what
+    populates ``server_applications``) and before the Tornado
+    ``Application`` is built from ``_app_spec`` — a merge after the
+    Application exists would have no effect on the running server.
+
+    A failing ``routes()`` is logged and skipped so one broken app cannot
+    take the others down.
+
+    Returns:
+        The handler tuples that were spliced in (empty list if none).
+    """
+    app_declared_handlers: list[tuple] = []
+    for instance in server_applications.values():
+        try:
+            app_declared_handlers.extend(instance.routes())
+        except Exception as e:
+            logger.error(
+                "Failed to read routes() from %s: %s",
+                type(instance).__name__,
+                e,
+                exc_info=True,
+            )
+    if app_declared_handlers:
+        _app_spec["handlers"][-1:-1] = app_declared_handlers
+        logger.info(
+            "Registered %d app-declared route(s) before catch-all redirect",
+            len(app_declared_handlers),
+        )
+    return app_declared_handlers
+
+
 async def astart():
     # Load all server applications FIRST: importing each *_server.py
     # fires ServerApplication.__init_subclass__, which registers the
@@ -604,6 +660,10 @@ async def astart():
     # Story 18.18 (DEPLOY-8): on the production profile, refuse to boot with
     # Tornado debug on (autoreload + traceback pages must never ship to prod).
     enforce_startup_debug_policy()
+
+    # Merge the routes each app declares into the handler table before the
+    # Tornado Application is built from _app_spec.
+    _merge_app_declared_routes()
 
     favicon_uri = None
     if config.favicon:
@@ -1174,6 +1234,38 @@ else:
             f"{project}/{app}", handler, content
         )
         handler.write_html(tree)
+
+    def routes(self) -> list[tuple[str, type, dict]]:
+        """Return additional Tornado handlers contributed by this app.
+
+        Each tuple is ``(url_regex, RequestHandlerClass, init_kwargs)`` —
+        the same shape Tornado accepts in :class:`tornado.web.Application`'s
+        ``handlers`` argument. Pyplet merges these into the global handler
+        list at ``astart()`` time, inserted BEFORE the catch-all
+        ``r"/.*"`` redirect so the routes are reachable. Default returns
+        an empty list; apps that need custom HTTP routes (e.g. an
+        asset-serving ``/apps/<project>/<app>/assets/...`` endpoint)
+        override this.
+
+        Tornado handler kwargs:
+            Handlers that need app-scoped state (paths, caches, etc.)
+            should accept those values via a Tornado ``initialize(...)``
+            method and receive them as the third tuple element.
+
+        Returns:
+            Empty list by default. Override in subclasses to declare
+            routes.
+
+        Notes:
+            - Pyplet invokes ``routes()`` ONCE per app at server startup,
+              after the app instance has been registered via
+              ``__init_subclass__``. The returned list is not re-read on
+              subsequent requests.
+            - Handlers added via ``routes()`` do NOT go through the
+              ``_AuthMixin`` by default — auth-gated routes must explicitly
+              subclass ``_AuthMixin`` from this module.
+        """
+        return []
 
     def __init_subclass__(cls):
         qualname = cls.__module__.split(".")
