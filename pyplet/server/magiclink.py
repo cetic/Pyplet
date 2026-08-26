@@ -129,14 +129,15 @@ def _consume_token(token: str) -> dict | None:
 def _send_email_sync(to_addr: str, base: str, magic_url: str) -> None:
     """Send the magic-link e-mail synchronously (called from a thread)."""
     ttl_min = config.magiclink_token_ttl // 60
+    site_name = config.site_name
 
     msg = email.mime.multipart.MIMEMultipart("alternative")
-    msg["Subject"] = "Your Pyplet sign-in link"
+    msg["Subject"] = f"Your {site_name} sign-in link"
     msg["From"] = base
     msg["To"] = to_addr
 
     plain = (
-        f"Click the link below to sign in to Pyplet.\n\n"
+        f"Click the link below to sign in to {site_name}.\n\n"
         f"{magic_url}\n\n"
         f"This link expires in {ttl_min} minute(s) and "
         "can only be used once.\nIf you did not request "
@@ -144,12 +145,12 @@ def _send_email_sync(to_addr: str, base: str, magic_url: str) -> None:
     )
     html = f"""\
 <html><body>
-<p>Click the button below to sign in to Pyplet.</p>
+<p>Click the button below to sign in to {site_name}.</p>
 <p style="margin:24px 0">
   <a href="{magic_url}"
      style="background:#0d6efd;color:#fff;padding:12px 24px;
             border-radius:6px;text-decoration:none;font-size:16px">
-    Sign in to Pyplet
+    Sign in to {site_name}
   </a>
 </p>
 <p style="color:#6c757d;font-size:13px">
