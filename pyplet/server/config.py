@@ -119,10 +119,29 @@ class PypletConfig:
     oauth_cookie_secret = Param(
         default=None,
         description=(
-            "Signs session cookies. Without this, a "
-            "random secret is generated at startup."
+            "Signs session cookies. Without this, a random secret is "
+            "generated per process (all sessions drop on restart); under "
+            "PYPLET_REQUIRE_AUTH=1 the server refuses to boot if unset."
         ),
         env_var="PYPLET_COOKIE_SECRET",
+    )
+    secure_cookies = Param(
+        default=None,
+        description=(
+            "Force the Secure attribute on auth cookies ('1'/'0'). "
+            "When unset, derived from the https scheme of PYPLET_URL "
+            "(the deployed origin)."
+        ),
+        env_var="PYPLET_SECURE_COOKIES",
+    )
+    session_max_age_days = Param(
+        default=1,
+        description=(
+            "Session cookie lifetime in days (default: 1 = 24 h). Set "
+            "PYPLET_SESSION_TTL_DAYS to extend."
+        ),
+        type_cast=int,
+        env_var="PYPLET_SESSION_TTL_DAYS",
     )
     oauth_google_client_id = Param(
         default=None,
@@ -148,6 +167,24 @@ class PypletConfig:
         default="common",
         description='Tenant ID or "common" for multi-tenant apps.',
         env_var="OAUTH_MICROSOFT_TENANT",
+    )
+    require_auth = Param(
+        default="0",
+        description=(
+            "Production fail-CLOSED switch. Set to '1' to refuse boot when no "
+            "auth method is configured, when auth_rules.json is missing, or "
+            "when magic-link is enabled without PYPLET_ALLOW_MAGICLINK."
+        ),
+        env_var="PYPLET_REQUIRE_AUTH",
+    )
+    allow_magiclink = Param(
+        default="0",
+        description=(
+            "Set to '1' to opt magic-link login IN on a production "
+            "(PYPLET_REQUIRE_AUTH) profile; otherwise a configured "
+            "MAGICLINK_SMTP_* refuses to boot."
+        ),
+        env_var="PYPLET_ALLOW_MAGICLINK",
     )
 
     # ── Magic-link e-mail auth ───────────────────────────────────────────────
