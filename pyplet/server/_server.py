@@ -482,6 +482,25 @@ def _load_server_module(path: str) -> str:
 
 
 async def astart():
+    # Load all server applications FIRST: importing each *_server.py
+    # fires ServerApplication.__init_subclass__, which registers the
+    # instance in server_applications. Anything derived from that
+    # registry has to run once it is populated, so the modules are
+    # loaded before the Tornado Application is built from _app_spec.
+    server_modules = glob.glob(f"{config.apps}/*/*_server.py")
+    for path in server_modules:
+        try:
+            module_name = _load_server_module(path)
+            logger.debug(f"Loaded module: {module_name}")
+        except Exception as e:
+            logger.error(f"Failed to load module {path}: {e}", exc_info=True)
+
+    # Fail-closed auth policy (Story 17.6, PB-1): on the production profile,
+    # refuse to boot on a misdelivered auth config rather than serve
+    # anonymously. Runs once the modules are loaded, so the policy sees
+    # every discovered application.
+    oauth.enforce_startup_auth_policy(magiclink_enabled=magiclink.enabled())
+
     favicon_uri = None
     if config.favicon:
         # Relative paths (e.g. the default "../images/...") are resolved
@@ -505,15 +524,6 @@ async def astart():
 
     app = tornado.web.Application(**_app_spec)
     app.listen(config.port, config.address)
-
-    # Load all server applications
-    server_modules = glob.glob(f"{config.apps}/*/*_server.py")
-    for path in server_modules:
-        try:
-            module_name = _load_server_module(path)
-            logger.debug(f"Loaded module: {module_name}")
-        except Exception as e:
-            logger.error(f"Failed to load module {path}: {e}", exc_info=True)
 
     url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")

@@ -24,7 +24,9 @@ Always required when auth is enabled
 PYPLET_COOKIE_SECRET
     Signs session cookies.  Generate with:
         python -c "import secrets; print(secrets.token_hex(32))"
-    Without this, sessions survive only until the server restarts.
+    Without this, a random secret is generated per process, so sessions
+    survive only until the server restarts; under PYPLET_REQUIRE_AUTH=1
+    the server refuses to boot if unset.
 
 Per-app access control (ACL)
 ------------------------------
@@ -41,9 +43,16 @@ Example::
 
     [[".*", "@mycompany\\.com$"], ["public/demo", ".*"]]
 
-If the file does not exist, **any authenticated user** can see **all** apps.
+Deny-by-default (Story 17.6, PB-1): when auth is **enabled** but the rules
+file is missing, ACL **denies** all app access (fail closed) and logs an
+ERROR. When auth is fully disabled (no provider — local dev), a missing file
+still allows all apps so an un-authenticated local run works.
 
-Auth is silently disabled when no OAuth provider env vars are set.
+Fail-closed startup (``PYPLET_REQUIRE_AUTH=1``): on this production profile
+``enforce_startup_auth_policy()`` refuses to boot when no auth method is
+configured, when ``auth_rules.json`` is missing, or when magic-link is enabled
+without ``PYPLET_ALLOW_MAGICLINK=1``. Without the flag, auth is silently
+disabled when no OAuth provider env vars are set (a loud WARNING is logged).
 """
 
 from __future__ import annotations
@@ -97,6 +106,12 @@ _PROVIDER_CONFIGS: dict[str, dict[str, Any]] = {
 # OIDC discovery-doc cache
 _oidc_cache: dict[str, dict] = {}
 
+# JWKS cache, keyed by provider (parallel to ``_oidc_cache``). The provider's
+# signing keys rotate (Google rotates roughly daily), so a verify failure that
+# looks like rotation triggers a single forced refetch — see
+# ``_verify_id_token_claims``.
+_jwks_cache: dict[str, dict] = {}
+
 
 def enabled_providers() -> list[str]:
     """Return the names of providers that have a client_id configured."""
@@ -114,6 +129,22 @@ def register_auth_check(fn) -> None:
     """Register a zero-argument callable
     that returns True when its auth method is active."""
     _extra_auth_checks.append(fn)
+
+
+# Callbacks registered by a server application to handle Drive-consent
+# tokens
+# (Story 14.8 / CAP-8). Called after a drive-flow OAuth callback completes.
+_drive_token_hooks: list = []
+
+
+def register_drive_token_hook(fn) -> None:
+    """Register an async callback called after a drive-consent OAuth callback.
+
+    Called with (sub: str, email: str, refresh_token: str | None, scopes: str).
+    Registered hooks are called in order once the Drive token exchange
+    succeeds.
+    """
+    _drive_token_hooks.append(fn)
 
 
 def auth_enabled() -> bool:
@@ -147,26 +178,127 @@ async def _fetch_oidc_config(provider: str) -> dict:
     return doc
 
 
-# ---------------------------------------------------------------------------
-# JWT / id_token decoding
-# ---------------------------------------------------------------------------
+async def _fetch_jwks(provider: str, *, force_refresh: bool = False) -> dict:
+    """Fetch (and cache) *provider*'s JWKS — its JSON Web Key Set.
 
-
-def _decode_id_token_claims(id_token: str) -> dict:
+    Reads ``jwks_uri`` from the already-cached OIDC discovery document and
+    GETs it with the same ``httpx`` pattern as :func:`_fetch_oidc_config`.
+    The result is cached per provider; ``force_refresh=True`` bypasses the
+    cache to pick up a rotated signing key (Google rotates its JWKS keys).
     """
-    Decode JWT payload without signature verification.
+    if not force_refresh and provider in _jwks_cache:
+        return _jwks_cache[provider]
 
-    Safe here because the token is received directly from the provider
-    over TLS; no MITM is possible.  For higher-assurance deployments
-    swap in full JWKS verification via ``authlib`` or ``python-jose``.
+    oidc = await _fetch_oidc_config(provider)
+    jwks_uri = oidc["jwks_uri"]
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(jwks_uri, timeout=10)
+        resp.raise_for_status()
+        jwks = resp.json()
+
+    _jwks_cache[provider] = jwks
+    logger.debug("Fetched JWKS for %s from %s", provider, jwks_uri)
+    return jwks
+
+
+# ---------------------------------------------------------------------------
+# id_token signature verification (SECURI-8, Story 18.19)
+# ---------------------------------------------------------------------------
+
+
+def _accepted_issuers(issuer: str) -> list[str]:
+    """Return the set of acceptable ``iss`` values for *issuer*.
+
+    Google issues ``iss`` as either the ``https://accounts.google.com`` form or
+    the bare ``accounts.google.com`` host; the discovery document's ``issuer``
+    is the ``https://`` form, so accept both. Microsoft's ``iss`` matches its
+    discovery ``issuer`` exactly, so for it this is effectively a singleton.
     """
-    import base64
+    out = [issuer]
+    if issuer.startswith("https://"):
+        out.append(issuer.removeprefix("https://"))
+    return out
 
-    parts = id_token.split(".")
-    if len(parts) != 3:
-        raise ValueError("Invalid JWT format")
-    payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
-    return json.loads(base64.urlsafe_b64decode(payload_b64))
+
+def _verify_id_token_against_jwks(
+    id_token: str, jwks: dict, *, issuer: str, audience: str
+) -> dict:
+    """Verify the ``id_token`` signature against *jwks*; validate its claims.
+
+    Pure and synchronous (no ``httpx``, no ``config``) so the crypto is
+    unit-testable with crafted JWTs and a stubbed JWKS — no async, no network.
+    Restricts the accepted signing algorithm to RS256 (Google and Microsoft
+    both sign with RS256) to close algorithm-confusion, resolves the signing
+    key from *jwks* by ``kid``, and validates ``iss``/``aud``/``exp``.
+
+    Args:
+        id_token: The compact-serialized JWT from the token endpoint.
+        jwks: The provider JWKS (``{"keys": [...]}`` from ``jwks_uri``).
+        issuer: The discovery ``issuer`` — the expected ``iss`` (the bare-host
+            Google variant is also accepted, see :func:`_accepted_issuers`).
+        audience: The provider ``client_id`` — the expected ``aud``.
+
+    Returns:
+        The validated claims as a plain ``dict``.
+
+    Raises:
+        JoseError: On a bad/absent signature, a wrong/missing ``iss``/``aud``,
+            an expired/absent ``exp``, or a non-RS256 algorithm.
+        ValueError: When no JWKS key matches the token's ``kid`` (rotation).
+    """
+    from authlib.jose import JsonWebKey, JsonWebToken
+
+    key_set = JsonWebKey.import_key_set(jwks)
+    claims = JsonWebToken(["RS256"]).decode(
+        id_token,
+        key_set,
+        claims_options={
+            "iss": {"essential": True, "values": _accepted_issuers(issuer)},
+            "aud": {"essential": True, "value": audience},
+            "exp": {"essential": True},
+        },
+    )
+    claims.validate()
+    return dict(claims)
+
+
+async def _verify_id_token_claims(id_token: str, provider: str) -> dict:
+    """Verify *id_token* against *provider*'s JWKS and return its claims.
+
+    Async wrapper around the pure :func:`_verify_id_token_against_jwks`:
+    resolves the expected ``issuer`` (discovery ``issuer``) and ``audience``
+    (the provider ``client_id``), fetches the JWKS, and verifies. On a
+    signature/key-resolution failure that looks like key rotation (a
+    ``BadSignatureError`` or an unknown-``kid`` ``ValueError``) it refetches
+    the JWKS **once** and retries — Google rotates its signing keys, so a
+    freshly rotated key may post-date the cache. Claim failures (wrong or
+    expired ``iss``/``aud``/``exp``) are NOT retried (the key already
+    resolved; a refetch cannot help) and propagate immediately.
+
+    Raises:
+        Exception: Any verification failure. ``handle_callback``'s ``try``
+            wraps it into the standard error page — no session is set.
+    """
+    from authlib.jose.errors import BadSignatureError
+
+    oidc = await _fetch_oidc_config(provider)
+    issuer = oidc["issuer"]
+    audience = _PROVIDER_CONFIGS[provider]["client_id"]()
+
+    jwks = await _fetch_jwks(provider)
+    try:
+        return _verify_id_token_against_jwks(
+            id_token, jwks, issuer=issuer, audience=audience
+        )
+    except (BadSignatureError, ValueError):
+        # Signature/key-resolution miss — refetch once in case the signing key
+        # rotated past our cache, then retry. A genuinely bad signature fails
+        # again on the fresh keys and propagates.
+        jwks = await _fetch_jwks(provider, force_refresh=True)
+        return _verify_id_token_against_jwks(
+            id_token, jwks, issuer=issuer, audience=audience
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +306,22 @@ def _decode_id_token_claims(id_token: str) -> dict:
 # ---------------------------------------------------------------------------
 
 SESSION_COOKIE = "pyplet_user"
-_SESSION_MAX_AGE_DAYS = 1  # 24 hours
+
+
+def _use_secure_cookies() -> bool:
+    """Whether auth cookies must carry the ``Secure`` attribute.
+
+    Behind a TLS-terminating edge the VM receives plain http with xheaders
+    OFF, so ``handler.request.protocol`` is unreliably ``"http"`` even for an
+    https client (audit DEPLOY-2). Decide from config, never request.protocol:
+    an explicit ``PYPLET_SECURE_COOKIES`` wins; otherwise derive from the https
+    scheme of ``config.url``. Plain-http local dev (flag unset, no https url)
+    → False, so dev still sets cookies over http.
+    """
+    flag = config.secure_cookies
+    if flag is not None and str(flag).strip() != "":
+        return str(flag).strip().lower() in ("1", "true", "yes", "on")
+    return (config.url or "").lower().startswith("https://")
 
 
 def set_session(handler, user_info: dict) -> None:
@@ -183,16 +330,17 @@ def set_session(handler, user_info: dict) -> None:
     handler.set_signed_cookie(
         SESSION_COOKIE,
         payload,
-        expires_days=_SESSION_MAX_AGE_DAYS,
+        expires_days=config.session_max_age_days,
         httponly=True,
         samesite="Lax",
+        secure=_use_secure_cookies(),
     )
 
 
 def get_session(handler) -> dict | None:
     """Return the user dict from the signed cookie, or ``None``."""
     raw = handler.get_signed_cookie(
-        SESSION_COOKIE, max_age_days=_SESSION_MAX_AGE_DAYS
+        SESSION_COOKIE, max_age_days=config.session_max_age_days
     )
     if raw is None:
         return None
@@ -216,7 +364,7 @@ def clear_session(handler) -> None:
 # app_pattern is matched against the combined "project/app" string.
 _AclRule = tuple[re.Pattern, re.Pattern]
 _acl_rules: list[_AclRule] | None = None  # None = "not loaded yet"
-_acl_allow_all: bool = False  # True when no rules file exists
+_acl_allow_all: bool = False  # True only when no rules file AND auth disabled
 
 
 def _load_acl_rules() -> None:
@@ -225,9 +373,22 @@ def _load_acl_rules() -> None:
 
     rules_path = config.auth_rules_file
     if not os.path.isfile(rules_path):
+        if auth_enabled():
+            # Fail CLOSED: auth is on but no rules file → deny all by default.
+            logger.error(
+                "No ACL rules file at %s while auth is enabled — denying all "
+                "app access by default (deny-by-default). Ship "
+                "auth_rules.json.",
+                rules_path,
+            )
+            _acl_rules = []
+            _acl_allow_all = False
+            return
+        # Auth fully disabled (local dev, no provider) — allow all so an
+        # un-authenticated local run still works.
         logger.info(
-            "No ACL rules file found at %s — all authenticated users"
-            " can access all apps.",
+            "No ACL rules file at %s and auth disabled — allowing all apps "
+            "(local dev).",
             rules_path,
         )
         _acl_rules = []
@@ -276,7 +437,9 @@ def is_app_permitted(project: str, app: str, email: str) -> bool:
     Each rule's first regex is matched against the combined ``"project/app"``
     string; the second is matched against the user's email address.
     Rules are evaluated in order; the first full match grants access.
-    If no rules file exists, access is always granted.
+    When auth is enabled but no rules file exists, access is denied
+    (deny-by-default, Story 17.6); the allow-all-on-missing-file path
+    survives only when auth is fully disabled (local dev).
     """
     _ensure_acl_loaded()
 
@@ -313,6 +476,91 @@ def permitted_apps(email: str) -> list[tuple[str, str]]:
 
 
 # ---------------------------------------------------------------------------
+# Fail-closed startup policy (Story 17.6, PB-1)
+# ---------------------------------------------------------------------------
+
+
+class AuthConfigError(RuntimeError):
+    """Raised at startup when a fail-closed auth policy is violated.
+
+    Refusing to boot is intentional: a misdelivered auth config must
+    hard-fail rather than silently serve every app anonymously (PB-1).
+    """
+
+
+def enforce_startup_auth_policy(magiclink_enabled: bool = False) -> None:
+    """Fail-closed startup checks for the production profile (PB-1,
+    Story 17.6).
+
+    On the production profile (``PYPLET_REQUIRE_AUTH=1``) raises
+    ``AuthConfigError`` — refusing to boot — when (1) no auth method is
+    configured, (2) auth is enabled but ``auth_rules.json`` is missing, or
+    (3) magic-link is configured without ``PYPLET_ALLOW_MAGICLINK=1``. Off the
+    production profile it logs a loud WARNING/ERROR instead of raising, so an
+    explicitly-open local dev run still starts.
+
+    Args:
+        magiclink_enabled: whether magic-link auth is active. Passed in by the
+            caller (``_server.astart`` → ``magiclink.enabled()``) to avoid an
+            ``oauth``↔``magiclink`` circular import.
+
+    Side effects: emits log records; reads ``config`` + env.
+    Raises: ``AuthConfigError`` to abort startup on a production-profile
+        breach.
+    """
+    production = config.require_auth == "1"
+
+    if not auth_enabled():
+        if production:
+            raise AuthConfigError(
+                "PYPLET_REQUIRE_AUTH=1 but no authentication method is "
+                "configured — refusing to boot (would serve every app "
+                "anonymously). Configure a provider (e.g. "
+                "OAUTH_GOOGLE_CLIENT_ID/SECRET), or unset PYPLET_REQUIRE_AUTH "
+                "for an explicitly open deployment."
+            )
+        logger.warning(
+            "Authentication is DISABLED (no provider configured) — every "
+            "request is served anonymously. Set PYPLET_REQUIRE_AUTH=1 with a "
+            "configured provider on any non-local deployment."
+        )
+        return
+
+    if not os.path.isfile(config.auth_rules_file):
+        msg = (
+            "auth_rules.json not found at %s while authentication is enabled "
+            "— ACL DENIES all app access by default (fail closed)."
+            % config.auth_rules_file
+        )
+        if production:
+            raise AuthConfigError(
+                msg + " Refusing to boot under PYPLET_REQUIRE_AUTH; ship "
+                "auth_rules.json in the deploy artifact."
+            )
+        logger.error(msg)
+
+    if production and magiclink_enabled and config.allow_magiclink != "1":
+        raise AuthConfigError(
+            "Magic-link (MAGICLINK_SMTP_*) is configured on the production "
+            "profile (PYPLET_REQUIRE_AUTH=1) — refusing to boot. Magic-link "
+            "mints a session for ANY email and bypasses the OAuth/ACL "
+            "boundary. Set PYPLET_ALLOW_MAGICLINK=1 to opt in explicitly."
+        )
+
+    # Story 17.7 (PB-9 / SECURI-9): a persistent signing secret is mandatory in
+    # production — without it _server.py:325 falls back to a per-process
+    # secrets.token_hex(32) that invalidates every session on each restart.
+    if production and not config.oauth_cookie_secret:
+        raise AuthConfigError(
+            "PYPLET_REQUIRE_AUTH=1 but PYPLET_COOKIE_SECRET is unset — "
+            "refusing to boot with a per-process random cookie secret "
+            "(it would log out every user on each restart). "
+            "Set a persistent PYPLET_COOKIE_SECRET "
+            '(python -c "import secrets; print(secrets.token_hex(32))").'
+        )
+
+
+# ---------------------------------------------------------------------------
 # OAuth login flow helpers (called by handlers in _server.py)
 # ---------------------------------------------------------------------------
 
@@ -338,6 +586,7 @@ async def start_login(handler, provider: str) -> None:
         json.dumps({"state": state, "next": next_url, "provider": provider}),
         httponly=True,
         samesite="Lax",
+        secure=_use_secure_cookies(),
     )
 
     callback_url = _callback_url(handler)
@@ -355,13 +604,68 @@ async def start_login(handler, provider: str) -> None:
     handler.redirect(auth_url)
 
 
+async def start_drive_consent(handler, next_url: str = "/") -> None:
+    """Initiate an incremental OAuth authorization to add drive.file scope.
+
+    Uses the same unified Web-application client as login (Q3). Adds
+    access_type=offline and prompt=consent to force a refresh_token response.
+    Stores "flow": "drive" in the state cookie so handle_callback routes
+    the response to the Drive token hook instead of set_session.
+
+    Does not modify the login session (user stays logged in throughout).
+
+    Args:
+        handler: Tornado RequestHandler.
+        next_url: URL to redirect to after Drive consent completes.
+
+    Returns:
+        None (redirects the browser).
+    """
+    meta = _PROVIDER_CONFIGS["google"]
+    oidc = await _fetch_oidc_config("google")
+    client_id = meta["client_id"]()
+    state = secrets.token_urlsafe(16)
+
+    handler.set_signed_cookie(
+        _STATE_COOKIE,
+        json.dumps(
+            {
+                "state": state,
+                "next": next_url,
+                "provider": "google",
+                "flow": "drive",
+            }
+        ),
+        httponly=True,
+        samesite="Lax",
+        secure=_use_secure_cookies(),
+    )
+
+    callback_url = _callback_url(handler)
+    params = {
+        "client_id": client_id,
+        "redirect_uri": callback_url,
+        "response_type": "code",
+        "scope": " ".join(
+            meta["scopes"] + ["https://www.googleapis.com/auth/drive.file"]
+        ),
+        "state": state,
+        "access_type": "offline",
+        "prompt": "consent",
+        "include_granted_scopes": "true",
+    }
+    auth_url = oidc["authorization_endpoint"] + "?" + urlencode(params)
+    handler.redirect(auth_url)
+
+
 async def handle_callback(handler) -> None:
     """
     Complete the OAuth authorization-code flow.
 
-    Validates state, exchanges the code for tokens, decodes the id_token,
-    sets the session cookie, and redirects to the originally requested URL.
-    Called by ``OAuthCallbackHandler`` in ``_server.py``.
+    Validates state, exchanges the code for tokens, verifies the id_token
+    signature against the provider JWKS, sets the session cookie, and redirects
+    to the originally requested URL. Called by ``OAuthCallbackHandler`` in
+    ``_server.py``.
     """
     # --- Validate CSRF state ---
     raw_state = handler.get_signed_cookie(_STATE_COOKIE)
@@ -426,10 +730,10 @@ async def handle_callback(handler) -> None:
         return
 
     try:
-        claims = _decode_id_token_claims(id_token)
+        claims = await _verify_id_token_claims(id_token, provider)
     except Exception as exc:
-        logger.error("id_token decode failed: %s", exc)
-        _error(handler, 500, "Could not decode the identity token.")
+        logger.error("id_token verification failed: %s", exc)
+        _error(handler, 500, "Could not verify the identity token.")
         return
 
     user_info = {
@@ -442,6 +746,25 @@ async def handle_callback(handler) -> None:
 
     if not user_info["email"]:
         _error(handler, 500, "Provider did not include an email in the token.")
+        return
+
+    # Story 14.8 / CAP-8: Drive incremental consent callback — do NOT call
+    # set_session (the user is already logged in). Call drive token hooks
+    # to store the refresh token, then redirect back to the app.
+    if state_data.get("flow") == "drive":
+        refresh_token = tokens.get(
+            "refresh_token"
+        )  # None if Google omitted it
+        scopes = tokens.get("scope", "")
+        for hook in _drive_token_hooks:
+            try:
+                await hook(
+                    user_info["sub"], user_info["email"], refresh_token, scopes
+                )
+            except Exception as exc:
+                logger.error("Drive token hook failed: %s", exc)
+        handler.clear_cookie(_STATE_COOKIE)
+        handler.redirect(next_url)
         return
 
     set_session(handler, user_info)
