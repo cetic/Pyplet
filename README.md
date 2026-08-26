@@ -428,6 +428,21 @@ Since client code runs in PyScript (WebAssembly):
 
 ## Contributing
 
+### Where development happens
+
+Pyplet lives in two places, and they are not interchangeable:
+
+- **GitLab `seglab/pyplet`** (CETIC forge, `git.cetic.be`) is the
+  **canonical** repository. Development lands there, on the default
+  branch `main`, through merge requests.
+- **GitHub [`cetic/Pyplet`](https://github.com/cetic/Pyplet/)** is the
+  **publication mirror**. It is deliberately behind: nothing is developed
+  there, and it is refreshed from GitLab `main` by a maintainer when a
+  state is worth publishing.
+
+The flow is one-way: **GitLab `main` → GitHub**. A change pushed straight
+to GitHub would be overwritten by the next publication.
+
 Contributions are welcome! When contributing:
 
 1. Maintain clean separation between client and server code
