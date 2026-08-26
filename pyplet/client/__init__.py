@@ -460,7 +460,21 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
             for dep in deps:
                 mip.install(dep)
         else:
-            import micropip
+            try:
+                import micropip
+            except ModuleNotFoundError:
+                # micropip ships with Pyodide, but a reload after the app has
+                # already been used can restore a partial/inconsistent Pyodide
+                # package set from PyScript's IndexedDB cache (@pyscript.fs +
+                # the pyodide package cache), leaving micropip unregistered so
+                # `import micropip` raises ModuleNotFoundError at boot. Recover
+                # exactly as the error message itself advises: pull the package
+                # in via the Pyodide JS API and retry. This self-heals a stale
+                # or dirty cache without forcing the user to clear IndexedDB.
+                import pyodide_js
+
+                await pyodide_js.loadPackage("micropip")
+                import micropip
 
             await micropip.install(list(deps))
 
@@ -500,6 +514,15 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
         is not ClientApplication.client_init
     ):
         await client_application.client_init()
+
+    # Drop the boot splash (server-rendered into #container) now that the app
+    # module has loaded and any client_init UI has mounted. Apps that replace
+    # #container's contents already removed it; this by-id removal also covers
+    # apps that append to #container, so the spinner never lingers. Gate on
+    # truthiness — getElementById yields a falsy JS null when already gone.
+    splash = js.document.getElementById("pyplet-boot-splash")
+    if splash:
+        splash.remove()
 
     if (
         client_application.__class__.websocket_client_loop

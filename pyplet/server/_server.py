@@ -1218,10 +1218,33 @@ else:
             )
         }
 
+        # Boot splash: a self-contained spinner shown inside #container from
+        # the very first HTML response, covering the blank window while
+        # PyScript/Pyodide and the transpiled app load. It carries no Tailwind
+        # classes (Tailwind loads later, client-side) and no external assets —
+        # only inline styles plus one <style> block for the rotation keyframes.
+        # Apps that replace #container's contents (rather than appending to
+        # them) drop it implicitly; bootstrap_client also removes
+        # #pyplet-boot-splash by id once the app module has loaded, so apps
+        # that append to #container don't leave it spinning. A fixed,
+        # viewport-centered wrapper avoids any navbar-height assumption.
+        boot_splash = markupsafe.Markup(  # nosec
+            '<div id="pyplet-boot-splash" style="position:fixed;inset:0;'
+            'display:flex;align-items:center;justify-content:center">'
+            "<style>@keyframes pyplet-spin{to{transform:rotate(360deg)}}"
+            "@media (prefers-reduced-motion:reduce)"
+            "{#pyplet-boot-splash .pyplet-spinner{animation:none}}</style>"
+            '<div class="pyplet-spinner" style="width:40px;height:40px;'
+            "border:4px solid #dee2e6;border-top-color:#6c757d;"
+            'border-radius:50%;animation:pyplet-spin 0.8s linear infinite">'
+            "</div>"
+            "</div>"
+        )
+
         content = {
             "head": head_content,
             "body": [
-                div(id="container"),
+                div(id="container")[boot_splash],
                 markupsafe.Markup(  # nosec
                     f"<script type='{script_tag}' "
                     f"config='{json.dumps(py_config)}'"
