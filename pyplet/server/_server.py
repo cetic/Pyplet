@@ -131,6 +131,72 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
         self.set_header("Cache-Control", "no-cache")
 
 
+class AppStaticFileHandler(tornado.web.StaticFileHandler):
+    """Serve an app's static assets, confined to ``<apps>/<project>/static``.
+
+    The route captures the app *project* and the file *tail* as two separate
+    groups (``/apps/<project>/static/<tail>``) and this handler roots itself at
+    that one app's ``static/`` directory per request. Tornado's
+    ``validate_absolute_path`` only guarantees a request cannot escape
+    ``self.root``; rooting the handler at the whole ``apps/`` tree (the old
+    behaviour) let a ``..`` in the tail climb out of ``static/`` into a sibling
+    app's server source (``*_server.py``) or the ACL file (``auth_rules.json``)
+    while staying under ``apps/`` — an unauthenticated path traversal. Rooting
+    per-app closes it: a ``..`` (raw or percent-encoded, which Tornado
+    url-decodes before matching) can no longer resolve to anything outside the
+    requested app's own ``static/`` dir (attempts get 403/404). Apps with no
+    ``static/`` dir simply 404 rather than crashing the server.
+
+    Tornado's containment test is purely lexical, so ``validate_absolute_path``
+    is overridden to re-check the symlink-resolved paths too — see there.
+    """
+
+    def initialize(self, apps_root: str) -> None:
+        # StaticFileHandler.initialize requires a ``path``; the real
+        # per-request root is (re)computed in get() once ``project`` is known.
+        super().initialize(path=apps_root)
+        self._apps_root = apps_root
+
+    async def get(  # noqa: A003 - Tornado handler hook
+        self, project: str, path: str, include_body: bool = True
+    ) -> None:
+        # Confine this request to the requested app's own static/ dir so a
+        # traversal in ``path`` cannot escape into the wider apps/ tree.
+        self.root = os.path.join(self._apps_root, project, "static")
+        await super().get(path, include_body=include_body)
+
+    async def head(  # noqa: A003 - Tornado handler hook
+        self, project: str, path: str
+    ) -> None:
+        # Tornado dispatches every method as method(*path_args), so HEAD must
+        # accept both capture groups too (project, tail). Delegate to the
+        # body-less GET path (which sets the per-request ``self.root``),
+        # mirroring StaticFileHandler.head -> get(path, include_body=False).
+        await self.get(project, path, include_body=False)
+
+    def validate_absolute_path(
+        self, root: str, absolute_path: str
+    ) -> Optional[str]:
+        # Tornado's own containment check is LEXICAL: it compares
+        # ``os.path.abspath`` prefixes and never resolves symlinks. So a
+        # symlink planted inside an app's ``static/`` dir is served whatever it
+        # points at, including files entirely outside the ``apps/`` tree — an
+        # unauthenticated arbitrary-file read, strictly worse than the
+        # traversal the per-request root above closes. Re-run the containment
+        # test on the SYMLINK-RESOLVED paths. Symlinks that stay inside the
+        # app's own ``static/`` dir keep working (they resolve inside root).
+        validated = super().validate_absolute_path(root, absolute_path)
+        if validated is None:
+            return None
+        real_root = os.path.realpath(root)
+        real_path = os.path.realpath(validated)
+        if os.path.commonpath((real_root, real_path)) != real_root:
+            raise tornado.web.HTTPError(
+                403, "%s is not in the app's static directory", self.path
+            )
+        return validated
+
+
 # ---------------------------------------------------------------------------
 # Application handlers
 # ---------------------------------------------------------------------------
@@ -453,11 +519,13 @@ _app_spec = {
         (r"/auth/verify", MagicLinkVerifyHandler),
         # App static resources (static files)
         (
-            # ONE capture group covering the app name,
-            # the static folder, and the filename
-            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*/static/.*)",
-            tornado.web.StaticFileHandler,
-            {"path": config.apps},
+            # Capture the app project and the file tail SEPARATELY so the
+            # handler can root itself at <apps>/<project>/static/ per request
+            # (see AppStaticFileHandler): a ".." in the tail then cannot escape
+            # the requested app's own static/ dir into the apps/ tree.
+            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/static/(.*)",
+            AppStaticFileHandler,
+            {"apps_root": config.apps},
         ),
         # App upload endpoint (for upload() and upload_area())
         (
