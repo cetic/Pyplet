@@ -146,6 +146,9 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
     url-decodes before matching) can no longer resolve to anything outside the
     requested app's own ``static/`` dir (attempts get 403/404). Apps with no
     ``static/`` dir simply 404 rather than crashing the server.
+
+    Tornado's containment test is purely lexical, so ``validate_absolute_path``
+    is overridden to re-check the symlink-resolved paths too — see there.
     """
 
     def initialize(self, apps_root: str) -> None:
@@ -170,6 +173,28 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
         # body-less GET path (which sets the per-request ``self.root``),
         # mirroring StaticFileHandler.head -> get(path, include_body=False).
         await self.get(project, path, include_body=False)
+
+    def validate_absolute_path(
+        self, root: str, absolute_path: str
+    ) -> Optional[str]:
+        # Tornado's own containment check is LEXICAL: it compares
+        # ``os.path.abspath`` prefixes and never resolves symlinks. So a
+        # symlink planted inside an app's ``static/`` dir is served whatever it
+        # points at, including files entirely outside the ``apps/`` tree — an
+        # unauthenticated arbitrary-file read, strictly worse than the
+        # traversal the per-request root above closes. Re-run the containment
+        # test on the SYMLINK-RESOLVED paths. Symlinks that stay inside the
+        # app's own ``static/`` dir keep working (they resolve inside root).
+        validated = super().validate_absolute_path(root, absolute_path)
+        if validated is None:
+            return None
+        real_root = os.path.realpath(root)
+        real_path = os.path.realpath(validated)
+        if os.path.commonpath((real_root, real_path)) != real_root:
+            raise tornado.web.HTTPError(
+                403, "%s is not in the app's static directory", self.path
+            )
+        return validated
 
 
 # ---------------------------------------------------------------------------
