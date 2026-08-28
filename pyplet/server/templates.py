@@ -72,7 +72,11 @@ def base_template(
             meta(
                 name="viewport", content="width=device-width, initial-scale=1"
             ),
-            title[f"{page_title} - Pyplet" if page_title else "Pyplet"],
+            title[
+                f"{page_title} - {config.site_name}"
+                if page_title
+                else config.site_name
+            ],
             link(
                 href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",  # noqa: E501
                 rel="stylesheet",
@@ -144,12 +148,14 @@ def default_navbar(
     else:
         # Not authenticated or auth disabled: show "About" link
         right_items_content = [
-            li(".nav-item")[a(".nav-link", href="/about")["About Pyplet"]]
+            li(".nav-item")[
+                a(".nav-link", href="/about")[f"About {config.site_name}"]
+            ]
         ]
 
     return nav(".navbar.navbar-expand-sm.bg-body-tertiary")[
         div(".container")[
-            a(".navbar-brand", href="/")["Pyplet"],
+            a(".navbar-brand", href="/")[config.site_name],
             ul(".navbar-nav.ms-auto")[*right_items_content],
         ]
     ]
@@ -202,7 +208,10 @@ _PROVIDER_ICONS = {
     ],
 }
 
-_PROVIDER_LABEL = {"google": "Google", "microsoft": "Microsoft"}
+# Labels come from the provider registry (oauth.provider_label), so a provider
+# an application registers renders its own name here without touching this
+# module. Only the icons stay local: they are presentation assets, and an
+# unknown provider simply renders label-only.
 
 
 def login_template(handler: RequestHandler) -> Node:
@@ -211,12 +220,12 @@ def login_template(handler: RequestHandler) -> Node:
     providers = oauth.enabled_providers()
     show_magiclink = magiclink.enabled()
 
-    card_children = [h4(".mb-4.text-center")["Sign in to Pyplet"]]
+    card_children = [h4(".mb-4.text-center")[f"Sign in to {config.site_name}"]]
 
     # ── OAuth provider buttons ──────────────────────────────────────────
     for provider in providers:
         icon_node = _PROVIDER_ICONS.get(provider, "")
-        label_text = _PROVIDER_LABEL.get(provider, provider.title())
+        label_text = oauth.provider_label(provider)
         card_children.append(
             a(
                 ".btn.btn-outline-secondary.btn-lg.w-100"
@@ -338,13 +347,13 @@ def index_template(
             *[li[project, ul[*apps]] for project, apps in projects.items()]
         ]
         body_content = [
-            p["Welcome to Pyplet!"],
+            p[f"Welcome to {config.site_name}!"],
             p["The following applications are available:"],
             application_list,
         ]
     else:
         body_content = [
-            p["Welcome to Pyplet!"],
+            p[f"Welcome to {config.site_name}!"],
             p[
                 (
                     em["No applications are available for your account."]

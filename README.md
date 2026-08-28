@@ -176,7 +176,9 @@ secret. Set the callback URL to:
 **2. Set environment variables:**
 
 ```bash
-# Required to sign session cookies (generate once and keep it stable):
+# Required & persistent in production — generate once and keep it stable.
+# Under PYPLET_REQUIRE_AUTH=1 the server refuses to boot when this is unset
+# (a per-process random secret logs out every user on each restart):
 export PYPLET_COOKIE_SECRET=$(python -c "import secrets; print(secrets.token_hex(32))")
 
 # Google
@@ -193,9 +195,8 @@ export OAUTH_MICROSOFT_TENANT=common  # or your tenant ID
 
 ### Access control (ACL)
 
-By default every authenticated user can see all apps. To restrict access,
-create `apps/auth_rules.json` — a JSON array of
-`["project/app regex", "email regex"]` pairs:
+To restrict which apps each user can see, create `apps/auth_rules.json` — a
+JSON array of `["project/app regex", "email regex"]` pairs:
 
 ```json
 [
@@ -210,6 +211,12 @@ the second against the user's email address.
 If no rule matches, access is denied.
 
 Override the rules file path with `PYPLET_AUTH_RULES_FILE`.
+
+**Deny-by-default (fail closed):** when authentication is enabled but the rules
+file is **missing**, access is **denied** to every app — ship `auth_rules.json`
+in your deploy artifact. (When auth is fully disabled — local dev with no
+provider — a missing file still allows all apps, so an un-authenticated local
+run works.)
 
 ### Magic-link e-mail authentication
 
@@ -237,11 +244,39 @@ The ACL rules file applies to magic-link logins exactly the same way it does
 for OAuth: the user's e-mail address is matched against the `email_regex`
 column of each rule.
 
+Because magic-link mints a session for **any** e-mail that can receive the
+link, it is **refused at boot on the production profile** (`PYPLET_REQUIRE_AUTH=1`,
+below) unless you opt in explicitly with `PYPLET_ALLOW_MAGICLINK=1`.
+
+### Production fail-closed startup (`PYPLET_REQUIRE_AUTH`)
+
+On any non-local deployment, set `PYPLET_REQUIRE_AUTH=1`. With it, the server
+**refuses to boot** (exits non-zero with a logged error) rather than silently
+serving anonymously when the auth config is misdelivered — specifically when
+**no** auth method is configured, when `auth_rules.json` is **missing**, or
+when magic-link is enabled **without** `PYPLET_ALLOW_MAGICLINK=1`. Without the
+flag (the default), a deployment with no provider still starts but logs a loud
+WARNING that every request is served anonymously.
+
+Three further production-profile guards ship with this posture. The server
+**refuses to boot when `PYPLET_DEBUG=1` under `PYPLET_REQUIRE_AUTH=1`** —
+Tornado debug mode enables autoreload and exposes traceback pages, so set
+`PYPLET_DEBUG=0` in production. Behind a TLS-terminating reverse proxy,
+`app.listen` trusts `X-Forwarded-For`/`X-Forwarded-Proto` (`xheaders`) and
+WebSocket upgrades are origin-checked against the `PYPLET_URL` host
+(same-origin when `PYPLET_URL` is unset). At login, OIDC `id_token`s are
+verified against the provider JWKS (RS256 signature, issuer, audience and
+expiry) before a session is established.
+
 ### Configuration reference
 
 | Variable | Description |
 | --- | --- |
 | `PYPLET_COOKIE_SECRET` | Secret for signing session cookies |
+| `PYPLET_SECURE_COOKIES` | Force `Secure` attribute on auth cookies: `1`/`0` |
+| `PYPLET_REQUIRE_AUTH` | Fail-closed switch: `1` refuses boot, default `0` |
+| `PYPLET_ALLOW_MAGICLINK` | Opt magic-link IN on require-auth, default `0` |
+| `PYPLET_SESSION_TTL_DAYS` | Session cookie lifetime in days, default `1` |
 | **OAuth — Google** | |
 | `OAUTH_GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
 | `OAUTH_GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
@@ -259,6 +294,10 @@ column of each rule.
 | `MAGICLINK_TOKEN_TTL` | Token validity in seconds (default: `900` = 15 min) |
 | **ACL** | |
 | `PYPLET_AUTH_RULES_FILE` | ACL rules path (default: `apps/auth_rules.json`) |
+
+`PYPLET_COOKIE_SECRET` must be persistent and is required under
+`PYPLET_REQUIRE_AUTH=1` (the server refuses to boot when unset);
+`PYPLET_SECURE_COOKIES`, when unset, follows the `PYPLET_URL` scheme.
 
 ## Advanced Features
 
@@ -337,9 +376,10 @@ Available configuration options:
 - `--address` / `PYPLET_ADDR` - Server address (default: `127.0.0.1`)
 - `--port` / `PYPLET_PORT` - Server port (default: `8080`)
 - `--apps` / `PYPLET_APPS` - Apps directory (default: `apps`)
-- `--debug` / `PYPLET_DEBUG` - Debug mode (default: `1`)
+- `--debug` / `PYPLET_DEBUG` - Debug mode (default `1`; must be `0` in prod)
 - `--pyodide-url` / `PYPLET_PYODIDE` - Pyodide CDN URL
 - `--url` / `PYPLET_URL` - Custom URL override
+- `PYPLET_WS_MAX_MESSAGE_MB` - Max WebSocket frame size MB (default: `40`)
 
 See the [Authentication](#authentication) section for OAuth-related variables.
 
@@ -387,6 +427,21 @@ Since client code runs in PyScript (WebAssembly):
 - The `js` module gives direct access to the browser APIs
 
 ## Contributing
+
+### Where development happens
+
+Pyplet lives in two places, and they are not interchangeable:
+
+- **GitLab `seglab/pyplet`** (CETIC forge, `git.cetic.be`) is the
+  **canonical** repository. Development lands there, on the default
+  branch `main`, through merge requests.
+- **GitHub [`cetic/Pyplet`](https://github.com/cetic/Pyplet/)** is the
+  **publication mirror**. It is deliberately behind: nothing is developed
+  there, and it is refreshed from GitLab `main` by a maintainer when a
+  state is worth publishing.
+
+The flow is one-way: **GitLab `main` → GitHub**. A change pushed straight
+to GitHub would be overwritten by the next publication.
 
 Contributions are welcome! When contributing:
 

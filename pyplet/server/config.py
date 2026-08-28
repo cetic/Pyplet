@@ -58,6 +58,15 @@ class Param:
         else:
             instance.__dict__[self.name] = None
 
+    def __delete__(self, instance):
+        # Clear any instance override (CLI/explicit setattr), restoring
+        # normal env-var/default resolution. `__set__` alone can't do
+        # this: setting back a previously-read value still leaves a
+        # frozen instance override behind, which permanently shadows
+        # that env var for the rest of the process (see `del config.x`
+        # usage in tests that must NOT leak state between runs).
+        instance.__dict__.pop(self.name, None)
+
 
 class PypletConfig:
     # ── Core Server ──────────────────────────────────────────────────────────
@@ -82,6 +91,17 @@ class PypletConfig:
         type_cast=int,
         env_var="PYPLET_PORT",
     )
+    ws_max_message_mb = Param(
+        default=40,
+        description=(
+            "Max WebSocket frame size in MB (Tornado "
+            "websocket_max_message_size). 40 MB carries a 25 MB base64'd "
+            "upload (~33 MB frame) with headroom. Raise in lockstep with "
+            "any app's per-document upload cap."
+        ),
+        type_cast=int,
+        env_var="PYPLET_WS_MAX_MESSAGE_MB",
+    )
     # pyodide_url = Param(
     #     default="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js",
     #     description="The URL to fetch Pyodide from.",
@@ -105,14 +125,43 @@ class PypletConfig:
         env_var="PYPLET_FAVICON",
     )
 
+    site_name = Param(
+        default="Pyplet",
+        description=(
+            "Product name shown to users: page titles, navbar wordmark, "
+            "sign-in page and magic-link e-mails. Set this to deploy "
+            "under your own name without patching the code."
+        ),
+        env_var="PYPLET_SITE_NAME",
+    )
+
     # ── Authentication ───────────────────────────────────────────────────────
     oauth_cookie_secret = Param(
         default=None,
         description=(
-            "Signs session cookies. Without this, a "
-            "random secret is generated at startup."
+            "Signs session cookies. Without this, a random secret is "
+            "generated per process (all sessions drop on restart); under "
+            "PYPLET_REQUIRE_AUTH=1 the server refuses to boot if unset."
         ),
         env_var="PYPLET_COOKIE_SECRET",
+    )
+    secure_cookies = Param(
+        default=None,
+        description=(
+            "Force the Secure attribute on auth cookies ('1'/'0'). "
+            "When unset, derived from the https scheme of PYPLET_URL "
+            "(the deployed origin)."
+        ),
+        env_var="PYPLET_SECURE_COOKIES",
+    )
+    session_max_age_days = Param(
+        default=1,
+        description=(
+            "Session cookie lifetime in days (default: 1 = 24 h). Set "
+            "PYPLET_SESSION_TTL_DAYS to extend."
+        ),
+        type_cast=int,
+        env_var="PYPLET_SESSION_TTL_DAYS",
     )
     oauth_google_client_id = Param(
         default=None,
@@ -138,6 +187,24 @@ class PypletConfig:
         default="common",
         description='Tenant ID or "common" for multi-tenant apps.',
         env_var="OAUTH_MICROSOFT_TENANT",
+    )
+    require_auth = Param(
+        default="0",
+        description=(
+            "Production fail-CLOSED switch. Set to '1' to refuse boot when no "
+            "auth method is configured, when auth_rules.json is missing, or "
+            "when magic-link is enabled without PYPLET_ALLOW_MAGICLINK."
+        ),
+        env_var="PYPLET_REQUIRE_AUTH",
+    )
+    allow_magiclink = Param(
+        default="0",
+        description=(
+            "Set to '1' to opt magic-link login IN on a production "
+            "(PYPLET_REQUIRE_AUTH) profile; otherwise a configured "
+            "MAGICLINK_SMTP_* refuses to boot."
+        ),
+        env_var="PYPLET_ALLOW_MAGICLINK",
     )
 
     # ── Magic-link e-mail auth ───────────────────────────────────────────────
