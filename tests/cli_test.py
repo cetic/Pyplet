@@ -802,6 +802,45 @@ class TestCLIConfigOverrides:
         finally:
             config.apps = original_apps
 
+    @patch("pyplet.server.cli.start_server")
+    @patch("pyplet.server.cli.Path.exists", return_value=True)
+    def test_start_does_not_freeze_omitted_env_sourced_params(
+        self, mock_exists, mock_start_server, monkeypatch
+    ):
+        """Regression test: an omitted `--<param>` flag must never get
+        permanently baked into `config.__dict__` just because its env
+        var happens to be set (e.g. PYPLET_DEBUG=1 set job-wide in CI).
+        `argparse`'s default used to be `os.environ.get(env_var,
+        SUPPRESS)`, making an omitted flag indistinguishable from an
+        explicit one once its env var was set — `setattr(config, name,
+        value)` then froze it forever, permanently shadowing that env
+        var for the rest of the process (breaking, e.g., a later
+        `monkeypatch.setenv(...)` on the same var in an unrelated test,
+        such as prod_hardening_test.py toggling PYPLET_DEBUG)."""
+        from pyplet.server.cli import main
+        from pyplet.server.config import config
+
+        original_port = config.port
+        config.__dict__.pop("debug", None)  # start from a clean slate
+        monkeypatch.setenv("PYPLET_DEBUG", "1")
+
+        try:
+            # --debug is never passed on the command line; only --port is.
+            with patch("sys.argv", ["pyplet", "start", "--port", "9999"]):
+                main()
+
+            assert config.port == 9999
+            # config.debug must still be reading the env var live, not a
+            # frozen instance value.
+            assert "debug" not in config.__dict__
+            assert config.debug == "1"
+
+            monkeypatch.setenv("PYPLET_DEBUG", "0")
+            assert config.debug == "0"
+        finally:
+            config.port = original_port
+            config.__dict__.pop("debug", None)
+
 
 @pytest.mark.unit
 class TestCLIIntegration:
