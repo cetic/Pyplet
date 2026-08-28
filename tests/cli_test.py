@@ -738,45 +738,58 @@ class TestCLIArgumentParsing:
             sys.path = original_path
 
 
+@pytest.fixture
+def preserve_config_dict():
+    """Snapshot/restore `config.__dict__` verbatim — not just a captured
+    resolved value — around a test that overrides params via direct
+    assignment (`config.x = value`).
+
+    Restoring via `config.port = original_port` still calls `Param.__set__`,
+    which unconditionally freezes an instance override into
+    `config.__dict__`, even when the value being written happens to equal
+    what was there before. That permanently shadows the param's env var
+    for the rest of the process (`Param.__get__` checks `instance.__dict__`
+    before ever consulting `os.environ`) — e.g. it silently broke the e2e
+    `server` fixture's `PYPLET_PORT` override in a *later*, unrelated test
+    session. Clearing and restoring the whole dict (rather than
+    reassigning individual attributes) actually undoes any override that
+    didn't exist before the test, instead of re-freezing it.
+    """
+    from pyplet.server.config import config
+
+    original = dict(config.__dict__)
+    yield config
+    config.__dict__.clear()
+    config.__dict__.update(original)
+
+
 class TestCLIConfigOverrides:
     @patch("pyplet.server.cli.start_server")
     @patch("pyplet.server.cli.Path.exists", return_value=True)
     def test_start_command_sets_config_attributes(
-        self, mock_exists, mock_start_server
+        self, mock_exists, mock_start_server, preserve_config_dict
     ):
         """Test that CLI arguments correctly override config values."""
         from pyplet.server.cli import main
-        from pyplet.server.config import config
 
-        # 1. Store original config values to prevent test leakage
-        # (Assuming your config has 'port' and 'host' as valid params)
-        original_port = config.port
+        config = preserve_config_dict
         original_host = config.address
 
-        # 2. Simulate the CLI command: `pyplet start --port 9999`
+        # Simulate the CLI command: `pyplet start --port 9999`
         with patch("sys.argv", ["pyplet", "start", "--port", "9999"]):
             main()
 
-        try:
-            # 3. Verify the setattr logic correctly
-            # updated the provided argument
-            assert config.port == 9999
+        # Verify the setattr logic correctly updated the provided argument
+        assert config.port == 9999
 
-            # 4. Verify the `argparse.SUPPRESS` and
-            # `if value is not ...:` logic
-            # This ensures omitted arguments don't
-            # accidentally overwrite defaults
-            # with None or empty strings.
-            assert config.address == original_host
-
-        finally:
-            # 5. Clean up the singleton state so subsequent tests don't fail!
-            config.port = original_port
-            config.address = original_host
+        # Verify the `argparse.SUPPRESS` and `if value is not ...:` logic.
+        # This ensures omitted arguments don't accidentally overwrite
+        # defaults with None or empty strings.
+        assert config.address == original_host
 
     @patch("pyplet.server.cli.start_server")
     def test_start_checks_directory_for_custom_apps_value(
-        self, mock_start_server, tmp_path, monkeypatch
+        self, mock_start_server, tmp_path, monkeypatch, preserve_config_dict
     ):
         """Regression test: `--apps` must be applied to `config` *before*
         the projects-directory existence check. Previously the check ran
@@ -784,28 +797,27 @@ class TestCLIConfigOverrides:
         a directory other than "./apps" could fail even though the given
         directory exists (here, only "custom_apps" exists, not "apps")."""
         from pyplet.server.cli import main
-        from pyplet.server.config import config
+
+        config = preserve_config_dict
 
         monkeypatch.delenv("PYPLET_APPS", raising=False)
         monkeypatch.chdir(tmp_path)
         (tmp_path / "custom_apps").mkdir()
 
-        original_apps = config.apps
-        try:
-            with patch(
-                "sys.argv", ["pyplet", "start", "--apps", "custom_apps"]
-            ):
-                main()
+        with patch("sys.argv", ["pyplet", "start", "--apps", "custom_apps"]):
+            main()
 
-            assert config.apps == "custom_apps"
-            mock_start_server.assert_called_once()
-        finally:
-            config.apps = original_apps
+        assert config.apps == "custom_apps"
+        mock_start_server.assert_called_once()
 
     @patch("pyplet.server.cli.start_server")
     @patch("pyplet.server.cli.Path.exists", return_value=True)
     def test_start_does_not_freeze_omitted_env_sourced_params(
-        self, mock_exists, mock_start_server, monkeypatch
+        self,
+        mock_exists,
+        mock_start_server,
+        monkeypatch,
+        preserve_config_dict,
     ):
         """Regression test: an omitted `--<param>` flag must never get
         permanently baked into `config.__dict__` just because its env
@@ -818,28 +830,67 @@ class TestCLIConfigOverrides:
         `monkeypatch.setenv(...)` on the same var in an unrelated test,
         such as prod_hardening_test.py toggling PYPLET_DEBUG)."""
         from pyplet.server.cli import main
-        from pyplet.server.config import config
 
-        original_port = config.port
+        config = preserve_config_dict
         config.__dict__.pop("debug", None)  # start from a clean slate
         monkeypatch.setenv("PYPLET_DEBUG", "1")
 
+        # --debug is never passed on the command line; only --port is.
+        with patch("sys.argv", ["pyplet", "start", "--port", "9999"]):
+            main()
+
+        assert config.port == 9999
+        # config.debug must still be reading the env var live, not a
+        # frozen instance value.
+        assert "debug" not in config.__dict__
+        assert config.debug == "1"
+
+        monkeypatch.setenv("PYPLET_DEBUG", "0")
+        assert config.debug == "0"
+
+    def test_config_dict_restore_undoes_override_left_by_naive_reassign(
+        self,
+    ):
+        """Regression test for the restore mechanism itself.
+
+        This is exactly what broke the e2e `server` fixture
+        (tests/conftest.py): its forked child sets `PYPLET_PORT` in
+        `os.environ` before calling `astart()`, expecting `config.port`
+        to read it live. But an *earlier*, unrelated cli_test.py test
+        that did `original = config.port; ...; config.port = original`
+        to "clean up" left `config.port` permanently frozen in
+        `config.__dict__` — `Param.__set__` always writes the instance
+        override regardless of whether the value matches what was
+        there before. The server then bound the stale/default port
+        instead of the one the test fixture assigned, and the e2e suite
+        failed with "server not reachable".
+
+        The fix (snapshotting/restoring the whole `config.__dict__`,
+        not reassigning a captured value) must actually remove an
+        override introduced mid-test, not just overwrite it with an
+        equal-looking value.
+        """
+        from pyplet.server.config import config
+
+        assert "port" not in config.__dict__
+        snapshot = dict(config.__dict__)
+
         try:
-            # --debug is never passed on the command line; only --port is.
-            with patch("sys.argv", ["pyplet", "start", "--port", "9999"]):
-                main()
-
-            assert config.port == 9999
-            # config.debug must still be reading the env var live, not a
-            # frozen instance value.
-            assert "debug" not in config.__dict__
-            assert config.debug == "1"
-
-            monkeypatch.setenv("PYPLET_DEBUG", "0")
-            assert config.debug == "0"
-        finally:
+            # The naive pattern this regression guards against:
+            original_port = config.port
+            config.port = 12345
             config.port = original_port
-            config.__dict__.pop("debug", None)
+            assert "port" in config.__dict__  # naive reassign still froze it
+
+            # The actual fix: clear + restore from the pre-test snapshot,
+            # instead of reassigning a captured resolved value.
+            config.__dict__.clear()
+            config.__dict__.update(snapshot)
+
+            assert "port" not in config.__dict__
+        finally:
+            config.__dict__.clear()
+            config.__dict__.update(snapshot)
 
 
 @pytest.mark.unit
