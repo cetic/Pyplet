@@ -34,9 +34,17 @@ class MyProjServer(ServerApplication):
 
 @pytest.fixture
 def restore_config_apps():
-    original = config.apps
+    # Snapshot/restore the whole instance dict, not just `config.apps`'s
+    # resolved value: reassigning `config.apps = original` still calls
+    # `Param.__set__`, which unconditionally freezes an instance override
+    # into `config.__dict__` — permanently shadowing `PYPLET_APPS` for the
+    # rest of the process even when the restored value matches the
+    # pre-test one. Clearing and restoring the dict instead correctly
+    # undoes an override that didn't exist before the test.
+    original = dict(config.__dict__)
     yield
-    config.apps = original
+    config.__dict__.clear()
+    config.__dict__.update(original)
 
 
 class _FakeHandler:
