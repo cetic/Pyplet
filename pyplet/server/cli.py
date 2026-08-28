@@ -131,7 +131,16 @@ def main() -> None:
             f"--{name.replace('_', '-')}",
             required=False,
             help=f"{param_obj.description} [Env: {param_obj.env_var}]",
-            default=os.environ.get(param_obj.env_var, argparse.SUPPRESS),
+            # SUPPRESS unconditionally (not os.environ.get(..., SUPPRESS)):
+            # `config`'s own Param descriptor already falls back to the
+            # env var on every access when not explicitly overridden, so
+            # seeding the argparse default from it here is redundant —
+            # and harmful, since it makes an *omitted* flag indistinguishable
+            # from an *explicit* one. Both would get `setattr(config, ...)`'d
+            # below, permanently freezing that env var's current value into
+            # `config.__dict__`, which then shadows the env var forever
+            # (even across later, unrelated test/process env var changes).
+            default=argparse.SUPPRESS,
             type=param_obj.type_cast,
         )
 
