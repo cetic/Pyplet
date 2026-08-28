@@ -11,6 +11,7 @@ import secrets
 import sys
 import textwrap
 import types
+import urllib.parse
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -128,6 +129,72 @@ class StaticFileHandler(tornado.web.StaticFileHandler):
             path (str): The path of the requested resource.
         """
         self.set_header("Cache-Control", "no-cache")
+
+
+class AppStaticFileHandler(tornado.web.StaticFileHandler):
+    """Serve an app's static assets, confined to ``<apps>/<project>/static``.
+
+    The route captures the app *project* and the file *tail* as two separate
+    groups (``/apps/<project>/static/<tail>``) and this handler roots itself at
+    that one app's ``static/`` directory per request. Tornado's
+    ``validate_absolute_path`` only guarantees a request cannot escape
+    ``self.root``; rooting the handler at the whole ``apps/`` tree (the old
+    behaviour) let a ``..`` in the tail climb out of ``static/`` into a sibling
+    app's server source (``*_server.py``) or the ACL file (``auth_rules.json``)
+    while staying under ``apps/`` — an unauthenticated path traversal. Rooting
+    per-app closes it: a ``..`` (raw or percent-encoded, which Tornado
+    url-decodes before matching) can no longer resolve to anything outside the
+    requested app's own ``static/`` dir (attempts get 403/404). Apps with no
+    ``static/`` dir simply 404 rather than crashing the server.
+
+    Tornado's containment test is purely lexical, so ``validate_absolute_path``
+    is overridden to re-check the symlink-resolved paths too — see there.
+    """
+
+    def initialize(self, apps_root: str) -> None:
+        # StaticFileHandler.initialize requires a ``path``; the real
+        # per-request root is (re)computed in get() once ``project`` is known.
+        super().initialize(path=apps_root)
+        self._apps_root = apps_root
+
+    async def get(  # noqa: A003 - Tornado handler hook
+        self, project: str, path: str, include_body: bool = True
+    ) -> None:
+        # Confine this request to the requested app's own static/ dir so a
+        # traversal in ``path`` cannot escape into the wider apps/ tree.
+        self.root = os.path.join(self._apps_root, project, "static")
+        await super().get(path, include_body=include_body)
+
+    async def head(  # noqa: A003 - Tornado handler hook
+        self, project: str, path: str
+    ) -> None:
+        # Tornado dispatches every method as method(*path_args), so HEAD must
+        # accept both capture groups too (project, tail). Delegate to the
+        # body-less GET path (which sets the per-request ``self.root``),
+        # mirroring StaticFileHandler.head -> get(path, include_body=False).
+        await self.get(project, path, include_body=False)
+
+    def validate_absolute_path(
+        self, root: str, absolute_path: str
+    ) -> Optional[str]:
+        # Tornado's own containment check is LEXICAL: it compares
+        # ``os.path.abspath`` prefixes and never resolves symlinks. So a
+        # symlink planted inside an app's ``static/`` dir is served whatever it
+        # points at, including files entirely outside the ``apps/`` tree — an
+        # unauthenticated arbitrary-file read, strictly worse than the
+        # traversal the per-request root above closes. Re-run the containment
+        # test on the SYMLINK-RESOLVED paths. Symlinks that stay inside the
+        # app's own ``static/`` dir keep working (they resolve inside root).
+        validated = super().validate_absolute_path(root, absolute_path)
+        if validated is None:
+            return None
+        real_root = os.path.realpath(root)
+        real_path = os.path.realpath(validated)
+        if os.path.commonpath((real_root, real_path)) != real_root:
+            raise tornado.web.HTTPError(
+                403, "%s is not in the app's static directory", self.path
+            )
+        return validated
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +349,23 @@ class LogoutHandler(tornado.web.RequestHandler):
         self.redirect("/")
 
 
+class HealthzHandler(tornado.web.RequestHandler):
+    """
+    GET  /healthz  — unauthenticated process-liveness probe.
+
+    Deliberately a plain handler (NOT ``_AuthMixin``): a liveness probe must
+    answer for an LB / systemd / k8s without a session, even when auth is
+    enabled.  Process-up only — it performs NO database / provider / event-loop
+    checks (deep readiness is the app's ``/readyz`` route).  Lives in core's
+    static ``_app_spec`` so it answers for every pyplet app, even when an app
+    module failed to import (``astart`` swallows app-import errors).
+    """
+
+    async def get(self):
+        self.set_header("Content-Type", "application/json")
+        self.write({"status": "ok"})
+
+
 class OAuthLoginHandler(tornado.web.RequestHandler):
     """
     GET  /oauth/login?provider=<name>  — kick off the OAuth flow.
@@ -337,11 +421,59 @@ class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
     closing_message = pyplet.WebSocket.closing_message
     _is_ws = True
 
+    def check_origin(self, origin: str) -> bool:
+        """Allow same-origin WS upgrades OR the deployed ``PYPLET_URL`` origin.
+
+        Story 18.18 (SECURI-4). Tornado's default ``check_origin`` accepts only
+        a request whose ``Origin`` host equals the ``Host`` header — which the
+        edge can break by rewriting ``Host``. We additionally allow an origin
+        whose host matches the configured deployed origin (``config.url`` /
+        ``PYPLET_URL``), compared host-only so the edge's scheme/port do not
+        matter. When ``PYPLET_URL`` is unset (local dev) we fall back to
+        Tornado's default same-origin result, so ``localhost`` still connects.
+
+        Caveat (documented): Tornado invokes ``check_origin`` ONLY when an
+        ``Origin`` header is present, so an Origin-less (non-browser) upgrade
+        is not blocked here — the real gate against anonymous access remains
+        ``_AuthMixin._require_auth`` in ``open``.
+
+        Args:
+            origin: The request's ``Origin`` header value.
+
+        Returns:
+            ``True`` to accept the cross-origin upgrade, ``False`` to reject
+            (Tornado answers the handshake with 403).
+        """
+        if super().check_origin(origin):
+            return True
+        allowed = config.url
+        if not allowed:
+            return False
+        return (
+            urllib.parse.urlparse(origin).hostname
+            == urllib.parse.urlparse(allowed).hostname
+        )
+
+    def get_compression_options(self):
+        """Enable WebSocket ``permessage-deflate`` compression.
+
+        Returning a (possibly empty) dict opts the connection into Tornado's
+        per-message deflate extension; the client offers the extension and this
+        handler accepts it during the handshake. ``compression_level`` 6 is
+        zlib's default speed/ratio trade-off — a good fit for the app's
+        chatty JSON/text frames without excessive CPU per message.
+
+        Returns:
+            A dict of compression options enabling ``permessage-deflate``.
+        """
+        return {"compression_level": 6}
+
     async def open(self, project_name, app_name):
         user = self._require_auth(project_name, app_name)
         if user is None:
             self.close(1008, "Unauthorized")
             return
+        self.login = user["email"]
 
         application = server_applications[project_name, app_name]
         self.queue = asyncio.Queue()
@@ -376,6 +508,7 @@ _app_spec = {
             tornado.web.StaticFileHandler,
             {"path": os.path.join(config.apps, "../pyodide")},
         ),
+        (r"/healthz", HealthzHandler),
         (r"/", IndexHandler),
         (r"/about", AboutHandler),
         (r"/login", LoginHandler),
@@ -386,11 +519,13 @@ _app_spec = {
         (r"/auth/verify", MagicLinkVerifyHandler),
         # App static resources (static files)
         (
-            # ONE capture group covering the app name,
-            # the static folder, and the filename
-            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*/static/.*)",
-            tornado.web.StaticFileHandler,
-            {"path": config.apps},
+            # Capture the app project and the file tail SEPARATELY so the
+            # handler can root itself at <apps>/<project>/static/ per request
+            # (see AppStaticFileHandler): a ".." in the tail then cannot escape
+            # the requested app's own static/ dir into the apps/ tree.
+            r"/apps/([a-zA-Z_][a-zA-Z0-9_]*)/static/(.*)",
+            AppStaticFileHandler,
+            {"apps_root": config.apps},
         ),
         # App upload endpoint (for upload() and upload_area())
         (
@@ -420,6 +555,11 @@ _app_spec = {
     # server still works without PYPLET_COOKIE_SECRET
     # (sessions lost on restart).
     "cookie_secret": config.oauth_cookie_secret or secrets.token_hex(32),
+    # Max WebSocket frame size. Tornado defaults to ~10 MB, which a base64'd
+    # document upload exceeds (killing the socket before app code runs). The
+    # default 40 MB carries a 25 MB upload (~33 MB frame) with headroom; raise
+    # PYPLET_WS_MAX_MESSAGE_MB in lockstep with any app's per-document cap.
+    "websocket_max_message_size": config.ws_max_message_mb * 1024 * 1024,
 }
 
 
@@ -481,7 +621,118 @@ def _load_server_module(path: str) -> str:
     return module.__name__
 
 
+# ---------------------------------------------------------------------------
+# Fail-closed startup policy — production debug guard (Story 18.18, DEPLOY-8)
+# ---------------------------------------------------------------------------
+
+
+class DebugConfigError(RuntimeError):
+    """Raised at startup when the production profile runs with debug on.
+
+    Refusing to boot is intentional: Tornado debug mode enables autoreload and
+    full traceback pages, which must never be exposed on the production profile
+    (``PYPLET_REQUIRE_AUTH=1``). Mirrors ``oauth.AuthConfigError``.
+    """
+
+
+def enforce_startup_debug_policy() -> None:
+    """Refuse to boot the production profile with Tornado debug mode on
+    (DEPLOY-8, Story 18.18).
+
+    On the production profile (``PYPLET_REQUIRE_AUTH=1``) raises
+    ``DebugConfigError`` when ``PYPLET_DEBUG=1`` (the ``config.py`` default),
+    because debug mode enables autoreload and exposes traceback pages — leaking
+    source/stack and re-exec'ing on file change. Off the production profile
+    (``PYPLET_REQUIRE_AUTH`` unset/``0``) it is a no-op, so debug + autoreload
+    stay available for the everyday local dev loop.
+
+    The gate is ``config.require_auth`` — NOT ``oauth.auth_enabled()`` —
+    deliberately mirroring ``oauth.enforce_startup_auth_policy``'s own
+    production gate. Gating on ``auth_enabled()`` would brick the authenticated
+    dev loop (a provider client-id set + debug + autoreload), which is a
+    daily-driver, not production.
+
+    Side effects: reads ``config``.
+    Raises: ``DebugConfigError`` to abort boot on a production-profile breach.
+    """
+    if config.require_auth == "1" and config.debug == "1":
+        raise DebugConfigError(
+            "PYPLET_REQUIRE_AUTH=1 (production profile) but PYPLET_DEBUG=1 — "
+            "refusing to boot. Tornado debug mode enables autoreload and "
+            "exposes traceback pages. Set PYPLET_DEBUG=0 in production, or "
+            "unset PYPLET_REQUIRE_AUTH for an explicitly open local-dev run."
+        )
+
+
+def _merge_app_declared_routes() -> list[tuple]:
+    """Splice app-declared ``routes()`` into ``_app_spec["handlers"]``.
+
+    Every registered application is asked for its ``routes()`` and the
+    result is inserted BEFORE the catch-all ``r"/.*"`` redirect, which is
+    the LAST entry of ``_app_spec["handlers"]`` (see the module-level
+    definition) — a route listed after it would be shadowed into a
+    redirect and never reached. Insertion is a ``[-1:-1]`` slice
+    assignment, so the catch-all stays last.
+
+    Called from ``astart()`` once the app modules are loaded (that is what
+    populates ``server_applications``) and before the Tornado
+    ``Application`` is built from ``_app_spec`` — a merge after the
+    Application exists would have no effect on the running server.
+
+    A failing ``routes()`` is logged and skipped so one broken app cannot
+    take the others down.
+
+    Returns:
+        The handler tuples that were spliced in (empty list if none).
+    """
+    app_declared_handlers: list[tuple] = []
+    for instance in server_applications.values():
+        try:
+            app_declared_handlers.extend(instance.routes())
+        except Exception as e:
+            logger.error(
+                "Failed to read routes() from %s: %s",
+                type(instance).__name__,
+                e,
+                exc_info=True,
+            )
+    if app_declared_handlers:
+        _app_spec["handlers"][-1:-1] = app_declared_handlers
+        logger.info(
+            "Registered %d app-declared route(s) before catch-all redirect",
+            len(app_declared_handlers),
+        )
+    return app_declared_handlers
+
+
 async def astart():
+    # Load all server applications FIRST: importing each *_server.py
+    # fires ServerApplication.__init_subclass__, which registers the
+    # instance in server_applications. Anything derived from that
+    # registry has to run once it is populated, so the modules are
+    # loaded before the Tornado Application is built from _app_spec.
+    server_modules = glob.glob(f"{config.apps}/*/*_server.py")
+    for path in server_modules:
+        try:
+            module_name = _load_server_module(path)
+            logger.debug(f"Loaded module: {module_name}")
+        except Exception as e:
+            logger.error(f"Failed to load module {path}: {e}", exc_info=True)
+
+    # Fail-closed auth policy (Story 17.6, PB-1): on the production profile,
+    # refuse to boot on a misdelivered auth config rather than serve
+    # anonymously. Runs once the modules are loaded, so the policy sees
+    # every discovered application.
+    oauth.enforce_startup_auth_policy(magiclink_enabled=magiclink.enabled())
+
+    # Story 18.18 (DEPLOY-8): on the production profile, refuse to boot with
+    # Tornado debug on (autoreload + traceback pages must never ship to prod).
+    enforce_startup_debug_policy()
+
+    # Merge the routes each app declares into the handler table before the
+    # Tornado Application is built from _app_spec.
+    _merge_app_declared_routes()
+
     favicon_uri = None
     if config.favicon:
         # Relative paths (e.g. the default "../images/...") are resolved
@@ -504,16 +755,10 @@ async def astart():
     _app_spec["favicon_data_uri"] = favicon_uri
 
     app = tornado.web.Application(**_app_spec)
-    app.listen(config.port, config.address)
-
-    # Load all server applications
-    server_modules = glob.glob(f"{config.apps}/*/*_server.py")
-    for path in server_modules:
-        try:
-            module_name = _load_server_module(path)
-            logger.debug(f"Loaded module: {module_name}")
-        except Exception as e:
-            logger.error(f"Failed to load module {path}: {e}", exc_info=True)
+    # Story 18.18 (DEPLOY-8): trust the edge's X-Forwarded-For / -Proto so the
+    # app sees the real client IP + https scheme behind the reverse proxy. No
+    # proxy in local dev ⇒ those headers are absent ⇒ behavior unchanged.
+    app.listen(config.port, config.address, xheaders=True)
 
     url = config.url or f"http://{config.address}:{config.port}"
     logger.info(f"Pyplet server started on {url}")
@@ -1041,10 +1286,33 @@ else:
             )
         }
 
+        # Boot splash: a self-contained spinner shown inside #container from
+        # the very first HTML response, covering the blank window while
+        # PyScript/Pyodide and the transpiled app load. It carries no Tailwind
+        # classes (Tailwind loads later, client-side) and no external assets —
+        # only inline styles plus one <style> block for the rotation keyframes.
+        # Apps that replace #container's contents (rather than appending to
+        # them) drop it implicitly; bootstrap_client also removes
+        # #pyplet-boot-splash by id once the app module has loaded, so apps
+        # that append to #container don't leave it spinning. A fixed,
+        # viewport-centered wrapper avoids any navbar-height assumption.
+        boot_splash = markupsafe.Markup(  # nosec
+            '<div id="pyplet-boot-splash" style="position:fixed;inset:0;'
+            'display:flex;align-items:center;justify-content:center">'
+            "<style>@keyframes pyplet-spin{to{transform:rotate(360deg)}}"
+            "@media (prefers-reduced-motion:reduce)"
+            "{#pyplet-boot-splash .pyplet-spinner{animation:none}}</style>"
+            '<div class="pyplet-spinner" style="width:40px;height:40px;'
+            "border:4px solid #dee2e6;border-top-color:#6c757d;"
+            'border-radius:50%;animation:pyplet-spin 0.8s linear infinite">'
+            "</div>"
+            "</div>"
+        )
+
         content = {
             "head": head_content,
             "body": [
-                div(id="container"),
+                div(id="container")[boot_splash],
                 markupsafe.Markup(  # nosec
                     f"<script type='{script_tag}' "
                     f"config='{json.dumps(py_config)}'"
@@ -1057,6 +1325,38 @@ else:
             f"{project}/{app}", handler, content
         )
         handler.write_html(tree)
+
+    def routes(self) -> list[tuple[str, type, dict]]:
+        """Return additional Tornado handlers contributed by this app.
+
+        Each tuple is ``(url_regex, RequestHandlerClass, init_kwargs)`` —
+        the same shape Tornado accepts in :class:`tornado.web.Application`'s
+        ``handlers`` argument. Pyplet merges these into the global handler
+        list at ``astart()`` time, inserted BEFORE the catch-all
+        ``r"/.*"`` redirect so the routes are reachable. Default returns
+        an empty list; apps that need custom HTTP routes (e.g. an
+        asset-serving ``/apps/<project>/<app>/assets/...`` endpoint)
+        override this.
+
+        Tornado handler kwargs:
+            Handlers that need app-scoped state (paths, caches, etc.)
+            should accept those values via a Tornado ``initialize(...)``
+            method and receive them as the third tuple element.
+
+        Returns:
+            Empty list by default. Override in subclasses to declare
+            routes.
+
+        Notes:
+            - Pyplet invokes ``routes()`` ONCE per app at server startup,
+              after the app instance has been registered via
+              ``__init_subclass__``. The returned list is not re-read on
+              subsequent requests.
+            - Handlers added via ``routes()`` do NOT go through the
+              ``_AuthMixin`` by default — auth-gated routes must explicitly
+              subclass ``_AuthMixin`` from this module.
+        """
+        return []
 
     def __init_subclass__(cls):
         qualname = cls.__module__.split(".")
