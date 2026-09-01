@@ -738,29 +738,8 @@ class TestCLIArgumentParsing:
             sys.path = original_path
 
 
-@pytest.fixture
-def preserve_config_dict():
-    """Snapshot/restore `config.__dict__` verbatim — not just a captured
-    resolved value — around a test that overrides params via direct
-    assignment (`config.x = value`).
-
-    Restoring via `config.port = original_port` still calls `Param.__set__`,
-    which unconditionally freezes an instance override into
-    `config.__dict__`, even when the value being written happens to equal
-    what was there before. That permanently shadows the param's env var
-    for the rest of the process (`Param.__get__` checks `instance.__dict__`
-    before ever consulting `os.environ`) — e.g. it silently broke the e2e
-    `server` fixture's `PYPLET_PORT` override in a *later*, unrelated test
-    session. Clearing and restoring the whole dict (rather than
-    reassigning individual attributes) actually undoes any override that
-    didn't exist before the test, instead of re-freezing it.
-    """
-    from pyplet.server.config import config
-
-    original = dict(config.__dict__)
-    yield config
-    config.__dict__.clear()
-    config.__dict__.update(original)
+# `preserve_config_dict` (used below) is the shared fixture in
+# tests/conftest.py, next to the guard that catches leaked overrides.
 
 
 class TestCLIConfigOverrides:
