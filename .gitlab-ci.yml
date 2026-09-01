@@ -49,6 +49,12 @@ test:
       - PYTHON_VERSION: ["3.12", "3.13", "3.14"]
   variables:
     PYPLET_DEBUG: "1"
+    # Every uv call in this job, `uv run` included, must land on the matrix
+    # interpreter. Without this, `uv run` discovers the image's own 3.13,
+    # decides the 3.12/3.14 venv is stale, and silently rebuilds it without
+    # the `test` extra — pytest then does not exist (measured, pipeline
+    # 34576).
+    UV_PYTHON: $PYTHON_VERSION
   cache:
     key:
       prefix: uv-$PYTHON_VERSION
@@ -71,14 +77,14 @@ test:
     - chromium-browser --version
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-    - uv venv --python "$PYTHON_VERSION"
-    - uv sync --extra test --python "$PYTHON_VERSION"
+    - uv venv
+    - uv sync --extra test
     # Proves in the log which interpreter the matrix leg actually ran.
-    - uv run python --version
+    - uv run --extra test python --version
   script:
     - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     - >
-      uv run pytest tests/ -v
+      uv run --extra test pytest tests/ -v
       --cov=pyplet
       --cov-report=xml:coverage.xml
       --cov-report=html
