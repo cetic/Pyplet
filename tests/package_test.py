@@ -32,19 +32,9 @@ class MyProjServer(ServerApplication):
 """
 
 
-@pytest.fixture
-def restore_config_apps():
-    # Snapshot/restore the whole instance dict, not just `config.apps`'s
-    # resolved value: reassigning `config.apps = original` still calls
-    # `Param.__set__`, which unconditionally freezes an instance override
-    # into `config.__dict__` — permanently shadowing `PYPLET_APPS` for the
-    # rest of the process even when the restored value matches the
-    # pre-test one. Clearing and restoring the dict instead correctly
-    # undoes an override that didn't exist before the test.
-    original = dict(config.__dict__)
-    yield
-    config.__dict__.clear()
-    config.__dict__.update(original)
+# The `config.apps` overrides below use `preserve_config_dict`, the shared
+# fixture in tests/conftest.py, next to the guard that catches leaked
+# overrides.
 
 
 class _FakeHandler:
@@ -73,7 +63,7 @@ class TestPackageVfsKeys:
     "apps/<project>/<file>", independent of `config.apps`'s shape."""
 
     def test_bare_relative_apps_dir(
-        self, tmp_path, monkeypatch, restore_config_apps
+        self, tmp_path, monkeypatch, preserve_config_dict
     ):
         project_dir = tmp_path / "apps" / "myproj"
         project_dir.mkdir(parents=True)
@@ -87,7 +77,7 @@ class TestPackageVfsKeys:
         assert "apps/myproj/myproj_server.py" in file_map
         assert not any(k.startswith("/") for k in file_map)
 
-    def test_absolute_apps_dir(self, tmp_path, restore_config_apps):
+    def test_absolute_apps_dir(self, tmp_path, preserve_config_dict):
         """Regression test for the reported bug: an absolute
         `config.apps` (e.g. `PYPLET_APPS=/home/user/my_examples`) used
         to leak that absolute path straight into the VFS keys, so the
@@ -108,7 +98,7 @@ class TestPackageVfsKeys:
         assert not any(k.startswith("/") for k in file_map)
 
     def test_nested_relative_apps_dir(
-        self, tmp_path, monkeypatch, restore_config_apps
+        self, tmp_path, monkeypatch, preserve_config_dict
     ):
         apps_dir = tmp_path / "sub" / "apps"
         project_dir = apps_dir / "myproj"

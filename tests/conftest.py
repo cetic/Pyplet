@@ -35,6 +35,99 @@ _ANON_AUTH_ENV = {
 }
 
 
+_UNSET = object()
+
+
+@pytest.fixture(autouse=True)
+def no_config_override_leak():
+    """Fail the test that leaves an instance override on the global `config`.
+
+    `Param.__get__` resolves instance dict -> env var -> default, so an
+    entry left in `config.__dict__` permanently SHADOWS that param's env
+    var for the rest of the process. Two bugs shipped that way (34bf363,
+    a123c45): one test froze `config.debug` / `config.port`, and a LATER,
+    unrelated test's `monkeypatch.setenv` was then silently ignored. Both
+    surfaced far from their cause — in another file, as 12 unreachable-server
+    errors and one inverted debug-policy assertion — which is what made
+    them expensive to find, and what a per-param regression test cannot
+    prevent for the next param.
+
+    So this guard covers the whole class rather than the two fixed cases:
+    ANY param, leaked by ANY test, is named at the boundary of the test
+    that caused it. A test that deliberately overrides a param must undo
+    it — snapshot/restore `config.__dict__`, or `del config.<name>`
+    (`Param.__delete__`); reassigning the previously-read value does NOT
+    undo it, since `__set__` writes an override unconditionally.
+
+    The snapshot is also RESTORED before failing, so one offending test
+    cannot cascade into the rest of the session: the cascade is what hid
+    the cause last time.
+    """
+    before = dict(config.__dict__)
+    yield
+    after = dict(config.__dict__)
+
+    if after == before:
+        return
+
+    config.__dict__.clear()
+    config.__dict__.update(before)
+
+    changed = sorted(set(before) | set(after))
+    details = [
+        f"  - config.{name}: "
+        f"{_fmt_override(before, name)} -> {_fmt_override(after, name)}"
+        for name in changed
+        if before.get(name, _UNSET) != after.get(name, _UNSET)
+    ]
+    pytest.fail(
+        "this test leaked a `config` instance override, which shadows the "
+        "param's env var for every LATER test in the session:\n"
+        + "\n".join(details)
+        + "\n\nUndo it before returning: snapshot/restore `config.__dict__`, "
+        "or `del config.<name>`. Reassigning the old value is NOT enough — "
+        "`Param.__set__` writes an override even when the value is unchanged."
+    )
+
+
+def _fmt_override(snapshot: dict, name: str) -> str:
+    """Render one param's override state for the leak report."""
+    if name not in snapshot:
+        return "<no override (env var / default applies)>"
+    return f"frozen to {snapshot[name]!r}"
+
+
+@pytest.fixture
+def preserve_config_dict():
+    """The sanctioned undo for a test that overrides a `config` param.
+
+    Snapshots and restores `config.__dict__` verbatim, which is the only
+    thing that actually removes an override the test introduced — neither
+    reassigning the previously-read value nor `monkeypatch.setattr`'s undo
+    does, since both go through `Param.__set__`, which writes an instance
+    override unconditionally. (That is why `monkeypatch.setattr(config,
+    ...)` is a leak, not a fix: monkeypatch restores by *setting* the value
+    it read, freezing it.)
+
+    Yields `config` so a test can override params off the fixture value.
+    Assign on the yielded object — do NOT also route the same param through
+    `monkeypatch.setattr`. Teardown is the reverse of setup, so monkeypatch
+    (set up first, as a plain argument) undoes LAST: its undo lands after
+    this restore and re-creates the very override this fixture removed.
+    Requesting both fixtures is fine; overriding one param through both is
+    not, and `no_config_override_leak` reports it as an unfixed leak.
+
+    It lives here, next to `no_config_override_leak`: three files had grown
+    a private copy of this snapshot/restore, and the fourth test to touch
+    `config` (`prod_hardening_test.py`, via monkeypatch) had no copy to
+    reach for and leaked `config.apps`.
+    """
+    original = dict(config.__dict__)
+    yield config
+    config.__dict__.clear()
+    config.__dict__.update(original)
+
+
 def _free_port() -> int:
     """Ask the OS for a free ephemeral port.
 
