@@ -32,11 +32,9 @@ class MyProjServer(ServerApplication):
 """
 
 
-@pytest.fixture
-def restore_config_apps():
-    original = config.apps
-    yield
-    config.apps = original
+# The `config.apps` overrides below use `preserve_config_dict`, the shared
+# fixture in tests/conftest.py, next to the guard that catches leaked
+# overrides.
 
 
 class _FakeHandler:
@@ -65,7 +63,7 @@ class TestPackageVfsKeys:
     "apps/<project>/<file>", independent of `config.apps`'s shape."""
 
     def test_bare_relative_apps_dir(
-        self, tmp_path, monkeypatch, restore_config_apps
+        self, tmp_path, monkeypatch, preserve_config_dict
     ):
         project_dir = tmp_path / "apps" / "myproj"
         project_dir.mkdir(parents=True)
@@ -79,7 +77,7 @@ class TestPackageVfsKeys:
         assert "apps/myproj/myproj_server.py" in file_map
         assert not any(k.startswith("/") for k in file_map)
 
-    def test_absolute_apps_dir(self, tmp_path, restore_config_apps):
+    def test_absolute_apps_dir(self, tmp_path, preserve_config_dict):
         """Regression test for the reported bug: an absolute
         `config.apps` (e.g. `PYPLET_APPS=/home/user/my_examples`) used
         to leak that absolute path straight into the VFS keys, so the
@@ -100,7 +98,7 @@ class TestPackageVfsKeys:
         assert not any(k.startswith("/") for k in file_map)
 
     def test_nested_relative_apps_dir(
-        self, tmp_path, monkeypatch, restore_config_apps
+        self, tmp_path, monkeypatch, preserve_config_dict
     ):
         apps_dir = tmp_path / "sub" / "apps"
         project_dir = apps_dir / "myproj"

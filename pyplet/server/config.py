@@ -58,6 +58,15 @@ class Param:
         else:
             instance.__dict__[self.name] = None
 
+    def __delete__(self, instance):
+        # Clear any instance override (CLI/explicit setattr), restoring
+        # normal env-var/default resolution. `__set__` alone can't do
+        # this: setting back a previously-read value still leaves a
+        # frozen instance override behind, which permanently shadows
+        # that env var for the rest of the process (see `del config.x`
+        # usage in tests that must NOT leak state between runs).
+        instance.__dict__.pop(self.name, None)
+
 
 class PypletConfig:
     # ── Core Server ──────────────────────────────────────────────────────────

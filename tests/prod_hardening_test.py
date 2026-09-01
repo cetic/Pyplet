@@ -158,7 +158,9 @@ def test_check_origin_same_origin_allowed_with_allowlist(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_astart_listens_with_xheaders(monkeypatch, tmp_path):
+def test_astart_listens_with_xheaders(
+    monkeypatch, tmp_path, preserve_config_dict
+):
     """``astart`` calls ``app.listen(..., xheaders=True)``.
 
     The real ``astart`` binds a port then blocks forever on
@@ -166,6 +168,15 @@ def test_astart_listens_with_xheaders(monkeypatch, tmp_path):
     capture-and-stop double, the app-module glob targets an empty dir, and
     the two startup policies are neutralized, so the coroutine reaches the
     listen call and exits via the sentinel without standing up a server.
+
+    The ``config.apps`` override is assigned on ``preserve_config_dict``
+    and NOT through ``monkeypatch``. Both undos would run, in the order
+    ``preserve_config_dict`` then ``monkeypatch`` (teardown is the reverse
+    of setup, and the autouse/argument order puts monkeypatch first) — so
+    monkeypatch's undo lands *after* the dict restore and re-freezes
+    ``apps`` to the value it read, shadowing ``PYPLET_APPS`` for every
+    later test in the session. Restoring twice is not idempotent here
+    because ``Param.__set__`` writes an override unconditionally.
     """
     captured = {}
 
@@ -177,7 +188,7 @@ def test_astart_listens_with_xheaders(monkeypatch, tmp_path):
         raise _StopListen
 
     # Empty apps dir → the server-module glob imports nothing.
-    monkeypatch.setattr(_server.config, "apps", str(tmp_path))
+    preserve_config_dict.apps = str(tmp_path)
     # No app instances → no route splice into the shared _app_spec.
     monkeypatch.setattr(_server, "server_applications", {})
     # Neutralize both fail-closed startup policies for this listen-path test.
