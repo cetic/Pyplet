@@ -1,6 +1,5 @@
 import collections
 import datetime
-import glob
 import logging
 from typing import Optional
 
@@ -35,7 +34,7 @@ from ..shared.dom import (
     title,
     ul,
 )
-from . import magiclink, oauth
+from . import _apps, magiclink, oauth
 from .config import config
 
 current_year = datetime.datetime.now().year
@@ -330,14 +329,11 @@ def index_template(
             )
 
     else:
-        # Auth disabled — show everything
-        raw = [
-            "/" + p[:-10]
-            for p in sorted(glob.glob("*/*_client.py", root_dir=config.apps))
-        ]
-
-        for application in raw:
-            project, app_name = application.split("/")[-2:]
+        # Auth disabled — show everything. `_apps.client_apps` enumerates
+        # both apps-root layouts (per-project subdirectories, and apps
+        # sitting directly in the root), so the listing matches what
+        # discovery actually loaded.
+        for project, app_name in _apps.client_apps():
             projects[project].append(
                 li[a(href=f"apps/{project}/{app_name}")[app_name]]
             )
