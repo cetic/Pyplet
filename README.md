@@ -159,6 +159,29 @@ apps/                     # Your apps live here
     └── app_1_server.py   # The server code
 ```
 
+Every app is served at `/apps/<project>/<app>`, so each one needs a *project*
+to belong to. The layout above is what `pyplet init` creates: one directory
+per project inside the apps root, which is the project's name.
+
+The apps root may also hold the `*_client.py` / `*_server.py` files
+**directly**, in which case the root itself is the project and takes its name
+from its own directory name:
+
+```bash
+examples/                 # --apps / PYPLET_APPS points here
+├── app_1_client.py       # served at /apps/examples/app_1
+└── app_1_server.py
+```
+
+Both give the same URLs — pointing `--apps` at `examples/` and pointing it at
+that folder's parent are equivalent — and a root that mixes the two yields all
+of them. Point the apps root at whichever directory suits your repository:
+
+```bash
+pyplet start --apps path/to/examples
+PYPLET_APPS=path/to/examples pyplet start
+```
+
 ## Authentication
 
 Pyplet supports platform-level OAuth2 / OIDC authentication via Google and

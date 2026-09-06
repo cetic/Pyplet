@@ -76,6 +76,7 @@ from urllib.parse import urlencode, urljoin
 
 import httpx
 
+from . import _apps
 from .config import config
 from .oauth_providers import BUILTIN_PROVIDERS
 
@@ -572,20 +573,15 @@ def permitted_apps(email: str) -> list[tuple[str, str]]:
     Return a sorted list of ``(project, app)`` pairs accessible to *email*.
 
     Discovers available apps from the filesystem, then filters by ACL.
+    Discovery runs through `_apps.client_apps`, so both apps-root layouts
+    (per-project subdirectories, and apps sitting directly in the root)
+    are subject to the same ACL.
     """
-    import glob as _glob
-
-    all_apps = sorted(_glob.glob("*/*_client.py", root_dir=config.apps))
-    result = []
-    for path in all_apps:
-        parts = path.replace("\\", "/").split("/")
-        if len(parts) != 2:
-            continue
-        project, filename = parts
-        app = filename[: -len("_client.py")]
-        if is_app_permitted(project, app, email):
-            result.append((project, app))
-    return result
+    return [
+        (project, app)
+        for project, app in _apps.client_apps()
+        if is_app_permitted(project, app, email)
+    ]
 
 
 # ---------------------------------------------------------------------------

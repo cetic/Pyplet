@@ -25,7 +25,7 @@ from pyplet.server._transpiler import transpile_to_pyscript
 from pyplet.server.config import config
 
 from ..shared.dom import div, link, script
-from . import magiclink, oauth, templates
+from . import _apps, magiclink, oauth, templates
 
 # Configure logging
 logger = logging.getLogger("pyplet.server")
@@ -37,8 +37,9 @@ server_applications: Dict[Tuple[str, str], "ServerApplication"] = {}
 # App discovery loads modules directly from their file path (see
 # `_load_server_module`) rather than importing them via a dotted name
 # derived from `config.apps`, so registration keeps working regardless of
-# whether `config.apps` is a bare relative folder, a nested path, or an
-# absolute path.
+# whether `config.apps` is a bare relative folder, a nested path, an
+# absolute path, or the app's own directory (see `_apps` for the nested
+# vs. flat apps-root layouts).
 _APPS_MODULE_PREFIX = "_pyplet_apps"
 
 # Fixed virtual directory name for app files inside the browser-side
@@ -162,7 +163,13 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
     ) -> None:
         # Confine this request to the requested app's own static/ dir so a
         # traversal in ``path`` cannot escape into the wider apps/ tree.
-        self.root = os.path.join(self._apps_root, project, "static")
+        # `_apps.project_dir` resolves the project against both apps-root
+        # layouts (a subdirectory of the root, or the root itself when the
+        # apps live directly in it), so a flat root's static/ is confined
+        # exactly like a nested one's.
+        self.root = str(
+            _apps.project_dir(project, root=self._apps_root) / "static"
+        )
         await super().get(path, include_body=include_body)
 
     async def head(  # noqa: A003 - Tornado handler hook
@@ -583,7 +590,7 @@ def _ensure_namespace_package(name: str, search_path: Optional[list] = None):
     return module
 
 
-def _load_server_module(path: str) -> str:
+def _load_server_module(path: str, project: Optional[str] = None) -> str:
     """Import a `<project>/<app>_server.py` module under a synthetic,
     stable package hierarchy (`_pyplet_apps.<project>.<app>_server`) and
     return the module name it was loaded under.
@@ -599,10 +606,16 @@ def _load_server_module(path: str) -> str:
     This stays independent of `config.apps`'s literal shape (bare
     relative folder, nested path, or absolute path) since the synthetic
     prefix is never derived from it.
+
+    `project` names the project the app belongs to. Callers that already
+    know it (discovery in `astart`, via `_apps.server_modules`) pass it in;
+    otherwise it falls back to the *resolved* parent directory's name, which
+    is the same answer for a nested layout and still yields a real name for
+    a flat apps root spelled `.`.
     """
     file_path = Path(path)
     project_dir = file_path.parent.resolve()
-    project_name = file_path.parent.name
+    project_name = project or project_dir.name
 
     _ensure_namespace_package(_APPS_MODULE_PREFIX)
     _ensure_namespace_package(
@@ -711,10 +724,9 @@ async def astart():
     # instance in server_applications. Anything derived from that
     # registry has to run once it is populated, so the modules are
     # loaded before the Tornado Application is built from _app_spec.
-    server_modules = glob.glob(f"{config.apps}/*/*_server.py")
-    for path in server_modules:
+    for project, _app, path in _apps.server_modules():
         try:
-            module_name = _load_server_module(path)
+            module_name = _load_server_module(str(path), project=project)
             logger.debug(f"Loaded module: {module_name}")
         except Exception as e:
             logger.error(f"Failed to load module {path}: {e}", exc_info=True)
@@ -807,19 +819,26 @@ class ServerApplication:
         )
         markupsafe_parent = str(Path(markupsafe_location).parent)
 
+        # The project's real directory under either apps-root layout: a
+        # subdirectory of the root, or the root itself when the apps live
+        # directly in it. Its basename is the project name in both cases,
+        # so globbing `<project>/**` from its PARENT keeps the browser-side
+        # VFS keys at "apps/<project>/..." either way.
+        app_root = _apps.project_dir(project)
+
         file_map = {}
         files = [
             (pyplet_root, "pyplet/*", ""),
             (pyplet_root, "pyplet/shared/**", ""),
             (pyplet_root, "pyplet/client/**", ""),
-            # root_dir is resolved to an absolute path and the pattern
-            # kept relative to it, so the resulting VFS keys are always
+            # root_dir is an absolute path and the pattern kept relative
+            # to it, so the resulting VFS keys are always
             # "apps/<project>/..." — never leaking `config.apps`'s own
-            # (possibly absolute, nested, etc.) on-disk shape into the
-            # browser-side virtual filesystem.
+            # (possibly absolute, nested, flat, etc.) on-disk shape into
+            # the browser-side virtual filesystem.
             (
-                str(Path(config.apps).resolve()),
-                f"{project}/**",
+                str(app_root.parent),
+                f"{app_root.name}/**",
                 _APPS_VFS_ROOT,
             ),
             # Inject htpy dynamically!
@@ -828,7 +847,7 @@ class ServerApplication:
         ]
 
         # Define the exact, absolute path to the project's static folder
-        project_static_dir = Path(config.apps, project, "static").resolve()
+        project_static_dir = (app_root / "static").resolve()
 
         for root_dir, pattern, prefix in files:
             for file in glob.glob(pattern, root_dir=root_dir, recursive=True):
@@ -875,7 +894,6 @@ class ServerApplication:
 
                         # Write the transpiled content to
                         # "apps"/.transpiled/...
-                        app_root = Path(config.apps) / project
                         transpiled_path = (
                             app_root / ".transpiled" / target_path
                         )
