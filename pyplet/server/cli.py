@@ -18,15 +18,7 @@ logger = logging.getLogger("pyplet.cli")
 
 
 def create_project(project_name: str, tutorial: bool = False) -> None:
-    """
-    Create a new project directory under ./apps/project_name and copy
-    template_client.py, template_server.py, and config.py from ../apps/examples
-    into it.
-
-    Args:
-        project_name (str): The name of the project to create.
-        tutorial (bool): Whether to create a tutorial project.
-    """
+    """Copy the packaged scaffold (template, or tutorial) into ./apps."""
     # Validate project name for Python importability
     if not project_name.isidentifier():
         logger.error(
@@ -38,7 +30,7 @@ def create_project(project_name: str, tutorial: bool = False) -> None:
 
     cwd = Path.cwd()
     pyplet_dir = Path(__file__).resolve().parent.parent
-    template_dir = pyplet_dir.parent / "apps" / "template"
+    template_dir = pyplet_dir / "apps" / "template"
 
     # Verify template directory exists
     if not template_dir.exists():

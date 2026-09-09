@@ -434,7 +434,8 @@ Edit `pyproject.toml` under `[project.optional-dependencies].test`
 
 ## Examples
 
-Check the `apps/template/` directory for a working example demonstrating:
+Check the `pyplet/apps/template/` directory for a working example
+demonstrating:
 
 - WebSocket communication
 - DOM manipulation

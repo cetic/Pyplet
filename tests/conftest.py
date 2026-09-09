@@ -7,7 +7,9 @@ import multiprocessing
 import os
 import socket
 import time
+from pathlib import Path
 
+import pyplet
 import pytest
 from pyplet.server._server import astart
 from pyplet.server.config import config
@@ -141,9 +143,10 @@ def _free_port() -> int:
 
 
 def run_server(port: int):
-    """Run the Pyplet server in a separate process (anonymous mode)."""
+    """Run the server (anonymous mode) on the in-package scaffold."""
     os.environ.update(_ANON_AUTH_ENV)
     os.environ["PYPLET_PORT"] = str(port)
+    os.environ["PYPLET_APPS"] = str(Path(pyplet.__file__).parent / "apps")
     asyncio.run(astart())
 
 

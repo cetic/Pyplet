@@ -37,7 +37,7 @@ test-cov:
 # Gates. pyproject sets `fix = true` and `respect-gitignore = false`, so the
 # recipes pass --no-fix and scope to the package + tests (never `.`, which
 # would sweep local apps/* checkouts).
-LINT_PATHS := pyplet tests apps/template apps/tutorial
+LINT_PATHS := pyplet tests
 
 lint:
 	uv run --extra test ruff check --no-fix $(LINT_PATHS)
