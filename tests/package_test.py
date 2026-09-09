@@ -19,6 +19,7 @@ import gzip
 import json
 
 import pytest
+
 from pyplet.server import _server
 from pyplet.server.config import config
 
