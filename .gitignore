@@ -28,7 +28,7 @@ build/
 
 # Agent tooling: local only, never committed (shared by symlink with apps/QualiSpectra)
 .claude/
-.githooks/
+.githooks
 _bmad/
 _bmad-output/
 .bmad-loop/

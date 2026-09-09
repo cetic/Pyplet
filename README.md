@@ -459,12 +459,12 @@ Pyplet lives in two places, and they are not interchangeable:
   **canonical** repository. Development lands there, on the default
   branch `main`, through merge requests.
 - **GitHub [`cetic/Pyplet`](https://github.com/cetic/Pyplet/)** is the
-  **publication mirror**. It is deliberately behind: nothing is developed
-  there, and it is refreshed from GitLab `main` by a maintainer when a
-  state is worth publishing.
+  **publication mirror** of GitLab `main`: refreshed from GitLab (push
+  mirror, one way), never developed on. It may lag GitLab between
+  refreshes.
 
 The flow is one-way: **GitLab `main` → GitHub**. A change pushed straight
-to GitHub would be overwritten by the next publication.
+to GitHub is overwritten by the next refresh.
 
 Contributions are welcome! When contributing:
 
