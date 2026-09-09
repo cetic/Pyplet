@@ -927,3 +927,41 @@ class TestCLIIntegration:
 
         finally:
             os.chdir(original_cwd)
+
+
+class TestShippedScaffolds:
+    """Scaffold the real packaged trees, with no Path mocking."""
+
+    @staticmethod
+    def _scaffold(tmp_path, name, **kwargs):
+        from pyplet.server.cli import create_project
+
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
+        try:
+            create_project(name, **kwargs)
+        finally:
+            os.chdir(original_cwd)
+
+        return tmp_path / "apps" / name
+
+    def test_template_scaffold_resolves(self, tmp_path):
+        """`pyplet init <name>` copies the packaged template."""
+        project = self._scaffold(tmp_path, "plain")
+
+        assert (project / "plain_client.py").is_file()
+        assert (project / "plain_server.py").is_file()
+
+    def test_tutorial_scaffold_resolves(self, tmp_path):
+        """`pyplet tutorial` reads tutorial/, not template/."""
+        project = self._scaffold(tmp_path, "tutorial", tutorial=True)
+
+        assert (project / "tutorial_client.py").is_file()
+        assert (project / "tutorial_server.py").is_file()
+
+    def test_tutorial_scaffold_carries_its_assets(self, tmp_path):
+        """The tutorial client fetches these two paths at runtime."""
+        project = self._scaffold(tmp_path, "tutorial", tutorial=True)
+
+        assert (project / "static" / "static_file.txt").is_file()
+        assert (project / "public" / "vfs_file.txt").is_file()
