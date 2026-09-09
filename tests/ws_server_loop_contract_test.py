@@ -3,14 +3,15 @@
 import asyncio
 import inspect
 
+from tornado.testing import AsyncHTTPTestCase, gen_test
+from tornado.web import Application
+from tornado.websocket import websocket_connect
+
 from pyplet.server._server import (
     ServerApplication,
     ServerWebSocket,
     server_applications,
 )
-from tornado.testing import AsyncHTTPTestCase, gen_test
-from tornado.web import Application
-from tornado.websocket import websocket_connect
 
 _PROJECT = "loop_contract_project"
 _APP = "loop_contract_app"

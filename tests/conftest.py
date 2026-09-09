@@ -9,12 +9,12 @@ import socket
 import time
 from pathlib import Path
 
-import pyplet
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 
+import pyplet
 from pyplet.server._server import astart
 from pyplet.server.config import config
 
