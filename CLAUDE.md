@@ -12,7 +12,7 @@ that matters becomes a test; the rest goes to `docs/` or `specs/`.
 ## Commands (always via `make`, from this directory)
 
 | Task | Command |
-|---|---|
+| --- | --- |
 | Tests | `make test` (all, `uv run --extra test`) / `make test-cov` |
 | Lint / format | `make lint` (gate, never fixes) / `make fmt` (fix) — `pyproject.toml` `[tool.ruff]`, line 79 |
 | Fast commit gate | `make precommit`; push gate `make prepush` (= lint + test) |
@@ -47,14 +47,15 @@ to `pyplet tests` and pass `--no-fix`.
 
 Target: the same layered chain as the apps developed on top of pyplet
 (`apps/QualiSpectra` is the reference implementation). State 2026-09-09:
-layers 2–4 are **live** (`main` is lint-green since 3a95c17; the shared git
+layers 2–4 are **live** (`main` is lint-green again since the import-sorter
+conflict was settled — it had been red since `ef4a30f`, see #58; the shared git
 hooks run `make precommit`/`make prepush` whenever the tracked `.lint-green`
 marker exists at the toplevel). Layers 0–1 (Claude Code hooks at this root)
 are **deferred**, not abandoned: they return in Sprint #8
 (seglab/pyplet#52). Until then only the git side enforces the rules here.
 
 | Layer | When | What |
-|---|---|---|
+| --- | --- | --- |
 | 0 | every agent edit | no added `#` comment in `.py` (tooling directives excepted); added docstring ≤ 3 lines; `ruff check --no-fix` + `format --check` on the touched file |
 | 0' | agent turn end | same scan on the uncommitted tree |
 | 1 | always | the guard chain (`.claude/`, `.githooks/`) is not agent-editable; an agent that needs it changed **says so and stops** |

@@ -47,6 +47,13 @@ repos:
     rev: v5.10.1
     hooks:
       - id: isort
+        # isort éclate les 124 ré-exports `htpy` de `_dom.py` en une ligne
+        # chacun, ruff les regroupe aussitôt : le diff net est vide mais les
+        # deux hooks se déclarent « files were modified » à chaque passe, donc
+        # la chaîne ne converge jamais. L'exclusion doit vivre ici : cette
+        # version d'isort ne lit pas `pyproject.toml` (l'extra `toml` manque
+        # avant la 5.12), donc `[tool.isort]` est sans effet. Voir #58.
+        exclude: ^pyplet/shared/dom/_dom\.py$
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0

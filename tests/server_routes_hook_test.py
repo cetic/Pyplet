@@ -23,14 +23,15 @@ The module-level ``_app_spec`` and ``server_applications`` are mutated, so both
 are snapshotted in ``setUp`` and restored in ``tearDown``.
 """
 
+from tornado.testing import AsyncHTTPTestCase
+from tornado.web import Application, RequestHandler
+
 from pyplet.server._server import (
     ServerApplication,
     _app_spec,
     _merge_app_declared_routes,
     server_applications,
 )
-from tornado.testing import AsyncHTTPTestCase
-from tornado.web import Application, RequestHandler
 
 _PROBE_PATTERN = r"/__routes_hook_probe__"
 _PROBE_BODY = "declared-route-reached"

@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+
 from pyplet.server import oauth
 
 _AUTH_ENDPOINT = "https://id.example.test/authorize"

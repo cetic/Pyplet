@@ -20,6 +20,7 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
+
 from pyplet.server import oauth
 
 # Env vars that drive the Secure decision and the production startup gate.

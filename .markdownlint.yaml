@@ -1,0 +1,7 @@
+# Root markdownlint configuration. docs/ has its own, stricter-relaxed file
+# (.markdownlint-docs.yaml) passed explicitly by the second hook.
+MD013:
+  # Table rows cannot be wrapped without breaking the table. The 5 overlong
+  # lines in CLAUDE.md are all table rows, so line length stays enforced for
+  # prose and is lifted for tables only. docs/ already disables MD013 whole.
+  tables: false
