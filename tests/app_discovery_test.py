@@ -16,7 +16,6 @@ import glob
 import sys
 
 import pytest
-
 from pyplet.server import _server
 
 _SERVER_MODULE_TEMPLATE = """

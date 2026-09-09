@@ -20,7 +20,20 @@ htmlcov/
 *.log
 coverage.xml
 
-apps/
+apps/*
+!apps/template/
+!apps/tutorial/
+!apps/auth_rules.json
 build/
+
+# Agent tooling: local only, never committed (shared by symlink with apps/QualiSpectra)
+.claude/
+.githooks/
+_bmad/
+_bmad-output/
+.bmad-loop/
+CLAUDE.local.md
+output/
+.transpiled/
 .DS_Store
 site/

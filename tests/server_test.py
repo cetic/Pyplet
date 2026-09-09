@@ -22,7 +22,6 @@ import logging
 import pytest
 import tornado.testing
 import tornado.web
-
 from pyplet.server._server import (
     BaseHandler,
     _has_favicon_link,

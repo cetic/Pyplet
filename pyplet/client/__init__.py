@@ -3,12 +3,11 @@ import collections
 import os
 import sys
 from importlib import import_module
-from typing import Dict, Tuple
 
 import js
 from js import WebSocket
 
-try:  # noqa: C901
+try:
     if sys.implementation.name == "micropython":
         raise ImportError("asyncio Queue are not available on MicroPython")
 
@@ -18,7 +17,9 @@ try:  # noqa: C901
     try:
         from pyodide.ffi import create_proxy
     except ImportError:
-        create_proxy = lambda x: x  # noqa: E731
+
+        def create_proxy(x):
+            return x
 
 except ImportError:
     # This should not be used with the current version of
@@ -118,7 +119,8 @@ if (!globalThis.create_deferred) {
     asyncio.Queue = AsyncQueue
 
     # MicroPython passes JS boundaries natively, no proxy needed
-    create_proxy = lambda x: x  # noqa: E731
+    def create_proxy(x):
+        return x
 
 
 import pyplet
@@ -128,10 +130,10 @@ SERVER_UPLOAD_JAIL = "server_uploads"
 MAX_UPLOAD_SIZE = 50 * 2**20  # 50 MiB
 
 _apps = None
-client_applications: Dict[Tuple[str, str], "ClientApplication"] = {}
+client_applications: dict[tuple[str, str], "ClientApplication"] = {}
 
 
-def _setup_vfs_bindings():  # noqa: F811, C901
+def _setup_vfs_bindings():
     """Attaches VFS upload/download functions to the browser window."""
 
     if hasattr(js.window, "upload_file"):
@@ -147,7 +149,7 @@ def _setup_vfs_bindings():  # noqa: F811, C901
                 continue
             current_path = current_path + "/"
             current_path += part if current_path else part
-            try:
+            try:  # noqa: SIM105
                 os.mkdir(current_path)
             except OSError:
                 pass

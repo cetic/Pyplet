@@ -1,7 +1,6 @@
 import collections
 import datetime
 import logging
-from typing import Optional
 
 from tornado.web import RequestHandler
 
@@ -45,10 +44,10 @@ logger = logging.getLogger("pyplet.server.templates")
 
 def base_template(
     *,
-    page_title: Optional[str] = None,
+    page_title: str | None = None,
     navbar: Node,
     content: list | Node,
-    additional_head_node: Optional[Node | list[Node]] = None,
+    additional_head_node: Node | list[Node] | None = None,
     contain_in: str | None = "container mt-2",
     page_footer: bool = True,
 ) -> Node:
@@ -77,9 +76,9 @@ def base_template(
                 else config.site_name
             ],
             link(
-                href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",  # noqa: E501
+                href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
                 rel="stylesheet",
-                integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",  # noqa: E501
+                integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH",
                 crossorigin="anonymous",
             ),
             *additional_head_node,
@@ -102,8 +101,8 @@ def base_template(
                 else footer(".footer.mt-auto")
             ),
             script(
-                src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",  # noqa: E501
-                integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz",  # noqa: E501
+                src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js",
+                integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz",
                 crossorigin="anonymous",
             ),
         ],
@@ -115,9 +114,7 @@ def base_template(
 # ---------------------------------------------------------------------------
 
 
-def default_navbar(
-    handler: RequestHandler, user: Optional[dict] = None
-) -> Node:
+def default_navbar(handler: RequestHandler, user: dict | None = None) -> Node:
     """Build the top navigation bar."""
     right_items_content = []
 
@@ -260,7 +257,7 @@ def login_template(handler: RequestHandler) -> Node:
                         id="ml_email",
                         placeholder="you@example.com",
                         required=True,
-                        autofocus=True if not providers else False,
+                        autofocus=not providers,
                     ),
                 ],
                 button(".btn.btn-primary.w-100", type="submit")[
@@ -314,9 +311,7 @@ def magiclink_sent_template(handler: RequestHandler, email_addr: str) -> Node:
 # ---------------------------------------------------------------------------
 
 
-def index_template(
-    handler: RequestHandler, user: Optional[dict] = None
-) -> Node:
+def index_template(handler: RequestHandler, user: dict | None = None) -> Node:
     """Home page listing applications."""
     email = user["email"] if user else ""
     projects = collections.defaultdict(list)
@@ -367,9 +362,7 @@ def index_template(
 # ---------------------------------------------------------------------------
 
 
-def about_template(
-    handler: RequestHandler, user: Optional[dict] = None
-) -> Node:
+def about_template(handler: RequestHandler, user: dict | None = None) -> Node:
     """About template for Pyplet web pages."""
     return base_template(
         page_title="About",
@@ -412,10 +405,7 @@ def application_template(
         if body_content:
             kwargs["contain_in"] = None
     else:
-        if isinstance(content, list):
-            body_content = content
-        else:
-            body_content = [content]
+        body_content = content if isinstance(content, list) else [content]
 
     user = oauth.get_session(handler) if oauth.auth_enabled() else None
 

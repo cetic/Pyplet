@@ -1,7 +1,8 @@
 """Configuration for the Pyplet server."""
 
 import os
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 
 class Param:
@@ -13,15 +14,13 @@ class Param:
         default: Any,
         description: str,
         type_cast: Callable = str,
-        env_var: Optional[str] = None,
+        env_var: str | None = None,
     ):
         self.default = default
         self.description = description
         self.type_cast = type_cast
-        self.env_var: Optional[str] = env_var
-        self.name: Optional[str] = (
-            None  # Populated automatically by __set_name__
-        )
+        self.env_var: str | None = env_var
+        self.name: str | None = None
 
     def __set_name__(self, owner, name):
         self.name = name

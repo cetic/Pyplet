@@ -1,6 +1,5 @@
-from js import document
-
 import pyplet
+from js import document
 
 container = document.getElementById("container")
 

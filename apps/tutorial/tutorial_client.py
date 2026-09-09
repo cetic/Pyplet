@@ -1,6 +1,5 @@
-from js import document
-
 import pyplet
+from js import document
 from pyplet.shared.dom import div, download, h1, h2, hr, p, upload, upload_area
 
 container = document.getElementById("container")

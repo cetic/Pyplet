@@ -27,7 +27,6 @@ import time
 import pytest
 from authlib.jose import JsonWebKey, JsonWebToken
 from authlib.jose.errors import JoseError
-
 from pyplet.server import oauth
 
 pytestmark = pytest.mark.filterwarnings(

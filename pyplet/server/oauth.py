@@ -632,9 +632,9 @@ def enforce_startup_auth_policy(magiclink_enabled: bool = False) -> None:
 
     if not os.path.isfile(config.auth_rules_file):
         msg = (
-            "auth_rules.json not found at %s while authentication is enabled "
-            "— ACL DENIES all app access by default (fail closed)."
-            % config.auth_rules_file
+            f"auth_rules.json not found at {config.auth_rules_file} while "
+            "authentication is enabled — ACL DENIES all app access by "
+            "default (fail closed)."
         )
         if production:
             raise AuthConfigError(

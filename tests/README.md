@@ -220,9 +220,7 @@ def test_my_feature(driver, server, wait):
     driver.get(f"{server}/apps/myapp/myapp")
 
     # Wait for an element
-    element = wait.until(
-        EC.presence_of_element_located((By.ID, "my-element"))
-    )
+    element = wait.until(EC.presence_of_element_located((By.ID, "my-element")))
 
     # Assert expected behavior
     assert element.text == "Expected value"

@@ -25,11 +25,10 @@ with the existing ``tornado`` dep — no new dependency), mirroring
 ``__new__`` like ``tests/prod_hardening_test.py``.
 """
 
+from pyplet.server._server import ServerWebSocket
 from tornado.testing import AsyncHTTPTestCase, gen_test
 from tornado.web import Application
 from tornado.websocket import websocket_connect
-
-from pyplet.server._server import ServerWebSocket
 
 
 def test_get_compression_options_enables_compression():
@@ -59,7 +58,7 @@ class _NoAuthWS(ServerWebSocket):
     def check_origin(self, origin):
         return True
 
-    async def open(self):  # noqa: A003 - Tornado handler hook
+    async def open(self):
         pass
 
 

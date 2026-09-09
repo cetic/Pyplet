@@ -9,12 +9,11 @@ import sys
 import tempfile
 
 import pytest
-from tornado.testing import AsyncHTTPTestCase
-from tornado.web import Application
-
 from pyplet.server import _apps, _server, oauth, templates
 from pyplet.server._server import _app_spec
 from pyplet.server.config import config
+from tornado.testing import AsyncHTTPTestCase
+from tornado.web import Application
 
 _SERVER_MODULE_TEMPLATE = """
 from pyplet.server._server import ServerApplication

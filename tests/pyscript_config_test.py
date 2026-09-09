@@ -16,7 +16,6 @@ raises `ModuleNotFoundError` at runtime for any app with non-empty
 import json
 
 import pytest
-
 from pyplet.server._server import BaseHandler, ServerApplication
 
 

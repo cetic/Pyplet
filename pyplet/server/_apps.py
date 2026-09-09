@@ -6,7 +6,6 @@ import glob
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Union
 
 from .config import config
 
@@ -16,12 +15,12 @@ SERVER_SUFFIX = "_server.py"
 CLIENT_SUFFIX = "_client.py"
 
 
-def apps_root(root: Optional[Union[str, Path]] = None) -> Path:
+def apps_root(root: str | Path | None = None) -> Path:
     """*root*, defaulting to ``config.apps``, as an absolute path."""
     return Path(config.apps if root is None else root).resolve()
 
 
-def flat_project(root: Optional[Union[str, Path]] = None) -> Optional[str]:
+def flat_project(root: str | Path | None = None) -> str | None:
     """Project name for apps sitting in the apps root itself, else
     ``None`` (nested layout, or a subdirectory already claims the name).
     """
@@ -58,7 +57,7 @@ def flat_project(root: Optional[Union[str, Path]] = None) -> Optional[str]:
     return name
 
 
-def project_dir(project: str, root: Optional[Union[str, Path]] = None) -> Path:
+def project_dir(project: str, root: str | Path | None = None) -> Path:
     """Absolute directory backing *project*: a subdirectory of the apps
     root, else the root itself for the flat project. Need not exist.
     """
@@ -72,7 +71,7 @@ def project_dir(project: str, root: Optional[Union[str, Path]] = None) -> Path:
 
 
 def _discover(
-    suffix: str, root: Optional[Union[str, Path]] = None
+    suffix: str, root: str | Path | None = None
 ) -> list[tuple[str, str, Path]]:
     """``(project, app, path)`` for every ``*<suffix>`` under the root."""
     root = apps_root(root)
@@ -91,14 +90,14 @@ def _discover(
 
 
 def server_modules(
-    root: Optional[Union[str, Path]] = None,
+    root: str | Path | None = None,
 ) -> list[tuple[str, str, Path]]:
     """``(project, app, path)`` for every discoverable ``*_server.py``."""
     return _discover(SERVER_SUFFIX, root)
 
 
 def client_apps(
-    root: Optional[Union[str, Path]] = None,
+    root: str | Path | None = None,
 ) -> list[tuple[str, str]]:
     """``(project, app)`` for every discoverable ``*_client.py``."""
     return [

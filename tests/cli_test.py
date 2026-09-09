@@ -460,32 +460,33 @@ class TestCLILogging:
         os.chdir(work_dir)
 
         try:
-            with caplog.at_level(logging.INFO):
-                with patch("pyplet.server.cli.Path") as mock_path_class:
-                    mock_file_path = MagicMock()
-                    mock_file_path.resolve.return_value.parent.parent = (
-                        temp_workspace["tmp_path"]
-                    )
+            with (
+                caplog.at_level(logging.INFO),
+                patch("pyplet.server.cli.Path") as mock_path_class,
+            ):
+                mock_file_path = MagicMock()
+                mock_file_path.resolve.return_value.parent.parent = (
+                    temp_workspace["tmp_path"]
+                )
 
-                    def path_side_effect(path_str=None):
-                        if path_str is None or path_str == "__file__":
-                            return mock_file_path
-                        return Path(path_str)
+                def path_side_effect(path_str=None):
+                    if path_str is None or path_str == "__file__":
+                        return mock_file_path
+                    return Path(path_str)
 
-                    mock_path_class.side_effect = path_side_effect
-                    mock_path_class.cwd.return_value = Path(work_dir)
+                mock_path_class.side_effect = path_side_effect
+                mock_path_class.cwd.return_value = Path(work_dir)
 
-                    create_project("logged_project")
+                create_project("logged_project")
 
-                    # Check that success messages were logged
-                    assert any(
-                        "Project 'logged_project' created" in record.message
-                        for record in caplog.records
-                    )
-                    assert any(
-                        "Files copied" in record.message
-                        for record in caplog.records
-                    )
+                assert any(
+                    "Project 'logged_project' created" in record.message
+                    for record in caplog.records
+                )
+                assert any(
+                    "Files copied" in record.message
+                    for record in caplog.records
+                )
 
         finally:
             os.chdir(original_cwd)
@@ -499,31 +500,30 @@ class TestCLILogging:
         os.chdir(work_dir)
 
         try:
-            with caplog.at_level(logging.ERROR):
-                with patch("pyplet.server.cli.Path") as mock_path_class:
-                    mock_file_path = MagicMock()
-                    mock_file_path.resolve.return_value.parent.parent = (
-                        temp_workspace["tmp_path"]
-                    )
+            with (
+                caplog.at_level(logging.ERROR),
+                patch("pyplet.server.cli.Path") as mock_path_class,
+            ):
+                mock_file_path = MagicMock()
+                mock_file_path.resolve.return_value.parent.parent = (
+                    temp_workspace["tmp_path"]
+                )
 
-                    def path_side_effect(path_str=None):
-                        if path_str is None or path_str == "__file__":
-                            return mock_file_path
-                        return Path(path_str)
+                def path_side_effect(path_str=None):
+                    if path_str is None or path_str == "__file__":
+                        return mock_file_path
+                    return Path(path_str)
 
-                    mock_path_class.side_effect = path_side_effect
-                    mock_path_class.cwd.return_value = Path(work_dir)
+                mock_path_class.side_effect = path_side_effect
+                mock_path_class.cwd.return_value = Path(work_dir)
 
-                    # Try to create with invalid name
-                    with pytest.raises(SystemExit):
-                        create_project("123-invalid")
+                with pytest.raises(SystemExit):
+                    create_project("123-invalid")
 
-                    # Check that error was logged
-                    assert any(
-                        "is not a valid Python's module name."
-                        in record.message
-                        for record in caplog.records
-                    )
+                assert any(
+                    "is not a valid Python's module name." in record.message
+                    for record in caplog.records
+                )
 
         finally:
             os.chdir(original_cwd)
@@ -651,13 +651,11 @@ class TestCLIArgumentParsing:
         """Test that no args raises SystemExit."""
         from pyplet.server.cli import main
 
-        with patch("sys.argv", ["pyplet"]):
-            # main() should print the help message and return
-            with patch("sys.stdout") as mock_stdout:
-                with pytest.raises(SystemExit) as excinfo:
-                    main()
-                assert excinfo.value.code == 0
-                mock_stdout.write.assert_called_once()
+        with patch("sys.argv", ["pyplet"]), patch("sys.stdout") as mock_stdout:
+            with pytest.raises(SystemExit) as excinfo:
+                main()
+            assert excinfo.value.code == 0
+            mock_stdout.write.assert_called_once()
 
     @patch("pyplet.server.cli.create_project")
     def test_init_command(self, mock_create_project):
@@ -709,15 +707,14 @@ class TestCLIArgumentParsing:
 
         # 1. Patch the exists method on the Path
         # class imported in your cli module
-        with patch("pyplet.server.cli.Path.exists", return_value=False):
-            # 2. Simulate the CLI arguments
-            with patch("sys.argv", ["pyplet", "start"]):
-                # 3. Catch the expected SystemExit
-                with pytest.raises(SystemExit) as excinfo:
-                    main()
+        with (
+            patch("pyplet.server.cli.Path.exists", return_value=False),
+            patch("sys.argv", ["pyplet", "start"]),
+        ):
+            with pytest.raises(SystemExit) as excinfo:
+                main()
 
-                # 4. Assert the exit code is 2
-                assert excinfo.value.code == 2
+            assert excinfo.value.code == 2
 
     def test_script_main_adds_cwd_to_path(self):
         """Test that script_main adds cwd to sys.path."""

@@ -19,7 +19,6 @@ import json
 import logging
 
 import pytest
-
 from pyplet.server import oauth
 
 # Provider / magic-link env vars that drive auth_enabled().

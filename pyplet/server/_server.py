@@ -13,7 +13,6 @@ import textwrap
 import types
 import urllib.parse
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
 import markupsafe
 import tornado
@@ -31,7 +30,7 @@ from . import _apps, magiclink, oauth, templates
 logger = logging.getLogger("pyplet.server")
 
 
-server_applications: Dict[Tuple[str, str], "ServerApplication"] = {}
+server_applications: dict[tuple[str, str], "ServerApplication"] = {}
 
 _APPS_MODULE_PREFIX = "_pyplet_apps"
 
@@ -91,17 +90,20 @@ class _AuthMixin:
                 self.redirect(f"/login?next={next_url}")
             return None
 
-        if project is not None and app is not None:
-            if not oauth.is_app_permitted(project, app, user["email"]):
-                self.set_status(403)
-                self.finish(
-                    f"<html><body><h3>403 Forbidden</h3>"
-                    f"<p>Your account ({user['email']}) is not permitted "
-                    f"to access {project}/{app}.</p>"
-                    f'<p><a href="/">Back to home</a></p>'
-                    f"</body></html>"
-                )
-                return None
+        if (
+            project is not None
+            and app is not None
+            and not oauth.is_app_permitted(project, app, user["email"])
+        ):
+            self.set_status(403)
+            self.finish(
+                f"<html><body><h3>403 Forbidden</h3>"
+                f"<p>Your account ({user['email']}) is not permitted "
+                f"to access {project}/{app}.</p>"
+                f'<p><a href="/">Back to home</a></p>'
+                f"</body></html>"
+            )
+            return None
 
         return user
 
@@ -151,7 +153,7 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
         super().initialize(path=apps_root)
         self._apps_root = apps_root
 
-    async def get(  # noqa: A003 - Tornado handler hook
+    async def get(
         self, project: str, path: str, include_body: bool = True
     ) -> None:
         # Confine this request to the requested app's own static/ dir so a
@@ -161,9 +163,7 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
         )
         await super().get(path, include_body=include_body)
 
-    async def head(  # noqa: A003 - Tornado handler hook
-        self, project: str, path: str
-    ) -> None:
+    async def head(self, project: str, path: str) -> None:
         # Tornado dispatches every method as method(*path_args), so HEAD must
         # accept both capture groups too (project, tail). Delegate to the
         # body-less GET path (which sets the per-request ``self.root``),
@@ -172,7 +172,7 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
 
     def validate_absolute_path(
         self, root: str, absolute_path: str
-    ) -> Optional[str]:
+    ) -> str | None:
         # Tornado's own containment check is LEXICAL: it compares
         # ``os.path.abspath`` prefixes and never resolves symlinks. So a
         # symlink planted inside an app's ``static/`` dir is served whatever it
@@ -559,7 +559,7 @@ _app_spec = {
 }
 
 
-def _ensure_namespace_package(name: str, search_path: Optional[list] = None):
+def _ensure_namespace_package(name: str, search_path: list | None = None):
     """Get-or-create a namespace package registered in `sys.modules`.
 
     `search_path`, when given, becomes the package's `__path__`, which
@@ -579,7 +579,7 @@ def _ensure_namespace_package(name: str, search_path: Optional[list] = None):
     return module
 
 
-def _load_server_module(path: str, project: Optional[str] = None) -> str:
+def _load_server_module(path: str, project: str | None = None) -> str:
     """Import `<project>/<app>_server.py` under `_pyplet_apps.<project>`, a
     real package in `sys.modules` so intra-project imports resolve, and
     return the module name."""
@@ -764,8 +764,8 @@ async def astart():
 
 
 class ServerApplication:
-    title: Optional[str] = None
-    client_libraries: Tuple[str] = ()
+    title: str | None = None
+    client_libraries: tuple[str] = ()
     mcp_tools = ()
     interpreter: str = "py"
 
@@ -913,7 +913,7 @@ class ServerApplication:
             ),
             link(
                 rel="stylesheet",
-                href="https://code.jquery.com/ui/1.14.2/themes/base/jquery-ui.css",  # noqa: E501
+                href="https://code.jquery.com/ui/1.14.2/themes/base/jquery-ui.css",
             ),
             script(src="https://code.jquery.com/jquery-4.0.0.min.js"),
             script(src="https://code.jquery.com/ui/1.14.2/jquery-ui.min.js"),

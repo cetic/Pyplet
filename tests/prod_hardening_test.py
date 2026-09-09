@@ -33,7 +33,6 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
-
 from pyplet.server import _server
 
 # ---------------------------------------------------------------------------

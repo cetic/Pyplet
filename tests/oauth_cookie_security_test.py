@@ -20,7 +20,6 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
-
 from pyplet.server import oauth
 
 # Env vars that drive the Secure decision and the production startup gate.
@@ -89,7 +88,7 @@ def _register_consent_flow(monkeypatch, name="extra-scope"):
 
 async def _noop_complete(handler, user_info, tokens):
     """Consent-flow completion that does nothing (cookie tests ignore it)."""
-    return None
+    return
 
 
 # ---------------------------------------------------------------------------

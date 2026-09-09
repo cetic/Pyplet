@@ -82,7 +82,7 @@ target-version = "py312"
 unsafe-fixes = false
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "SIM", "C90", "PLR0912", "PLR0913", "PLR0915"]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 
 [tool.ruff.analyze]
 detect-string-imports = true

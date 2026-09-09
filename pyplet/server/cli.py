@@ -30,9 +30,9 @@ def create_project(project_name: str, tutorial: bool = False) -> None:
     # Validate project name for Python importability
     if not project_name.isidentifier():
         logger.error(
-            "%s is not a valid Python's module name. "
+            f"{project_name} is not a valid Python's module name. "
             "Use only letters, numbers and underscores, "
-            "and don't start with a number." % project_name
+            "and don't start with a number."
         )
         sys.exit(1)
 
@@ -58,9 +58,7 @@ def create_project(project_name: str, tutorial: bool = False) -> None:
 
     if not project_dir.exists():
         project_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(
-            "Project '{}' created at {}".format(project_name, project_dir)
-        )
+        logger.info(f"Project '{project_name}' created at {project_dir}")
 
     # Copy files
     dest_client = project_dir / f"{project_name}_client.py"
@@ -261,7 +259,7 @@ def start_server():
 
     except OSError as error:
         if "[Errno 98] Address already in use" not in str(error):
-            raise OSError(error)
+            raise OSError(error) from error
 
         logger.error(
             f"The server address ({config.address}) or port ({config.port})"

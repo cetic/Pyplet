@@ -22,7 +22,6 @@ from unittest.mock import MagicMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-
 from pyplet.server import oauth
 
 _AUTH_ENDPOINT = "https://id.example.test/authorize"
@@ -182,7 +181,7 @@ async def test_start_login_on_an_unregistered_provider_raises(monkeypatch):
 
 async def _noop_complete(handler, user_info, tokens):
     """Consent completion that records nothing."""
-    return None
+    return
 
 
 def _register_flow(**overrides):

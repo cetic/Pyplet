@@ -125,7 +125,7 @@ class DictPatcher(ast.NodeTransformer):
         if None in node.keys:
             try:
                 parts = []
-                for k, v in zip(node.keys, node.values):
+                for k, v in zip(node.keys, node.values, strict=True):
                     v_str = ast.unparse(v)
                     if k is None:
                         # This is a **v unpacking.
@@ -160,7 +160,6 @@ class DictPatcher(ast.NodeTransformer):
                 import logging
 
                 logging.warning(f"Failed to patch dictionary unpacking: {e}")
-                pass
 
         return node
 
@@ -494,24 +493,24 @@ class StringJoinFixer(ast.NodeTransformer):
         self.generic_visit(node)
 
         # Intercept any method call named 'join'
-        if isinstance(node.func, ast.Attribute) and node.func.attr == "join":
-            if len(node.args) == 1:
-                # 1. Create the map(str, iterable) call
-                map_call = ast.Call(
-                    func=ast.Name(id="map", ctx=ast.Load()),
-                    args=[ast.Name(id="str", ctx=ast.Load()), node.args[0]],
-                    keywords=[],
-                )
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr == "join"
+            and len(node.args) == 1
+        ):
+            map_call = ast.Call(
+                func=ast.Name(id="map", ctx=ast.Load()),
+                args=[ast.Name(id="str", ctx=ast.Load()), node.args[0]],
+                keywords=[],
+            )
 
-                # 2. Wrap it in list(...)
-                list_call = ast.Call(
-                    func=ast.Name(id="list", ctx=ast.Load()),
-                    args=[map_call],
-                    keywords=[],
-                )
+            list_call = ast.Call(
+                func=ast.Name(id="list", ctx=ast.Load()),
+                args=[map_call],
+                keywords=[],
+            )
 
-                # 3. Replace the original argument with our sanitized list
-                node.args[0] = list_call
+            node.args[0] = list_call
 
         return node
 
