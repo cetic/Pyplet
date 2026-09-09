@@ -114,7 +114,7 @@ class PypletConfig:
     )
 
     favicon = Param(
-        default="../images/pyplet_logo_no_bg.svg",
+        default="images/pyplet_logo_no_bg.svg",
         description=(
             "Path to the default favicon SVG, injected inline into "
             "served HTML. Relative paths are resolved against the "

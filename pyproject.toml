@@ -6,13 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "authlib>=1.3.0",
-    "build~=1.2.0",
-    "cython>=3.1.2",
     "htpy>=25.12.0",
     "httpx>=0.27.0",
     "markupsafe>=3.0.3",
-    "pyodide-build>=0.30.5",
-    "python-minifier>=2.11.3",
     "tornado>=6.5.1",
 ]
 
@@ -42,12 +38,20 @@ include-package-data = true
 pyplet = "pyplet.server.cli:script_main"
 
 [tool.setuptools.package-data]
-# Include apps/examples into pip package
-pyplet = ["../apps/**/*", "../images/*"]
+# Explicit patterns, never a recursive glob: the scaffold tree also holds
+# build/test residue (__pycache__, .transpiled) that must not be shipped.
+pyplet = [
+    "apps/template/*.py",
+    "apps/tutorial/*.py",
+    "apps/tutorial/public/*",
+    "apps/tutorial/static/*",
+    "images/pyplet_logo_no_bg.svg",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pyplet*", "apps*"]
+include = ["pyplet*"]
+namespaces = false
 
 [tool.black]
 verbose = true

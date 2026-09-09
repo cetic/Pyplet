@@ -18,15 +18,7 @@ logger = logging.getLogger("pyplet.cli")
 
 
 def create_project(project_name: str, tutorial: bool = False) -> None:
-    """
-    Create a new project directory under ./apps/project_name and copy
-    template_client.py, template_server.py, and config.py from ../apps/examples
-    into it.
-
-    Args:
-        project_name (str): The name of the project to create.
-        tutorial (bool): Whether to create a tutorial project.
-    """
+    """Copy the packaged scaffold (template, or tutorial) into ./apps."""
     # Validate project name for Python importability
     if not project_name.isidentifier():
         logger.error(
@@ -38,7 +30,8 @@ def create_project(project_name: str, tutorial: bool = False) -> None:
 
     cwd = Path.cwd()
     pyplet_dir = Path(__file__).resolve().parent.parent
-    template_dir = pyplet_dir.parent / "apps" / "template"
+    scaffold = "tutorial" if tutorial else "template"
+    template_dir = pyplet_dir / "apps" / scaffold
 
     # Verify template directory exists
     if not template_dir.exists():
@@ -46,12 +39,8 @@ def create_project(project_name: str, tutorial: bool = False) -> None:
         sys.exit(1)
 
     # Sources
-    src_client = template_dir / "template_client.py"
-    src_server = template_dir / "template_server.py"
-
-    if tutorial:
-        src_client = template_dir / "tutorial_client.py"
-        src_server = template_dir / "tutorial_server.py"
+    src_client = template_dir / f"{scaffold}_client.py"
+    src_server = template_dir / f"{scaffold}_server.py"
 
     # Create apps and project dir if they don't exist
     project_dir = cwd / "apps" / project_name
@@ -75,6 +64,17 @@ def create_project(project_name: str, tutorial: bool = False) -> None:
 
     shutil.copyfile(src_client, dest_client)
     shutil.copyfile(src_server, dest_server)
+
+    for assets in ("public", "static"):
+        src_assets = template_dir / assets
+        if src_assets.is_dir():
+            shutil.copytree(
+                src_assets,
+                project_dir / assets,
+                ignore=shutil.ignore_patterns("__pycache__"),
+                dirs_exist_ok=True,
+            )
+            logger.info("Assets copied: %s/", assets)
 
     logger.info(f"Files copied: {dest_client.name}, {dest_server.name}")
     logger.info(
@@ -224,8 +224,9 @@ def main() -> None:
                 "defines the behavior of the client.\n"
                 "    - tutorial_server.py: This is the server code that "
                 "defines the behavior of the server.\n"
-                "    - config.py: This file contains the configuration for "
-                "the project.\n"
+                "    - static/: Files served straight over HTTP.\n"
+                "    - public/: Files exposed through the virtual file "
+                "system.\n"
                 "\nTo run the tutorial server, use the following command: "
                 "pyplet start\n"
                 "This will start the server defined in tutorial_server.py. "

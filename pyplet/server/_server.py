@@ -769,7 +769,7 @@ class ServerApplication:
     mcp_tools = ()
     interpreter: str = "py"
 
-    def websocket_server_loop(
+    async def websocket_server_loop(
         self, websocket: tornado.websocket.WebSocketHandler
     ): ...
 

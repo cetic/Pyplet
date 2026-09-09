@@ -3,7 +3,8 @@
 Application server running Python on both sides: server (Python) and client
 (PyScript / Pyodide in the browser). Public docs: [README.md](README.md),
 <https://pyplet.readthedocs.io>. Package: `pyplet/`; tests: `tests/`;
-sample apps: `apps/template`, `apps/tutorial`.
+shipped scaffold: `pyplet/apps/{template,tutorial}` — inside the package,
+because `pyplet init` copies from it and a wheel cannot reach outside.
 
 **Editorial rule**: this file holds only what a few tool uses cannot
 rediscover — invariants and decisions, never inventories or history. A WHY

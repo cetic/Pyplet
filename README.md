@@ -419,8 +419,11 @@ Pyplet should work in any modern browser that supports WebAssembly:
 Pyplet uses:
 
 - **Tornado** - Async web server
-- **PyScript** - Python in WebAssembly (via Pyodide)
-- **Cython** - Python to C compiler for performance
+- **PyScript** - Python in WebAssembly (via Pyodide), loaded in the browser
+  from a CDN — not a server-side dependency
+- **Authlib** - OAuth / OpenID Connect sign-in
+- **htpy** + **MarkupSafe** - HTML generation
+- **httpx** - Async HTTP client (OAuth token exchange)
 
 ## Adding Dependencies
 
@@ -434,7 +437,8 @@ Edit `pyproject.toml` under `[project.optional-dependencies].test`
 
 ## Examples
 
-Check the `apps/template/` directory for a working example demonstrating:
+Check the `pyplet/apps/template/` directory for a working example
+demonstrating:
 
 - WebSocket communication
 - DOM manipulation
