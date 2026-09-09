@@ -329,10 +329,6 @@ def index_template(
             )
 
     else:
-        # Auth disabled — show everything. `_apps.client_apps` enumerates
-        # both apps-root layouts (per-project subdirectories, and apps
-        # sitting directly in the root), so the listing matches what
-        # discovery actually loaded.
         for project, app_name in _apps.client_apps():
             projects[project].append(
                 li[a(href=f"apps/{project}/{app_name}")[app_name]]

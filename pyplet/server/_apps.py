@@ -1,29 +1,6 @@
-"""On-disk layout of the apps root (``config.apps`` / ``PYPLET_APPS``).
-
-Pyplet addresses every app as ``/apps/<project>/<app>``, so each app needs
-a *project* to belong to. Two on-disk layouts produce that pairing:
-
-* **nested** — ``<apps_root>/<project>/<app>_server.py``. One directory
-  per project inside the apps root (what ``pyplet init`` creates).
-* **flat** — ``<apps_root>/<app>_server.py``. The apps root *is* the
-  project and takes its name from the root directory's own basename, so
-  the URLs come out identical to pointing the root one level higher.
-
-Flat support exists because pointing ``PYPLET_APPS`` at the directory that
-actually holds the ``*_server.py`` files is the obvious thing to do — it is
-exactly what the ``pyplet_examples`` repo's ``examples/`` folder looks like
-— and a nested-only glob silently discovered nothing there.
-
-Both layouts are honoured at once: a root holding app files *and* project
-subdirectories yields all of them. Everything downstream (routes, ACLs,
-per-app ``static/``, the client-side VFS, the transpiler cache) addresses
-an app by ``(project, app)``, so :func:`project_dir` is the single place
-that maps a project name back to its real directory.
-
-Discovery goes through the ``glob`` module rather than ``Path.glob`` on
-purpose: ``glob`` skips dot-prefixed entries, which keeps caches such as
-an app's ``.transpiled/`` tree out of the results.
-"""
+"""Apps-root layouts: nested ``<root>/<project>/<app>_server.py`` and flat
+``<root>/<app>_server.py`` (the root is the project, named by its basename).
+Pinned by ``tests/apps_layout_test.py``."""
 
 import glob
 import logging
@@ -40,31 +17,15 @@ CLIENT_SUFFIX = "_client.py"
 
 
 def apps_root(root: Optional[Union[str, Path]] = None) -> Path:
-    """*root* as an absolute path, defaulting to ``config.apps``.
-
-    ``config.apps`` may be a bare relative folder, a nested relative path
-    or an absolute one; resolving here means callers never have to care,
-    and a flat root spelled ``.`` or ``examples/`` still yields a usable
-    project name from its basename.
-
-    Every function in this module takes the same optional *root* so a
-    caller configured with an explicit apps root — ``AppStaticFileHandler``
-    is handed one as a route kwarg — resolves against that one instead of
-    the process-wide config.
-    """
+    """*root*, defaulting to ``config.apps``, as an absolute path."""
     return Path(config.apps if root is None else root).resolve()
 
 
 def flat_project(root: Optional[Union[str, Path]] = None) -> Optional[str]:
-    """Project name for apps stored directly in the apps root.
-
-    Returns ``None`` when the root holds no ``*_server.py``/``*_client.py``
-    of its own (the nested layout), or when a subdirectory already claims
-    the same name — in which case the nested project wins, since it is the
-    one :func:`project_dir` can address unambiguously.
+    """Project name for apps sitting in the apps root itself, else
+    ``None`` (nested layout, or a subdirectory already claims the name).
     """
     root = apps_root(root)
-    # A missing root simply globs empty, so no existence check is needed.
     has_app_files = any(
         glob.glob(f"*{suffix}", root_dir=root)
         for suffix in (SERVER_SUFFIX, CLIENT_SUFFIX)
@@ -98,12 +59,8 @@ def flat_project(root: Optional[Union[str, Path]] = None) -> Optional[str]:
 
 
 def project_dir(project: str, root: Optional[Union[str, Path]] = None) -> Path:
-    """Absolute directory backing *project*.
-
-    A subdirectory of the apps root takes precedence; otherwise the root
-    itself backs the flat project. The returned path need not exist —
-    callers that serve from it (per-app ``static/``) already treat a
-    missing directory as a 404.
+    """Absolute directory backing *project*: a subdirectory of the apps
+    root, else the root itself for the flat project. Need not exist.
     """
     root = apps_root(root)
     nested = root / project
@@ -143,11 +100,7 @@ def server_modules(
 def client_apps(
     root: Optional[Union[str, Path]] = None,
 ) -> list[tuple[str, str]]:
-    """``(project, app)`` for every discoverable ``*_client.py``.
-
-    This is what the index page and the ACL filter enumerate: an app is
-    listed when it has client code to ship to the browser.
-    """
+    """``(project, app)`` for every discoverable ``*_client.py``."""
     return [
         (project, app) for project, app, _ in _discover(CLIENT_SUFFIX, root)
     ]

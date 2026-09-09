@@ -569,14 +569,8 @@ def is_app_permitted(project: str, app: str, email: str) -> bool:
 
 
 def permitted_apps(email: str) -> list[tuple[str, str]]:
-    """
-    Return a sorted list of ``(project, app)`` pairs accessible to *email*.
-
-    Discovers available apps from the filesystem, then filters by ACL.
-    Discovery runs through `_apps.client_apps`, so both apps-root layouts
-    (per-project subdirectories, and apps sitting directly in the root)
-    are subject to the same ACL.
-    """
+    """``(project, app)`` pairs accessible to *email*: discovered from the
+    apps root, then filtered by the ACL."""
     return [
         (project, app)
         for project, app in _apps.client_apps()

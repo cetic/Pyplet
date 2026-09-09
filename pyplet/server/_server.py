@@ -33,13 +33,6 @@ logger = logging.getLogger("pyplet.server")
 
 server_applications: Dict[Tuple[str, str], "ServerApplication"] = {}
 
-# Synthetic module-name prefix used when loading `*_server.py` app modules.
-# App discovery loads modules directly from their file path (see
-# `_load_server_module`) rather than importing them via a dotted name
-# derived from `config.apps`, so registration keeps working regardless of
-# whether `config.apps` is a bare relative folder, a nested path, an
-# absolute path, or the app's own directory (see `_apps` for the nested
-# vs. flat apps-root layouts).
 _APPS_MODULE_PREFIX = "_pyplet_apps"
 
 # Fixed virtual directory name for app files inside the browser-side
@@ -163,10 +156,6 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
     ) -> None:
         # Confine this request to the requested app's own static/ dir so a
         # traversal in ``path`` cannot escape into the wider apps/ tree.
-        # `_apps.project_dir` resolves the project against both apps-root
-        # layouts (a subdirectory of the root, or the root itself when the
-        # apps live directly in it), so a flat root's static/ is confined
-        # exactly like a nested one's.
         self.root = str(
             _apps.project_dir(project, root=self._apps_root) / "static"
         )
@@ -591,28 +580,9 @@ def _ensure_namespace_package(name: str, search_path: Optional[list] = None):
 
 
 def _load_server_module(path: str, project: Optional[str] = None) -> str:
-    """Import a `<project>/<app>_server.py` module under a synthetic,
-    stable package hierarchy (`_pyplet_apps.<project>.<app>_server`) and
-    return the module name it was loaded under.
-
-    A real (if synthetic) package hierarchy is registered in
-    `sys.modules` — rather than loading the file in isolation via
-    `spec_from_file_location` — so Python's own import machinery handles
-    the module. That is what makes ordinary intra-project imports (e.g.
-    `from . import other_server`) keep working: the project package's
-    `__path__` points at its real on-disk directory, so Python can find
-    sibling `*_server.py` modules there when such an import is resolved.
-
-    This stays independent of `config.apps`'s literal shape (bare
-    relative folder, nested path, or absolute path) since the synthetic
-    prefix is never derived from it.
-
-    `project` names the project the app belongs to. Callers that already
-    know it (discovery in `astart`, via `_apps.server_modules`) pass it in;
-    otherwise it falls back to the *resolved* parent directory's name, which
-    is the same answer for a nested layout and still yields a real name for
-    a flat apps root spelled `.`.
-    """
+    """Import `<project>/<app>_server.py` under `_pyplet_apps.<project>`, a
+    real package in `sys.modules` so intra-project imports resolve, and
+    return the module name."""
     file_path = Path(path)
     project_dir = file_path.parent.resolve()
     project_name = project or project_dir.name
@@ -819,11 +789,6 @@ class ServerApplication:
         )
         markupsafe_parent = str(Path(markupsafe_location).parent)
 
-        # The project's real directory under either apps-root layout: a
-        # subdirectory of the root, or the root itself when the apps live
-        # directly in it. Its basename is the project name in both cases,
-        # so globbing `<project>/**` from its PARENT keeps the browser-side
-        # VFS keys at "apps/<project>/..." either way.
         app_root = _apps.project_dir(project)
 
         file_map = {}
@@ -831,11 +796,6 @@ class ServerApplication:
             (pyplet_root, "pyplet/*", ""),
             (pyplet_root, "pyplet/shared/**", ""),
             (pyplet_root, "pyplet/client/**", ""),
-            # root_dir is an absolute path and the pattern kept relative
-            # to it, so the resulting VFS keys are always
-            # "apps/<project>/..." — never leaking `config.apps`'s own
-            # (possibly absolute, nested, flat, etc.) on-disk shape into
-            # the browser-side virtual filesystem.
             (
                 str(app_root.parent),
                 f"{app_root.name}/**",

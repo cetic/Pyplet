@@ -1,33 +1,5 @@
-"""
-Regression tests for the FLAT apps-root layout (`pyplet.server._apps`).
-
-WHAT THIS PROVES
-================
-Pyplet serves every app as ``/apps/<project>/<app>``, and discovery used to
-find that pairing with a single hardcoded ``<apps_root>/*/*_server.py`` glob
-— apps had to live one directory *below* the root. Pointing ``--apps`` /
-``PYPLET_APPS`` at the directory that actually holds the ``*_server.py``
-files (the obvious thing to do, and exactly what the ``pyplet_examples``
-repo's ``examples/`` folder is) therefore matched nothing: the server booted
-with ``Loaded 0 application(s)`` and an index page saying no applications
-were installed, with no indication that the root was shaped wrong.
-
-The apps root is now read in either layout:
-
-  * **nested** — ``<apps_root>/<project>/<app>_server.py`` (unchanged);
-  * **flat** — ``<apps_root>/<app>_server.py``, where the root *is* the
-    project and takes its name from the root directory's own basename, so
-    the resulting URLs match pointing the root one level higher.
-
-Both are honoured at once, and the flat project is only claimed when no
-subdirectory already answers to the root's name (that project is the one
-``project_dir`` can address unambiguously).
-
-Every surface that turns ``config.apps`` into a project has to agree on the
-layout, so this pins all of them: module discovery/registration, the index
-listing, the ACL filter, `package()`'s browser-side VFS keys, and the
-per-app ``static/`` root (which must stay confined — see
-``app_static_traversal_test.py``).
+"""Flat apps-root layout (``pyplet.server._apps``): discovery, registration,
+the index/ACL listings, ``package()``'s VFS keys and the ``static/`` root.
 """
 
 import gzip
@@ -40,7 +12,7 @@ import pytest
 from tornado.testing import AsyncHTTPTestCase
 from tornado.web import Application
 
-from pyplet.server import _apps, _server, oauth
+from pyplet.server import _apps, _server, oauth, templates
 from pyplet.server._server import _app_spec
 from pyplet.server.config import config
 
@@ -65,11 +37,6 @@ def _write_flat_app(root, app_name, class_name):
 def _write_nested_app(apps_dir, project, app_name, class_name):
     """Write ``<apps_dir>/<project>/<app>_server.py`` + client (nested)."""
     _write_flat_app(apps_dir / project, app_name, class_name)
-
-
-# The `config.apps` overrides below use `preserve_config_dict`, the shared
-# fixture in tests/conftest.py, next to the guard that catches leaked
-# overrides.
 
 
 @pytest.fixture
@@ -139,13 +106,24 @@ class TestFlatLayoutDiscovery:
             ("extras", "extra"),
         ]
 
+    def test_dot_directories_are_not_discovered(
+        self, tmp_path, preserve_config_dict
+    ):
+        """`glob` skips dot-prefixed entries, keeping `.transpiled/` out."""
+        root = tmp_path / "examples"
+        _write_flat_app(root / ".transpiled", "ghost", "GhostServer")
+        _write_nested_app(root, ".cache", "stale", "StaleServer")
+        config.apps = str(root)
+
+        assert _apps.server_modules() == []
+        assert _apps.client_apps() == []
+
     def test_subdirectory_of_the_same_name_wins(
         self, tmp_path, caplog, preserve_config_dict
     ):
-        """`<root>/<root basename>/` already owns that project name, and
-        it is the one `project_dir` can address, so the flat apps are
-        skipped — loudly, since the alternative is two different
-        directories answering to one `/apps/<project>/` URL."""
+        """The nested project owns the name — it is the one `project_dir`
+        can address — so the flat apps are skipped, loudly.
+        """
         root = tmp_path / "examples"
         _write_flat_app(root, "chat", "ChatServer")
         _write_nested_app(root, "examples", "nested", "NestedServer")
@@ -248,14 +226,25 @@ class TestFlatLayoutListings:
             ("examples", "chat")
         ]
 
+    def test_index_lists_a_flat_app_when_auth_is_disabled(
+        self, tmp_path, monkeypatch, preserve_config_dict
+    ):
+        """The reported symptom: an index page claiming no apps installed."""
+        root = tmp_path / "examples"
+        _write_flat_app(root, "chat", "ChatServer")
+        config.apps = str(root)
+        monkeypatch.setattr(oauth, "auth_enabled", lambda: False)
+
+        page = str(templates.index_template(None))
+
+        assert 'href="apps/examples/chat"' in page
+        assert "No applications have been installed yet." not in page
+
 
 @pytest.mark.unit
 class TestFlatLayoutPackaging:
-    """`package()`'s VFS keys stay "apps/<project>/<file>" when flat.
-
-    The browser writes these keys into its own virtual filesystem and
-    imports from them, so leaking the server's on-disk shape (here: the
-    apps root being the project dir itself) breaks the app at runtime.
+    """`package()`'s VFS keys stay ``apps/<project>/<file>`` when flat: the
+    browser imports from them, so the on-disk shape must not leak.
     """
 
     def test_flat_app_vfs_keys(self, tmp_path, preserve_config_dict):
@@ -310,27 +299,19 @@ def _static_route_entry() -> tuple:
 
 
 class FlatAppStaticTest(AsyncHTTPTestCase):
-    """A flat app's ``static/`` must serve — and stay just as confined.
-
-    The handler roots itself per request at the requested app's own
-    ``static/`` dir. For a flat root that dir is ``<apps_root>/static``,
-    so the traversal guard has to hold against the apps root itself
-    rather than a project subdirectory of it.
-    """
+    """A flat app's ``static/`` serves and stays confined: its dir is
+    ``<apps_root>/static``, so the guard holds against the apps root
+    itself rather than a project subdirectory of it."""
 
     def setUp(self):
-        # Build the tree BEFORE AsyncHTTPTestCase.setUp() calls get_app().
+        """Tree built before ``super().setUp()``, which calls get_app()."""
         self._tmp = tempfile.TemporaryDirectory()
-        # The flat project name comes from the root's basename, and the
-        # route regex only matches identifier-shaped projects.
         self._apps_root = os.path.join(self._tmp.name, "examples")
         static_dir = os.path.join(self._apps_root, "static")
         os.makedirs(static_dir)
 
         with open(os.path.join(static_dir, "d3.v7.min.js"), "w") as f:
             f.write("// legit static asset\n")
-        # Bait: a flat app's server source sits directly in the root, one
-        # level ABOVE static/ — the traversal target a flat layout adds.
         with open(os.path.join(self._apps_root, "chat_server.py"), "w") as f:
             f.write("SECRET = 'server-side source that must not leak'\n")
 
@@ -341,8 +322,7 @@ class FlatAppStaticTest(AsyncHTTPTestCase):
         self._tmp.cleanup()
 
     def get_app(self) -> Application:
-        # Take the PRODUCTION route entry and only redirect its root, so
-        # this keeps testing whatever the real handler does.
+        """The production route entry, with only its apps_root redirected."""
         pattern, handler, kwargs = _static_route_entry()
         return Application(
             [(pattern, handler, {**kwargs, "apps_root": self._apps_root})]

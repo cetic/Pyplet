@@ -71,7 +71,7 @@ exclude = '''
 [tool.ruff]
 builtins = ["_"]
 # cache-dir = "~/.cache/ruff"
-exclude = [".venv", "**/build"]
+exclude = [".venv", "**/build", "**/.transpiled"]
 line-length = 79
 fix = true
 indent-width = 4
@@ -80,6 +80,9 @@ show-fixes = true
 src = ["src"]
 target-version = "py312"
 unsafe-fixes = false
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C90", "PLR0912", "PLR0913", "PLR0915"]
 
 [tool.ruff.analyze]
 detect-string-imports = true
