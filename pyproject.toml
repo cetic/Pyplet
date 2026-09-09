@@ -81,7 +81,11 @@ fix = true
 indent-width = 4
 respect-gitignore = false
 show-fixes = true
-src = ["src"]
+# Le paquet est à la racine, il n'existe pas de répertoire `src/`. Avec
+# `["src"]`, ruff classait `pyplet` en tiers et le rangeait avec `tornado`,
+# là où isort le voit en premier parti : les deux trieurs se défaisaient
+# mutuellement à chaque exécution. Voir #58.
+src = ["."]
 target-version = "py312"
 unsafe-fixes = false
 

@@ -11,11 +11,12 @@ from pathlib import Path
 
 import pyplet
 import pytest
-from pyplet.server._server import astart
-from pyplet.server.config import config
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+
+from pyplet.server._server import astart
+from pyplet.server.config import config
 
 # The e2e suite must boot ANONYMOUSLY and deterministically. Any app in
 # apps/ may load developer OAuth credentials from its own local .env at

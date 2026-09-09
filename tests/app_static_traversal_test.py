@@ -44,9 +44,10 @@ Uses Tornado's ``AsyncHTTPTestCase`` harness (shipped with the existing
 import os
 import tempfile
 
-from pyplet.server._server import _app_spec
 from tornado.testing import AsyncHTTPTestCase
 from tornado.web import Application
+
+from pyplet.server._server import _app_spec
 
 
 def _handler_patterns() -> list[str]:

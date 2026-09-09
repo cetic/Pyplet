@@ -23,9 +23,10 @@ These are sync ``def test_*`` functions; the HTTP assertion uses Tornado's
 no new dependency.
 """
 
-from pyplet.server._server import HealthzHandler, _app_spec, _AuthMixin
 from tornado.testing import AsyncHTTPTestCase
 from tornado.web import Application
+
+from pyplet.server._server import HealthzHandler, _app_spec, _AuthMixin
 
 
 def _handler_patterns() -> list[str]:
