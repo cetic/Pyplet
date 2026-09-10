@@ -98,3 +98,26 @@ def test_page_gate_redirects_to_login_and_never_sets_401(monkeypatch):
         f"une page HTML ne doit pas être terminée par un code {gate.status!r} "
         "à la place de la redirection"
     )
+
+
+@pytest.mark.unit
+def test_server_websocket_is_flagged_ws_so_the_gate_answers_401(monkeypatch):
+    """La vraie classe `ServerWebSocket` porte `_is_ws = True`."""
+    from pyplet.server._server import ServerWebSocket
+
+    monkeypatch.setattr(oauth, "auth_enabled", lambda: True)
+    monkeypatch.setattr(oauth, "get_session", lambda handler: None)
+
+    class _Probe(_Recorder):
+        _require_auth = ServerWebSocket._require_auth
+        _is_ws = ServerWebSocket._is_ws
+
+    gate = _Probe()
+    assert gate._require_auth() is None
+    assert gate.status == 401, (
+        f"ServerWebSocket doit hériter d'un garde en 401 ; obtenu "
+        f"{gate.status!r}, redirection {gate.redirected!r} — si _is_ws "
+        "retombe à False, un client WebSocket non authentifié reçoit une "
+        "302 qu'il ne peut pas suivre"
+    )
+    assert gate.redirected is None

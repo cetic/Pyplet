@@ -21,6 +21,14 @@ plus de 3 lignes migrent vers `docs/api/server.md` et sont ramenées à
 | Avant (`ed5401b`) | 142 | 142 | 16 |
 | Après | 3 | 3 (`# nosec`, voir plus bas) | 0 |
 
+- Hors périmètre du comptage : la f-string `python_code` (lignes 672–990
+  après passe) transporte le programme client PyScript/MicroPython comme
+  donnée ; elle contient 51 lignes portant `#` qui sont des commentaires
+  du programme *client*, pas de `_server.py`. `tokenize` ne les voit pas
+  (jetons `STRING`) ; un `grep '#'` les compte. La mesure de référence est
+  `tokenize` (spec, § Définitions, « Comptage »). La chaîne est inchangée
+  à l'octet (identité d'AST, voir Vérifications).
+
 - Définition retenue pour « directive d'outillage » (fixée par la
   commande) : texte après `#` et espaces commençant par `noqa`, `type:`,
   `pragma`, `ruff:`, `fmt:`, `pylint`, `mypy:`, `isort:`, `flake8:`,
@@ -72,20 +80,20 @@ relecteur y cherche donc le contenu de la raison, non le texte source.
 | `pyplet/server/_server.py` | 45 | # --------------------------------------------------------------------------- | séparateur |
 | `pyplet/server/_server.py` | 46 | # Auth gate mixin | séparateur |
 | `pyplet/server/_server.py` | 47 | # --------------------------------------------------------------------------- | séparateur |
-| `pyplet/server/_server.py` | 62 | # Sub-classes set this to True for WebSocket handlers where redirects | raison → test tests/server_auth_gate_test.py::test_ws_gate_answers_401_and_never_redirects |
-| `pyplet/server/_server.py` | 63 | # are not meaningful. | raison → test tests/server_auth_gate_test.py::test_ws_gate_answers_401_and_never_redirects |
+| `pyplet/server/_server.py` | 62 | # Sub-classes set this to True for WebSocket handlers where redirects | raison → test tests/server_auth_gate_test.py::test_server_websocket_is_flagged_ws_so_the_gate_answers_401 |
+| `pyplet/server/_server.py` | 63 | # are not meaningful. | raison → test tests/server_auth_gate_test.py::test_server_websocket_is_flagged_ws_so_the_gate_answers_401 |
 | `pyplet/server/_server.py` | 68 | # Return a sentinel so Tornado's @authenticated decorator works. | raison → test tests/server_auth_gate_test.py::test_get_current_user_returns_truthy_sentinel_when_auth_disabled |
 | `pyplet/server/_server.py` | 111 | # --------------------------------------------------------------------------- | séparateur |
 | `pyplet/server/_server.py` | 112 | # Static file handler (no auth required) | séparateur |
 | `pyplet/server/_server.py` | 113 | # --------------------------------------------------------------------------- | séparateur |
 | `pyplet/server/_server.py` | 151 | # StaticFileHandler.initialize requires a ``path``; the real | raison → test tests/app_static_traversal_test.py::AppStaticPerRequestRootTest::test_each_request_is_rooted_at_its_own_project |
 | `pyplet/server/_server.py` | 152 | # per-request root is (re)computed in get() once ``project`` is known. | raison → test tests/app_static_traversal_test.py::AppStaticPerRequestRootTest::test_each_request_is_rooted_at_its_own_project |
-| `pyplet/server/_server.py` | 159 | # Confine this request to the requested app's own static/ dir so a | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_traversal_to_sibling_server_source_blocked |
-| `pyplet/server/_server.py` | 160 | # traversal in ``path`` cannot escape into the wider apps/ tree. | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_traversal_to_sibling_server_source_blocked |
+| `pyplet/server/_server.py` | 159 | # Confine this request to the requested app's own static/ dir so a | raison → test tests/app_static_traversal_test.py::AppStaticPerRequestRootTest::test_each_request_is_rooted_at_its_own_project |
+| `pyplet/server/_server.py` | 160 | # traversal in ``path`` cannot escape into the wider apps/ tree. | raison → test tests/app_static_traversal_test.py::AppStaticPerRequestRootTest::test_each_request_is_rooted_at_its_own_project |
 | `pyplet/server/_server.py` | 167 | # Tornado dispatches every method as method(*path_args), so HEAD must | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_head_legit_static_file_is_served |
 | `pyplet/server/_server.py` | 168 | # accept both capture groups too (project, tail). Delegate to the | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_head_legit_static_file_is_served |
 | `pyplet/server/_server.py` | 169 | # body-less GET path (which sets the per-request ``self.root``), | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_head_traversal_to_sibling_server_source_blocked |
-| `pyplet/server/_server.py` | 170 | # mirroring StaticFileHandler.head -> get(path, include_body=False). | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_head_traversal_to_sibling_server_source_blocked |
+| `pyplet/server/_server.py` | 170 | # mirroring StaticFileHandler.head -> get(path, include_body=False). | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_head_legit_static_file_is_served |
 | `pyplet/server/_server.py` | 176 | # Tornado's own containment check is LEXICAL: it compares | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_symlink_out_of_static_dir_blocked |
 | `pyplet/server/_server.py` | 177 | # ``os.path.abspath`` prefixes and never resolves symlinks. So a | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_symlink_out_of_static_dir_blocked |
 | `pyplet/server/_server.py` | 178 | # symlink planted inside an app's ``static/`` dir is served whatever it | raison → test tests/app_static_traversal_test.py::AppStaticTraversalTest::test_symlink_out_of_static_dir_blocked |
@@ -138,7 +146,7 @@ relecteur y cherche donc le contenu de la raison, non le texte source.
 | `pyplet/server/_server.py` | 608 | # Fail-closed startup policy — production debug guard (Story 18.18, DEPLOY-8) | séparateur |
 | `pyplet/server/_server.py` | 609 | # --------------------------------------------------------------------------- | séparateur |
 | `pyplet/server/_server.py` | 692 | # Load all server applications FIRST: importing each *_server.py | raison → test tests/server_routes_hook_test.py::AppDeclaredRouteTest::test_declared_route_reachable_and_catchall_last |
-| `pyplet/server/_server.py` | 693 | # fires ServerApplication.__init_subclass__, which registers the | raison → test tests/server_routes_hook_test.py::AppDeclaredRouteTest::test_declared_route_reachable_and_catchall_last |
+| `pyplet/server/_server.py` | 693 | # fires ServerApplication.**init_subclass**, which registers the | raison → test tests/server_routes_hook_test.py::AppDeclaredRouteTest::test_declared_route_reachable_and_catchall_last |
 | `pyplet/server/_server.py` | 694 | # instance in server_applications. Anything derived from that | raison → test tests/server_routes_hook_test.py::AppDeclaredRouteTest::test_declared_route_reachable_and_catchall_last |
 | `pyplet/server/_server.py` | 695 | # registry has to run once it is populated, so the modules are | raison → test tests/server_routes_hook_test.py::AppDeclaredRouteTest::test_declared_route_reachable_and_catchall_last |
 | `pyplet/server/_server.py` | 696 | # loaded before the Tornado Application is built from _app_spec. | raison → test tests/server_routes_hook_test.py::AppDeclaredRouteTest::test_declared_route_reachable_and_catchall_last |
@@ -164,7 +172,7 @@ relecteur y cherche donc le contenu de la raison, non le texte source.
 | `pyplet/server/_server.py` | 780 | # Safely locate htpy and get its parent directory | paraphrase |
 | `pyplet/server/_server.py` | 804 | # Inject htpy dynamically! | paraphrase |
 | `pyplet/server/_server.py` | 809 | # Define the exact, absolute path to the project's static folder | paraphrase |
-| `pyplet/server/_server.py` | 814 | # Skip __pycache__ and similar hidden files | paraphrase |
+| `pyplet/server/_server.py` | 814 | # Skip **pycache** and similar hidden files | paraphrase |
 | `pyplet/server/_server.py` | 822 | # Filter out cache and compiled bytecode | paraphrase |
 | `pyplet/server/_server.py` | 829 | # Filter out project static folder | paraphrase |
 | `pyplet/server/_server.py` | 835 | # Read as bytes and encode to base64 for JSON safety | raison → docs/api/server.md |
