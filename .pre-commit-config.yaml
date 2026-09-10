@@ -43,23 +43,6 @@ repos:
       - id: sort-simple-yaml
       - id: trailing-whitespace
 
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.10.1
-    hooks:
-      - id: isort
-        # isort éclate les 124 ré-exports `htpy` de `_dom.py` en une ligne
-        # chacun, ruff les regroupe aussitôt : le diff net est vide mais les
-        # deux hooks se déclarent « files were modified » à chaque passe, donc
-        # la chaîne ne converge jamais. L'exclusion doit vivre ici : cette
-        # version d'isort ne lit pas `pyproject.toml` (l'extra `toml` manque
-        # avant la 5.12), donc `[tool.isort]` est sans effet. Voir #58.
-        exclude: ^pyplet/shared/dom/_dom\.py$
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
@@ -82,20 +65,20 @@ repos:
   #   hooks:
   #     - id: pyupgrade
 
-  - repo: https://github.com/asottile/setup-cfg-fmt
-    rev: v3.2.0
-    hooks:
-      - id: setup-cfg-fmt
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
-    rev: v0.15.11
+    # ruff est la seule autorité de qualité du projet : cette révision doit
+    # rester égale au pin `ruff==` de `pyproject.toml`, sinon `make lint` et
+    # la CI rendent deux verdicts. Voir #60.
+    rev: v0.16.6
     hooks:
-      # Run the linter.
+      # `--no-fix` et `--check` : les deux hooks constatent, ils ne réécrivent
+      # pas. Sans eux le hook applique le `fix = true` de `pyproject.toml`,
+      # que les recettes du Makefile annulent — la CI corrigerait ce que le
+      # gate local refuse.
       - id: ruff-check
-        args: [ --fix ]
-      # Run the formatter.
+        args: [--no-fix]
       - id: ruff-format
+        args: [--check]
 
   # - repo: local
   #   hooks:
@@ -105,11 +88,6 @@ repos:
   #       language: system
   #       pass_filenames: false
   #       always_run: true
-
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
-    hooks:
-      - id: pyupgrade
 
     # Markdown
   - repo: https://github.com/igorshubovych/markdownlint-cli

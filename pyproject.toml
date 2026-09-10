@@ -29,6 +29,12 @@ test = [
     "pytest-asyncio>=0.23.0",
     "selenium>=4.16.0",
     "pytest-xdist>=3.8.0",
+    # ruff vit dans l'extra `test` parce que les recettes du Makefile
+    # résolvent le linter par `uv run --extra test`. Version exacte et non
+    # `>=` : `uv.lock` n'est pas versionné, la CI résout donc à neuf, et la
+    # révision de `ruff-pre-commit` doit rester égale à ce pin, sinon les
+    # deux chaînes rendent deux verdicts. Voir #60.
+    "ruff==0.16.6",
 ]
 
 [tool.setuptools]
@@ -53,38 +59,24 @@ where = ["."]
 include = ["pyplet*"]
 namespaces = false
 
-[tool.black]
-verbose = true
-line-length = 79
-target-version = ['py312', 'py313', 'py314']
-include = '.pyi?$'
-exclude = '''
-/(
-    .git
-    | .hg
-    | .mypy_cache
-    | .tox
-    | .venv
-    | _build
-    | buck-out
-    | build
-    | dist
-)/
-'''
-
 [tool.ruff]
 builtins = ["_"]
 # cache-dir = "~/.cache/ruff"
-exclude = [".venv", "**/build", "**/.transpiled"]
+# `**/*.md` : depuis la 0.16, `ruff format` met en forme le Python des
+# blocs Markdown. Ceux de ce dépôt portent des directives d'inclusion
+# mkdocs (`--8<-- "…"`) que ruff lit comme du Python et réécrit en
+# `--8 < --"…"` : 12 fichiers touchés, dont README.md, et la doc ne se
+# construit plus. Les hooks passent `--force-exclude`, donc l'exclusion
+# vaut pour les deux chaînes — c'est le comportement d'avant la 0.16.
+exclude = [".venv", "**/build", "**/.transpiled", "**/*.md"]
 line-length = 79
 fix = true
 indent-width = 4
 respect-gitignore = false
 show-fixes = true
 # Le paquet est à la racine, il n'existe pas de répertoire `src/`. Avec
-# `["src"]`, ruff classait `pyplet` en tiers et le rangeait avec `tornado`,
-# là où isort le voit en premier parti : les deux trieurs se défaisaient
-# mutuellement à chaque exécution. Voir #58.
+# `["src"]`, ruff classe `pyplet` en tiers et le range avec `tornado`, là
+# où il est premier parti. Voir #58.
 src = ["."]
 target-version = "py312"
 unsafe-fixes = false

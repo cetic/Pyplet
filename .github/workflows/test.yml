@@ -10,6 +10,30 @@ on:
   workflow_call:
 
 jobs:
+  # Miroir du job `lint` de .gitlab-ci.yml : même commande, donc même verdict
+  # que sur le poste de développement et que sur GitLab. Voir #60.
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.0
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Create virtual environment
+        run: uv venv
+
+      - name: Install dependencies
+        run: uv sync --extra test
+
+      - name: Run lint
+        run: make lint
+
   test:
     runs-on: ubuntu-latest
 
