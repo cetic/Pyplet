@@ -133,283 +133,294 @@ _apps = None
 client_applications: dict[tuple[str, str], "ClientApplication"] = {}
 
 
-def _setup_vfs_bindings():
-    """Attaches VFS upload/download functions to the browser window."""
-
-    if hasattr(js.window, "upload_file"):
+def _ensure_dir(path):
+    """Create every missing parent directory of a VFS path."""
+    if not path:
         return
+    parts = path.split("/")
+    current_path = ""
+    for part in parts:
+        if not part:
+            continue
+        current_path = current_path + "/"
+        current_path += part if current_path else part
+        try:  # noqa: SIM105
+            os.mkdir(current_path)
+        except OSError:
+            pass
 
-    def ensure_dir(path):
-        if not path:
+
+def download_vfs_file(file_path):
+    """Hand the browser a VFS file as a base64 data-URI download."""
+    try:
+        file_path = os.path.normpath(file_path).lstrip("/").replace("../", "")
+        file_path = os.path.join(
+            os.path.dirname(js.window.location.pathname),
+            file_path,
+        ).lstrip("/")
+
+        file_path = os.path.join(os.getcwd(), file_path)
+
+        if not os.path.isfile(file_path):
+            js.console.error(f"File not found: {file_path}")
             return
-        parts = path.split("/")
-        current_path = ""
-        for part in parts:
-            if not part:
-                continue
-            current_path = current_path + "/"
-            current_path += part if current_path else part
-            try:  # noqa: SIM105
-                os.mkdir(current_path)
-            except OSError:
-                pass
 
-    def download_vfs_file(file_path):
-        try:
-            file_path = (
-                os.path.normpath(file_path).lstrip("/").replace("../", "")
-            )
-            file_path = os.path.join(
-                os.path.dirname(js.window.location.pathname),
-                file_path,
-            ).lstrip("/")
+        with open(file_path, "rb") as f:
+            content = f.read()
+        b64_str = base64.b64encode(content).decode("utf-8")
+        data_uri = "data:application/octet-stream;base64," + b64_str
 
-            file_path = os.path.join(os.getcwd(), file_path)
+        link = js.document.createElement("a")
+        link.href = data_uri
+        link.download = file_path.split("/")[-1]
 
-            # Check if the file exists in the VFS
-            if not os.path.isfile(file_path):
-                js.console.error(f"File not found: {file_path}")
-                return
+        js.document.body.appendChild(link)
+        link.click()
+        js.document.body.removeChild(link)
+    except Exception as e:
+        js.console.error(f"Download failed for {file_path}: {e}")
 
-            with open(file_path, "rb") as f:
-                content = f.read()
-            b64_str = base64.b64encode(content).decode("utf-8")
-            data_uri = "data:application/octet-stream;base64," + b64_str
 
-            link = js.document.createElement("a")
-            link.href = data_uri
-            link.download = file_path.split("/")[-1]
+def _read_uploaded_bytes(load_event):
+    """Turn a FileReader load event into Python bytes."""
+    array_buffer = load_event.target.result
+    uint8_array = js.Uint8Array.new(array_buffer)
+    return bytes(uint8_array)
 
-            js.document.body.appendChild(link)
-            link.click()
-            js.document.body.removeChild(link)
-        except Exception as e:
-            js.console.error(f"Download failed for {file_path}: {e}")
 
-    # --- NEW: Centralized File Processor ---
-    def _process_files(
-        files,
-        target_filename,
-        client_dest,
-        server_dest,
-        files_limit,
-        total_size_limit,
-        per_file_size_limit,
-        allowed_extensions,
-    ):
-        num_files = files.length
+def _write_upload_to_vfs(fname, file_bytes, client_dest):
+    """Write an upload inside the VFS jail; False when the path escapes."""
+    raw_path = f"{client_dest.rstrip('/')}/{fname}"
+    safe_relative_path = raw_path.lstrip("/")
 
-        # 1. Validate File Count Limit
-        if files_limit and num_files > files_limit:
-            js.console.warn(
-                f"Limit of {files_limit} files exceeded. Truncating."
-            )
-            num_files = files_limit
+    jail = os.path.abspath(VFS_UPLOAD_JAIL)
+    resolved_path = os.path.abspath(os.path.join(jail, safe_relative_path))
 
-        # Safely convert JS arrays to Python lists (handles Pyodide JsProxy)
-        if allowed_extensions and hasattr(allowed_extensions, "to_py"):
-            allowed_extensions = allowed_extensions.to_py()
+    jail_prefix = jail if jail.endswith("/") else jail + "/"
+    if not resolved_path.startswith(jail_prefix):
+        js.console.error(
+            f"Access denied: Attempted to upload '{fname}' outside of {jail}"
+        )
+        return False
 
-        total_size = 0
+    _ensure_dir(os.path.dirname(resolved_path))
+    with open(resolved_path, "wb") as f:
+        f.write(file_bytes)
+    js.console.log(f"Uploaded to VFS: {resolved_path}")
+    return True
 
-        for i in range(num_files):
-            selected_file = files.item(i)
 
-            # Only apply an override filename if it's a single file upload,
-            # otherwise multiple files would overwrite each other!
-            final_name = (
-                target_filename
-                if (target_filename and num_files == 1)
-                else selected_file.name
+def _post_upload_to_server(fname, file_obj, server_dest):
+    """POST an upload to the server destination of the current app."""
+    js.console.log(f"Uploading {fname} to server destination: {server_dest}")
+
+    form_data = js.window.FormData.new()
+    form_data.append("file", file_obj, fname)
+    form_data.append("server_destination", server_dest)
+
+    opts = js.eval("({method: 'POST'})")
+    opts.body = form_data
+
+    endpoint = js.window.location.pathname
+    promise = js.window.fetch(endpoint, opts)
+
+    def on_success(response):
+        if getattr(response, "ok", False):
+            js.console.log(f"Server upload complete: {fname}")
+        else:
+            js.console.error(
+                f"Server upload failed for {fname}: HTTP {response.status}"
             )
 
-            # 2. Validate Extension
-            if allowed_extensions:
-                ext = (
-                    selected_file.name.split(".")[-1].lower()
-                    if "." in selected_file.name
-                    else ""
-                )
-                if ext not in allowed_extensions:
-                    js.console.error(
-                        f"Skipped {selected_file.name}: "
-                        + f"Extension '{ext}' not allowed."
-                    )
-                    continue
+    def on_error(error):
+        js.console.error(f"Server upload network error for {fname}: {error}")
 
-            # 3. Validate Per-File Size
-            if (
-                per_file_size_limit
-                and selected_file.size > per_file_size_limit
+    promise.then(on_success).catch(on_error)
+
+
+def _make_upload_onload(fname, file_obj, client_dest, server_dest):
+    """Build the FileReader callback that stores one uploaded file."""
+
+    def on_load(load_event):
+        file_bytes = _read_uploaded_bytes(load_event)
+
+        if len(file_bytes) > MAX_UPLOAD_SIZE:
+            js.console.error(
+                f"Upload rejected: '{fname}' exceeds the "
+                "hard limit of "
+                f"{MAX_UPLOAD_SIZE / (1024 * 1024):.0f}MB."
+            )
+            return
+
+        if client_dest and not _write_upload_to_vfs(
+            fname, file_bytes, client_dest
+        ):
+            return
+
+        if server_dest:
+            _post_upload_to_server(fname, file_obj, server_dest)
+
+    return on_load
+
+
+def _total_size_rejected(selected_file, total_size, total_size_limit):
+    """Tell whether a file busts the batch total-size limit."""
+    if (total_size + selected_file.size) > total_size_limit:
+        js.console.error(
+            f"Skipped {selected_file.name}: " + "Exceeds total size limit."
+        )
+        return True
+    return False
+
+
+def _process_files(
+    files,
+    target_filename,
+    client_dest,
+    server_dest,
+    files_limit,
+    total_size_limit,
+    per_file_size_limit,
+    allowed_extensions,
+):
+    """Validate a batch of picked files, then store each accepted one."""
+    num_files = _capped_file_count(files.length, files_limit)
+    allowed_extensions = _as_extension_list(allowed_extensions)
+
+    total_size = 0
+
+    for i in range(num_files):
+        selected_file = files.item(i)
+
+        final_name = (
+            target_filename
+            if (target_filename and num_files == 1)
+            else selected_file.name
+        )
+
+        if _extension_rejected(selected_file, allowed_extensions):
+            continue
+
+        if _per_file_size_rejected(selected_file, per_file_size_limit):
+            continue
+
+        if total_size_limit:
+            if _total_size_rejected(
+                selected_file, total_size, total_size_limit
             ):
-                js.console.error(
-                    f"Skipped {selected_file.name}: "
-                    + f"Exceeds {per_file_size_limit} bytes."
-                )
                 continue
+            total_size += selected_file.size
 
-            # 4. Validate Total Size
-            if total_size_limit:
-                if (total_size + selected_file.size) > total_size_limit:
-                    js.console.error(
-                        f"Skipped {selected_file.name}: "
-                        + "Exceeds total size limit."
-                    )
-                    continue
-                total_size += selected_file.size
+        reader = js.window.FileReader.new()
+        reader.onload = _make_upload_onload(
+            final_name, selected_file, client_dest, server_dest
+        )
+        reader.readAsArrayBuffer(selected_file)
 
-            # 5. Read and Save
-            reader = js.window.FileReader.new()
 
-            # Closure to lock in the correct filename AND file object
-            # for the async callback
-            def make_onload(fname, file_obj):
-                def on_load(load_event):
-                    array_buffer = load_event.target.result
-                    uint8_array = js.Uint8Array.new(array_buffer)
-                    file_bytes = bytes(uint8_array)
+def _make_change_handler(
+    file_input,
+    filename,
+    client_dest,
+    server_dest,
+    files_limit,
+    total_size_limit,
+    per_file_size_limit,
+    allowed_extensions,
+):
+    """Build the listener processing what the file dialog picked."""
 
-                    # 6. Hard limit size check (Security)
-                    if len(file_bytes) > MAX_UPLOAD_SIZE:
-                        js.console.error(
-                            f"Upload rejected: '{fname}' exceeds the "
-                            "hard limit of "
-                            f"{MAX_UPLOAD_SIZE / (1024 * 1024):.0f}MB."
-                        )
-                        return
-
-                    if client_dest:
-                        # 7. Jail the path to VFS_UPLOAD_JAIL (Security)
-                        raw_path = f"{client_dest.rstrip('/')}/{fname}"
-                        safe_relative_path = raw_path.lstrip("/")
-
-                        jail = os.path.abspath(VFS_UPLOAD_JAIL)
-                        resolved_path = os.path.abspath(
-                            os.path.join(jail, safe_relative_path)
-                        )
-
-                        jail_prefix = (
-                            jail if jail.endswith("/") else jail + "/"
-                        )
-                        if not resolved_path.startswith(jail_prefix):
-                            js.console.error(
-                                f"Access denied: Attempted to upload"
-                                f" '{fname}' outside of {jail}"
-                            )
-                            return
-
-                        ensure_dir(os.path.dirname(resolved_path))
-                        with open(resolved_path, "wb") as f:
-                            f.write(file_bytes)
-                        js.console.log(f"Uploaded to VFS: {resolved_path}")
-
-                    if server_dest:
-                        js.console.log(
-                            f"Uploading {fname} to server destination:"
-                            f" {server_dest}"
-                        )
-
-                        # Build standard multipart/form-data payload
-                        form_data = js.window.FormData.new()
-                        form_data.append("file", file_obj, fname)
-                        form_data.append("server_destination", server_dest)
-
-                        # js.eval is used here to safely build
-                        # the JS object literal.
-                        # This works flawlessly across both CPython/Pyodide
-                        # and MicroPython FFI boundaries.
-                        opts = js.eval("({method: 'POST'})")
-                        opts.body = form_data
-
-                        # POST to the current app endpoint.
-                        # Your Pyplet backend will need a route handler
-                        # to intercept POST requests here.
-                        endpoint = js.window.location.pathname
-
-                        promise = js.window.fetch(endpoint, opts)
-
-                        def on_success(response):
-                            # Pyodide proxies use getattr to safely
-                            # check JS properties
-                            if getattr(response, "ok", False):
-                                js.console.log(
-                                    f"Server upload complete: {fname}"
-                                )
-                            else:
-                                js.console.error(
-                                    f"Server upload failed for {fname}:"
-                                    f" HTTP {response.status}"
-                                )
-
-                        def on_error(error):
-                            js.console.error(
-                                f"Server upload network error for {fname}:"
-                                f" {error}"
-                            )
-
-                        promise.then(on_success).catch(on_error)
-
-                return on_load
-
-            # Pass both the resolved filename and the JS file object
-            # into the closure
-            reader.onload = make_onload(final_name, selected_file)
-            reader.readAsArrayBuffer(selected_file)
-
-    # --- Updated Handlers ---
-    def upload_file(
-        filename,
-        client_dest,
-        server_dest,
-        files_limit,
-        total_size_limit,
-        per_file_size_limit,
-        allowed_extensions,
-    ):
-        file_input = js.document.createElement("input")
-        file_input.type = "file"
-
-        # Native browser support for multiple files
-        if files_limit is None or files_limit > 1:
-            file_input.multiple = True
-
-        # Native browser hint for extensions
-        # (better UX before they even pick a file)
-        if allowed_extensions:
-            exts = (
-                allowed_extensions.to_py()
-                if hasattr(allowed_extensions, "to_py")
-                else allowed_extensions
+    def on_change(event):
+        if file_input.files.length > 0:
+            _process_files(
+                file_input.files,
+                filename,
+                client_dest,
+                server_dest,
+                files_limit,
+                total_size_limit,
+                per_file_size_limit,
+                allowed_extensions,
             )
-            file_input.accept = ",".join(f".{ext}" for ext in exts)
 
-        def on_change(event):
-            if file_input.files.length > 0:
-                _process_files(
-                    file_input.files,
-                    filename,
-                    client_dest,
-                    server_dest,
-                    files_limit,
-                    total_size_limit,
-                    per_file_size_limit,
-                    allowed_extensions,
-                )
+    return on_change
 
-        file_input.addEventListener("change", on_change)
-        file_input.click()
 
-    def handle_click(
-        event,
+def upload_file(
+    filename,
+    client_dest,
+    server_dest,
+    files_limit,
+    total_size_limit,
+    per_file_size_limit,
+    allowed_extensions,
+):
+    """Open the browser file dialog and process the picked files."""
+    file_input = js.document.createElement("input")
+    file_input.type = "file"
+
+    if files_limit is None or files_limit > 1:
+        file_input.multiple = True
+
+    if allowed_extensions:
+        exts = (
+            allowed_extensions.to_py()
+            if hasattr(allowed_extensions, "to_py")
+            else allowed_extensions
+        )
+        file_input.accept = ",".join(f".{ext}" for ext in exts)
+
+    file_input.addEventListener(
+        "change",
+        _make_change_handler(
+            file_input,
+            filename,
+            client_dest,
+            server_dest,
+            files_limit,
+            total_size_limit,
+            per_file_size_limit,
+            allowed_extensions,
+        ),
+    )
+    file_input.click()
+
+
+def handle_click(
+    event,
+    client_dest,
+    server_dest,
+    files_limit,
+    total_size_limit,
+    per_file_size_limit,
+    allowed_extensions,
+):
+    """Open the upload dialog, keeping each file's original name."""
+    upload_file(
+        None,
         client_dest,
         server_dest,
         files_limit,
         total_size_limit,
         per_file_size_limit,
         allowed_extensions,
-    ):
-        # Passes None for target_filename, relying on original file names
-        upload_file(
+    )
+
+
+def handle_drop(
+    event,
+    client_dest,
+    server_dest,
+    files_limit,
+    total_size_limit,
+    per_file_size_limit,
+    allowed_extensions,
+):
+    """Process the files carried by a drag-and-drop event."""
+    files = event.dataTransfer.files
+    if files.length > 0:
+        _process_files(
+            files,
             None,
             client_dest,
             server_dest,
@@ -419,29 +430,13 @@ def _setup_vfs_bindings():
             allowed_extensions,
         )
 
-    def handle_drop(
-        event,
-        client_dest,
-        server_dest,
-        files_limit,
-        total_size_limit,
-        per_file_size_limit,
-        allowed_extensions,
-    ):
-        files = event.dataTransfer.files
-        if files.length > 0:
-            _process_files(
-                files,
-                None,
-                client_dest,
-                server_dest,
-                files_limit,
-                total_size_limit,
-                per_file_size_limit,
-                allowed_extensions,
-            )
 
-    # Expose to the global window
+def _setup_vfs_bindings():
+    """Attaches VFS upload/download functions to the browser window."""
+
+    if hasattr(js.window, "upload_file"):
+        return
+
     js.window.download_vfs_file = download_vfs_file
     js.window.upload_file = upload_file
     js.window.handle_click = handle_click
@@ -490,22 +485,7 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
 
     # 3. MicroPython Fallback: Inspect the module directly
     else:
-        found_class = None
-        for item_name in dir(mod):
-            item = getattr(mod, item_name)
-            if (
-                isinstance(item, type)
-                and issubclass(item, ClientApplication)
-                and item is not ClientApplication
-            ):
-                found_class = item
-                break
-
-        if not found_class:
-            raise RuntimeError(
-                "Could not find a ClientApplication "
-                f"subclass in {project_name}/{app_name}"
-            )
+        found_class = _find_client_application(mod, project_name, app_name)
 
         # Instantiate it and manually register it
         client_application = found_class()
@@ -522,9 +502,7 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
     # #container's contents already removed it; this by-id removal also covers
     # apps that append to #container, so the spinner never lingers. Gate on
     # truthiness — getElementById yields a falsy JS null when already gone.
-    splash = js.document.getElementById("pyplet-boot-splash")
-    if splash:
-        splash.remove()
+    _drop_boot_splash()
 
     if (
         client_application.__class__.websocket_client_loop
@@ -536,6 +514,69 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
 
         # Use our driver to trigger the loop when JS says the socket is open
         ws.onopen = create_proxy(lambda event: asyncio.create_task(gen))
+
+
+def _drop_boot_splash():
+    """Remove the boot splash once the app UI has mounted."""
+    splash = js.document.getElementById("pyplet-boot-splash")
+    if splash:
+        splash.remove()
+
+
+def _capped_file_count(num_files, files_limit):
+    """Cap an incoming file count to the configured limit."""
+    if files_limit and num_files > files_limit:
+        js.console.warn(f"Limit of {files_limit} files exceeded. Truncating.")
+        return files_limit
+    return num_files
+
+
+def _as_extension_list(allowed_extensions):
+    """Normalise a JS or Python extension list to a Python list."""
+    if allowed_extensions and hasattr(allowed_extensions, "to_py"):
+        return allowed_extensions.to_py()
+    return allowed_extensions
+
+
+def _extension_rejected(selected_file, allowed_extensions):
+    """Tell whether a file is barred by the allowed-extension list."""
+    if not allowed_extensions:
+        return False
+    name = selected_file.name
+    ext = name.split(".")[-1].lower() if "." in name else ""
+    if ext not in allowed_extensions:
+        js.console.error(
+            f"Skipped {name}: " + f"Extension '{ext}' not allowed."
+        )
+        return True
+    return False
+
+
+def _find_client_application(mod, project_name, app_name):
+    """Return the ClientApplication subclass declared by an app module."""
+    for item_name in dir(mod):
+        item = getattr(mod, item_name)
+        if (
+            isinstance(item, type)
+            and issubclass(item, ClientApplication)
+            and item is not ClientApplication
+        ):
+            return item
+    raise RuntimeError(
+        "Could not find a ClientApplication "
+        f"subclass in {project_name}/{app_name}"
+    )
+
+
+def _per_file_size_rejected(selected_file, per_file_size_limit):
+    """Tell whether a file busts the per-file size limit."""
+    if per_file_size_limit and selected_file.size > per_file_size_limit:
+        js.console.error(
+            f"Skipped {selected_file.name}: "
+            + f"Exceeds {per_file_size_limit} bytes."
+        )
+        return True
+    return False
 
 
 class ClientWebSocket:
