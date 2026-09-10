@@ -298,3 +298,50 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
         assert resp.code == 404, (
             f"missing static dir should 404, got {resp.code}"
         )
+
+
+class AppStaticPerRequestRootTest(AsyncHTTPTestCase):
+    """La racine du handler est recalculée à chaque requête, par projet."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._apps_root = self._tmp.name
+        for project in ("AppOne", "AppTwo"):
+            static_dir = os.path.join(self._apps_root, project, "static")
+            os.makedirs(static_dir)
+            with open(os.path.join(static_dir, "app.js"), "w") as f:
+                f.write(f"belongs-to-{project}\n")
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+        self._tmp.cleanup()
+
+    def get_app(self) -> Application:
+        pattern, handler, kwargs = _static_route_entry()
+        return Application(
+            [(pattern, handler, {**kwargs, "apps_root": self._apps_root})]
+        )
+
+    def test_each_request_is_rooted_at_its_own_project(self):
+        """Deux requêtes successives servent chacune le fichier de son app."""
+        first = self.fetch("/apps/AppOne/static/app.js")
+        second = self.fetch("/apps/AppTwo/static/app.js")
+        third = self.fetch("/apps/AppOne/static/app.js")
+
+        assert first.code == 200, f"AppOne devrait servir 200, {first.code}"
+        assert second.code == 200, f"AppTwo devrait servir 200, {second.code}"
+        assert first.body == b"belongs-to-AppOne\n", (
+            f"la première requête doit servir le fichier d'AppOne, "
+            f"obtenu {first.body!r}"
+        )
+        assert second.body == b"belongs-to-AppTwo\n", (
+            "la racine du handler doit être recalculée pour CHAQUE requête : "
+            "la racine posée par initialize() (le tronc apps/) ou celle de "
+            "la requête précédente ne doit pas persister, obtenu "
+            f"{second.body!r}"
+        )
+        assert third.body == first.body, (
+            "revenir sur AppOne après AppTwo doit reservir le fichier "
+            f"d'AppOne, obtenu {third.body!r}"
+        )
