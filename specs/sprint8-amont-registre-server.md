@@ -51,7 +51,7 @@ Les 70 lignes `raison → test` citent 20 identifiants de test distincts,
 tous existants et passants. Pour rejouer la vérification, extraire la
 colonne et la donner à `pytest` :
 
-```
+```text
 grep -o 'raison → test [^|]*' specs/sprint8-amont-registre-server.md \
   | sed 's/raison → test //;s/ *$//' | sort -u > /tmp/nodeids.txt
 uv run --extra test pytest @/tmp/nodeids.txt -q   →  20 passed in 0.13s
@@ -107,25 +107,25 @@ relecteur y cherche donc le contenu de la raison, non le texte source.
 | `pyplet/server/_server.py` | 198 | # --------------------------------------------------------------------------- | séparateur |
 | `pyplet/server/_server.py` | 208 | # Encode the binary SVG data to a base64 string | paraphrase |
 | `pyplet/server/_server.py` | 211 | # Format it as a Data URI for SVG | paraphrase |
-| `pyplet/server/_server.py` | 215 | # Matches the opening <head ...> tag so the favicon can be inserted | paraphrase |
+| `pyplet/server/_server.py` | 215 | `# Matches the opening <head ...> tag so the favicon can be inserted` | paraphrase |
 | `pyplet/server/_server.py` | 216 | # right after it. | paraphrase |
-| `pyplet/server/_server.py` | 218 | # Matches any <link ...> tag so its `rel` attribute can be inspected. | paraphrase |
+| `pyplet/server/_server.py` | 218 | `# Matches any <link ...> tag so its`rel`attribute can be inspected.` | paraphrase |
 | `pyplet/server/_server.py` | 220 | # Matches a `rel` attribute, quoted or unquoted, inside a tag. | paraphrase |
 | `pyplet/server/_server.py` | 245 | # 1. Check if we actually have a favicon loaded in settings | paraphrase |
 | `pyplet/server/_server.py` | 251 | # 2. Normalize content to a plain `str`. Going through bytes | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_markup_content_is_injected_as_real_markup |
 | `pyplet/server/_server.py` | 252 | # matters here: htpy nodes/markupsafe.Markup render via `str()` | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_markup_content_is_injected_as_real_markup |
 | `pyplet/server/_server.py` | 253 | # into a `Markup` instance, and slicing/concatenating a plain str | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_markup_content_is_injected_as_real_markup |
 | `pyplet/server/_server.py` | 254 | # onto a `Markup` auto-*escapes* that plain str (e.g. our raw | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_markup_content_is_injected_as_real_markup |
-| `pyplet/server/_server.py` | 255 | # <link> tag below would come out as "&lt;link ...&gt;"). Encoding | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_markup_content_is_injected_as_real_markup |
+| `pyplet/server/_server.py` | 255 | `# <link> tag below would come out as "&lt;link ...&gt;"). Encoding` | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_markup_content_is_injected_as_real_markup |
 | `pyplet/server/_server.py` | 256 | # then decoding strips the Markup type, leaving a genuine str. | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_markup_content_is_injected_as_real_markup |
-| `pyplet/server/_server.py` | 263 | # 3. Inject the favicon right after <head>, unless one is | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_leaves_existing_favicon_untouched |
+| `pyplet/server/_server.py` | 263 | `# 3. Inject the favicon right after <head>, unless one is` | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_leaves_existing_favicon_untouched |
 | `pyplet/server/_server.py` | 264 | # already present anywhere in the document. | raison → test tests/server_test.py::TestWriteHtmlFaviconEnabled::test_leaves_existing_favicon_untouched |
 | `pyplet/server/_server.py` | 496 | # --------------------------------------------------------------------------- | séparateur |
 | `pyplet/server/_server.py` | 497 | # Tornado application spec | séparateur |
 | `pyplet/server/_server.py` | 498 | # --------------------------------------------------------------------------- | séparateur |
 | `pyplet/server/_server.py` | 516 | # App static resources (static files) | paraphrase |
 | `pyplet/server/_server.py` | 518 | # Capture the app project and the file tail SEPARATELY so the | raison → test tests/app_static_traversal_test.py::test_app_static_route_captures_project_and_tail_separately |
-| `pyplet/server/_server.py` | 519 | # handler can root itself at <apps>/<project>/static/ per request | raison → test tests/app_static_traversal_test.py::test_app_static_route_captures_project_and_tail_separately |
+| `pyplet/server/_server.py` | 519 | `# handler can root itself at <apps>/<project>/static/ per request` | raison → test tests/app_static_traversal_test.py::test_app_static_route_captures_project_and_tail_separately |
 | `pyplet/server/_server.py` | 520 | # (see AppStaticFileHandler): a ".." in the tail then cannot escape | raison → test tests/app_static_traversal_test.py::test_app_static_route_captures_project_and_tail_separately |
 | `pyplet/server/_server.py` | 521 | # the requested app's own static/ dir into the apps/ tree. | raison → test tests/app_static_traversal_test.py::test_app_static_route_captures_project_and_tail_separately |
 | `pyplet/server/_server.py` | 526 | # App upload endpoint (for upload() and upload_area()) | paraphrase |
@@ -140,7 +140,7 @@ relecteur y cherche donc le contenu de la raison, non le texte source.
 | `pyplet/server/_server.py` | 594 | # per-directory finder in `sys.path_importer_cache` keyed by the | raison → test tests/app_discovery_test.py::TestAppDiscovery::test_reused_relative_apps_name_across_different_cwd |
 | `pyplet/server/_server.py` | 595 | # literal path string, so a relative string reused under a | raison → test tests/app_discovery_test.py::TestAppDiscovery::test_reused_relative_apps_name_across_different_cwd |
 | `pyplet/server/_server.py` | 596 | # different cwd (e.g. across server restarts, or two projects | raison → test tests/app_discovery_test.py::TestAppDiscovery::test_reused_relative_apps_name_across_different_cwd |
-| `pyplet/server/_server.py` | 597 | # that both happen to be named "apps/<project>") would return a | raison → test tests/app_discovery_test.py::TestAppDiscovery::test_reused_relative_apps_name_across_different_cwd |
+| `pyplet/server/_server.py` | 597 | `# that both happen to be named "apps/<project>") would return a` | raison → test tests/app_discovery_test.py::TestAppDiscovery::test_reused_relative_apps_name_across_different_cwd |
 | `pyplet/server/_server.py` | 598 | # stale finder pointing at the wrong (or now-gone) directory. | raison → test tests/app_discovery_test.py::TestAppDiscovery::test_reused_relative_apps_name_across_different_cwd |
 | `pyplet/server/_server.py` | 607 | # --------------------------------------------------------------------------- | séparateur |
 | `pyplet/server/_server.py` | 608 | # Fail-closed startup policy — production debug guard (Story 18.18, DEPLOY-8) | séparateur |
@@ -203,7 +203,7 @@ relecteur y cherche donc le contenu de la raison, non le texte source.
 | `pyplet/server/_server.py` | 1268 | # the very first HTML response, covering the blank window while | raison → docs/api/server.md |
 | `pyplet/server/_server.py` | 1269 | # PyScript/Pyodide and the transpiled app load. It carries no Tailwind | raison → docs/api/server.md |
 | `pyplet/server/_server.py` | 1270 | # classes (Tailwind loads later, client-side) and no external assets — | raison → docs/api/server.md |
-| `pyplet/server/_server.py` | 1271 | # only inline styles plus one <style> block for the rotation keyframes. | raison → docs/api/server.md |
+| `pyplet/server/_server.py` | 1271 | `# only inline styles plus one <style> block for the rotation keyframes.` | raison → docs/api/server.md |
 | `pyplet/server/_server.py` | 1272 | # Apps that replace #container's contents (rather than appending to | raison → docs/api/server.md |
 | `pyplet/server/_server.py` | 1273 | # them) drop it implicitly; bootstrap_client also removes | raison → docs/api/server.md |
 | `pyplet/server/_server.py` | 1274 | # #pyplet-boot-splash by id once the app module has loaded, so apps | raison → docs/api/server.md |
