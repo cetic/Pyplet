@@ -227,7 +227,7 @@ fait, lue par `bandit` (marqueur de suppression), et son retrait rend la
 porte de sécurité rouge. Mesuré sur deux copies du fichier livré, hors
 dépôt :
 
-```
+```text
 bandit -q with_nosec.py      → aucune constatation
 bandit -q without_nosec.py   → Medium: 2  (High confidence: 2)
 ```
