@@ -200,15 +200,10 @@ def _setup_vfs_bindings():
         num_files = files.length
 
         # 1. Validate File Count Limit
-        if files_limit and num_files > files_limit:
-            js.console.warn(
-                f"Limit of {files_limit} files exceeded. Truncating."
-            )
-            num_files = files_limit
+        num_files = _capped_file_count(num_files, files_limit)
 
         # Safely convert JS arrays to Python lists (handles Pyodide JsProxy)
-        if allowed_extensions and hasattr(allowed_extensions, "to_py"):
-            allowed_extensions = allowed_extensions.to_py()
+        allowed_extensions = _as_extension_list(allowed_extensions)
 
         total_size = 0
 
@@ -224,28 +219,11 @@ def _setup_vfs_bindings():
             )
 
             # 2. Validate Extension
-            if allowed_extensions:
-                ext = (
-                    selected_file.name.split(".")[-1].lower()
-                    if "." in selected_file.name
-                    else ""
-                )
-                if ext not in allowed_extensions:
-                    js.console.error(
-                        f"Skipped {selected_file.name}: "
-                        + f"Extension '{ext}' not allowed."
-                    )
-                    continue
+            if _extension_rejected(selected_file, allowed_extensions):
+                continue
 
             # 3. Validate Per-File Size
-            if (
-                per_file_size_limit
-                and selected_file.size > per_file_size_limit
-            ):
-                js.console.error(
-                    f"Skipped {selected_file.name}: "
-                    + f"Exceeds {per_file_size_limit} bytes."
-                )
+            if _per_file_size_rejected(selected_file, per_file_size_limit):
                 continue
 
             # 4. Validate Total Size
@@ -490,22 +468,7 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
 
     # 3. MicroPython Fallback: Inspect the module directly
     else:
-        found_class = None
-        for item_name in dir(mod):
-            item = getattr(mod, item_name)
-            if (
-                isinstance(item, type)
-                and issubclass(item, ClientApplication)
-                and item is not ClientApplication
-            ):
-                found_class = item
-                break
-
-        if not found_class:
-            raise RuntimeError(
-                "Could not find a ClientApplication "
-                f"subclass in {project_name}/{app_name}"
-            )
+        found_class = _find_client_application(mod, project_name, app_name)
 
         # Instantiate it and manually register it
         client_application = found_class()
@@ -522,9 +485,7 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
     # #container's contents already removed it; this by-id removal also covers
     # apps that append to #container, so the spinner never lingers. Gate on
     # truthiness — getElementById yields a falsy JS null when already gone.
-    splash = js.document.getElementById("pyplet-boot-splash")
-    if splash:
-        splash.remove()
+    _drop_boot_splash()
 
     if (
         client_application.__class__.websocket_client_loop
@@ -536,6 +497,69 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
 
         # Use our driver to trigger the loop when JS says the socket is open
         ws.onopen = create_proxy(lambda event: asyncio.create_task(gen))
+
+
+def _drop_boot_splash():
+    """Remove the boot splash once the app UI has mounted."""
+    splash = js.document.getElementById("pyplet-boot-splash")
+    if splash:
+        splash.remove()
+
+
+def _capped_file_count(num_files, files_limit):
+    """Cap an incoming file count to the configured limit."""
+    if files_limit and num_files > files_limit:
+        js.console.warn(f"Limit of {files_limit} files exceeded. Truncating.")
+        return files_limit
+    return num_files
+
+
+def _as_extension_list(allowed_extensions):
+    """Normalise a JS or Python extension list to a Python list."""
+    if allowed_extensions and hasattr(allowed_extensions, "to_py"):
+        return allowed_extensions.to_py()
+    return allowed_extensions
+
+
+def _extension_rejected(selected_file, allowed_extensions):
+    """Tell whether a file is barred by the allowed-extension list."""
+    if not allowed_extensions:
+        return False
+    name = selected_file.name
+    ext = name.split(".")[-1].lower() if "." in name else ""
+    if ext not in allowed_extensions:
+        js.console.error(
+            f"Skipped {name}: " + f"Extension '{ext}' not allowed."
+        )
+        return True
+    return False
+
+
+def _find_client_application(mod, project_name, app_name):
+    """Return the ClientApplication subclass declared by an app module."""
+    for item_name in dir(mod):
+        item = getattr(mod, item_name)
+        if (
+            isinstance(item, type)
+            and issubclass(item, ClientApplication)
+            and item is not ClientApplication
+        ):
+            return item
+    raise RuntimeError(
+        "Could not find a ClientApplication "
+        f"subclass in {project_name}/{app_name}"
+    )
+
+
+def _per_file_size_rejected(selected_file, per_file_size_limit):
+    """Tell whether a file busts the per-file size limit."""
+    if per_file_size_limit and selected_file.size > per_file_size_limit:
+        js.console.error(
+            f"Skipped {selected_file.name}: "
+            + f"Exceeds {per_file_size_limit} bytes."
+        )
+        return True
+    return False
 
 
 class ClientWebSocket:
