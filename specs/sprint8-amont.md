@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD029 -->
+
 # Sprint #8 — travail amont (conformité de la chaîne et du code)
 
 Contrat spec-first. Propriétaire : Arthur. Rédigé le 2026-09-10, HEAD
@@ -14,7 +16,7 @@ un agent, et une seule chaîne d'outils le vérifie, localement comme en CI.
 ## Décisions d'Arthur (2026-09-10, réglées)
 
 | Réf | Décision |
-|---|---|
+| --- | --- |
 | A1 | Pas de changement de date du jalon Sprint #8 ; travail amont |
 | A2 | Ordre : #60 → #56 → revue du pré-existant → reste de #52 |
 | B1 | Règles de complexité ruff = `C90` + `PLR0911/0912/0915` ; **PLR0913 exclu** (les constructeurs de composants publics ont des options nommées, pas de la complexité) ; aucun `noqa`, aucune exemption par fichier |
