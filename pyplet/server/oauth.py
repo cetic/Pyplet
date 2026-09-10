@@ -779,6 +779,45 @@ async def handle_callback(handler) -> None:
     to the originally requested URL. Called by ``OAuthCallbackHandler`` in
     ``_server.py``.
     """
+    state_data = _callback_state(handler)
+    if state_data is None:
+        return
+
+    next_url = state_data.get("next", "/")
+    provider = state_data.get("provider")
+
+    code = _callback_code(handler)
+    if code is None:
+        return
+
+    tokens = await _exchange_code(handler, provider, code)
+    if tokens is None:
+        return
+
+    user_info = await _callback_user(handler, tokens, provider)
+    if user_info is None:
+        return
+
+    flow_name = state_data.get("flow")
+    if flow_name:
+        await _run_consent_flow(
+            handler, flow_name, user_info, tokens, next_url
+        )
+        return
+
+    set_session(handler, user_info)
+    logger.info(
+        "Login: %s (%s) via %s",
+        user_info["name"],
+        user_info["email"],
+        provider,
+    )
+    handler.clear_cookie(_STATE_COOKIE)
+    handler.redirect(next_url)
+
+
+def _callback_state(handler) -> dict | None:
+    """Return the validated state payload, or answer with a 400."""
     # --- Validate CSRF state ---
     raw_state = handler.get_signed_cookie(_STATE_COOKIE)
     if not raw_state:
@@ -789,8 +828,6 @@ async def handle_callback(handler) -> None:
 
     state_data = json.loads(raw_state)
     expected_state = state_data["state"]
-    next_url = state_data.get("next", "/")
-    provider = state_data.get("provider")
 
     if handler.get_argument("state", None) != expected_state:
         _error(
@@ -800,6 +837,11 @@ async def handle_callback(handler) -> None:
         )
         return
 
+    return state_data
+
+
+def _callback_code(handler) -> str | None:
+    """Return the authorization code, or answer with a 400."""
     # --- Check for provider-side errors ---
     error = handler.get_argument("error", None)
     if error:
@@ -811,6 +853,11 @@ async def handle_callback(handler) -> None:
         _error(handler, 400, "No authorization code received.")
         return
 
+    return code
+
+
+async def _exchange_code(handler, provider, code) -> dict | None:
+    """Trade the authorization code for the provider's tokens."""
     # --- Exchange code for tokens ---
     meta = _provider(provider)
     oidc = await _fetch_oidc_config(provider)
@@ -836,6 +883,11 @@ async def handle_callback(handler) -> None:
         _error(handler, 502, "Token exchange with OAuth provider failed.")
         return
 
+    return tokens
+
+
+async def _callback_user(handler, tokens, provider) -> dict | None:
+    """Verify the id_token and build the session user info."""
     id_token = tokens.get("id_token")
     if not id_token:
         _error(handler, 500, "Provider did not return an id_token.")
@@ -860,36 +912,30 @@ async def handle_callback(handler) -> None:
         _error(handler, 500, "Provider did not include an email in the token.")
         return
 
+    return user_info
+
+
+async def _run_consent_flow(
+    handler, flow_name, user_info, tokens, next_url
+) -> None:
+    """Hand the tokens to the named consent flow, then redirect."""
     # Incremental-consent callback — do NOT call set_session (the user is
     # already logged in). Hand the raw token response to the flow that started
     # this round-trip, then redirect back to the app. A flow that raises is
     # logged and swallowed: the browser is mid-redirect and must not be
     # stranded on an error page by a bookkeeping failure.
-    flow_name = state_data.get("flow")
-    if flow_name:
-        flow = _CONSENT_FLOWS.get(flow_name)
-        if flow is None:
-            _error(
-                handler,
-                400,
-                f"Unknown consent flow: {flow_name!r}. Please try again.",
-            )
-            return
-        try:
-            await flow["on_complete"](handler, user_info, tokens)
-        except Exception as exc:
-            logger.error("Consent flow %r failed: %s", flow_name, exc)
-        handler.clear_cookie(_STATE_COOKIE)
-        handler.redirect(next_url)
+    flow = _CONSENT_FLOWS.get(flow_name)
+    if flow is None:
+        _error(
+            handler,
+            400,
+            f"Unknown consent flow: {flow_name!r}. Please try again.",
+        )
         return
-
-    set_session(handler, user_info)
-    logger.info(
-        "Login: %s (%s) via %s",
-        user_info["name"],
-        user_info["email"],
-        provider,
-    )
+    try:
+        await flow["on_complete"](handler, user_info, tokens)
+    except Exception as exc:
+        logger.error("Consent flow %r failed: %s", flow_name, exc)
     handler.clear_cookie(_STATE_COOKIE)
     handler.redirect(next_url)
 

@@ -21,6 +21,45 @@ class CommentRemover(ast.NodeTransformer):
         return node
 
 
+def _dataclass_decorators(node):
+    """Return the dataclass flag and the decorators to keep."""
+    is_dataclass = False
+    new_decs = []
+    for dec in node.decorator_list:
+        dec_str = ast.unparse(dec)
+        if "dataclass" in dec_str:
+            is_dataclass = True
+        else:
+            new_decs.append(dec)
+    return is_dataclass, new_decs
+
+
+def _init_source(fields):
+    """Render the ``__init__`` source synthesized from *fields*."""
+    args = []
+    kw_args = []
+    init_body = []
+
+    for name, default, is_kw in fields:
+        if is_kw or default is not None:
+            def_val = default if default is not None else "None"
+            kw_args.append(f"{name}={def_val}")
+        else:
+            args.append(name)
+
+        init_body.append(f"    self.{name} = {name}")
+
+    sig_parts = ["self"] + args
+    if kw_args:
+        sig_parts.append("*")
+        sig_parts.extend(kw_args)
+
+    if not init_body:
+        init_body = ["    pass"]
+
+    return f"def __init__({', '.join(sig_parts)}):\n" + "\n".join(init_body)
+
+
 # Uncomplete implementation
 class DataclassAheadOfTimeTranspiler(ast.NodeTransformer):
     # 1. STRIP DATACLASS IMPORTS
@@ -38,14 +77,7 @@ class DataclassAheadOfTimeTranspiler(ast.NodeTransformer):
         self.generic_visit(node)
 
         # Check if this class is a dataclass
-        is_dataclass = False
-        new_decs = []
-        for dec in node.decorator_list:
-            dec_str = ast.unparse(dec)
-            if "dataclass" in dec_str:
-                is_dataclass = True
-            else:
-                new_decs.append(dec)
+        is_dataclass, new_decs = _dataclass_decorators(node)
 
         if not is_dataclass:
             return node
@@ -77,32 +109,9 @@ class DataclassAheadOfTimeTranspiler(ast.NodeTransformer):
             new_body.append(stmt)
 
         # Synthesize the __init__ method source code
-        args = []
-        kw_args = []
-        init_body = []
-
-        for name, default, is_kw in fields:
-            if is_kw or default is not None:
-                def_val = default if default is not None else "None"
-                kw_args.append(f"{name}={def_val}")
-            else:
-                args.append(name)
-
-            init_body.append(f"    self.{name} = {name}")
-
-        sig_parts = ["self"] + args
-        if kw_args:
-            sig_parts.append("*")
-            sig_parts.extend(kw_args)
-
-        if not init_body:
-            init_body = ["    pass"]
+        init_code = _init_source(fields)
 
         # Parse the synthesized __init__ string back into an AST node
-        init_code = f"def __init__({', '.join(sig_parts)}):\n" + "\n".join(
-            init_body
-        )
-
         try:
             init_ast = ast.parse(init_code).body[0]
             new_body.append(init_ast)

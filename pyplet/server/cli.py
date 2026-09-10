@@ -91,6 +91,39 @@ def script_main() -> None:
     main()
 
 
+def _require_command(parser, args) -> None:
+    """Print the help and exit when the CLI got no subcommand."""
+    if args.command is None:
+        parser.print_help()
+        sys.exit(0)
+
+
+def _apply_cli_overrides(args, config) -> None:
+    """Copy the flags the user actually passed onto *config*."""
+    for name in config.params:
+        value = getattr(args, name, ...)
+        if value is not ...:
+            setattr(config, name, value)
+
+
+def _absolute_dir(projects_dir: Path) -> Path:
+    """Anchor a relative path on the current working directory."""
+    if not projects_dir.is_absolute():
+        projects_dir = Path.cwd() / projects_dir
+    return projects_dir
+
+
+def _require_projects_dir(projects_dir: Path) -> None:
+    """Exit with code 2 when the apps directory does not exist."""
+    if not projects_dir.exists():
+        logger.error(
+            "No projects directory found in the current directory.\n"
+            "Run 'pyplet init <project_name>' first or move to the "
+            "projects directory."
+        )
+        sys.exit(2)
+
+
 def main() -> None:
     from pyplet.server.config import config
 
@@ -145,9 +178,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # If no command is provided, print help and exit
-    if args.command is None:
-        parser.print_help()
-        sys.exit(0)
+    _require_command(parser, args)
 
     if args.command == "init":
         create_project(args.project_name)
@@ -156,25 +187,15 @@ def main() -> None:
         # Apply CLI overrides (e.g. --apps) to config first, so the
         # directory check below validates the directory the server will
         # actually use instead of a stale default/env-var value.
-        for name in config.params:
-            value = getattr(args, name, ...)
-            if value is not ...:
-                setattr(config, name, value)
+        _apply_cli_overrides(args, config)
 
         projects_dir = Path(config.apps)
 
         # If path is relative, make it absolute
-        if not projects_dir.is_absolute():
-            projects_dir = Path.cwd() / projects_dir
+        projects_dir = _absolute_dir(projects_dir)
 
         # If path doesn't exist, print error and exit
-        if not projects_dir.exists():
-            logger.error(
-                "No projects directory found in the current directory.\n"
-                "Run 'pyplet init <project_name>' first or move to the "
-                "projects directory."
-            )
-            sys.exit(2)
+        _require_projects_dir(projects_dir)
 
         start_server()
 

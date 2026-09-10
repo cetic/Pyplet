@@ -124,6 +124,31 @@ class TestDataclassTranspiler:
         assert "class Plain" in result
         assert "__init__" not in result
 
+    def test_keeps_the_other_decorators(self):
+        """Only @dataclass is stripped; any other decorator survives."""
+        src = (
+            "from dataclasses import dataclass\n"
+            "@dataclass\n"
+            "@register\n"
+            "class Point:\n"
+            "    x: int\n"
+        )
+        result = _apply(DataclassAheadOfTimeTranspiler(), src)
+        assert "@register" in result
+        assert "@dataclass" not in result
+        assert "self.x = x" in result
+
+    def test_dataclass_without_fields_gets_an_empty_init(self):
+        """A field-less dataclass still gets a valid, empty __init__."""
+        src = (
+            "from dataclasses import dataclass\n"
+            "@dataclass\n"
+            "class Marker:\n"
+            "    pass\n"
+        )
+        result = _apply(DataclassAheadOfTimeTranspiler(), src)
+        assert "def __init__(self):" in result
+
 
 # ---------------------------------------------------------------------------
 # DictPatcher
