@@ -224,10 +224,28 @@ def test_guard_chain_bash_bypasses_are_denied(command):
     assert code == 0 and decision(out) == "deny", command
 
 
+def _env_without_hook_git_vars():
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
 def _git(repo, *args):
     return subprocess.run(
-        ("git", "-C", str(repo), *args), capture_output=True, text=True, check=True
+        ("git", "-C", str(repo), *args),
+        capture_output=True,
+        text=True,
+        check=True,
+        env=_env_without_hook_git_vars(),
     )
+
+
+def test_git_helper_never_reinitialises_the_hook_repository_as_bare(
+    tmp_path, monkeypatch
+):
+    real = tmp_path / "real"
+    _git(real.parent, "init", "-q", str(real))
+    monkeypatch.setenv("GIT_DIR", str(real / ".git"))
+    _git(tmp_path, "init", "-q", str(tmp_path / "throwaway"))
+    assert _git(real, "config", "core.bare").stdout.strip() == "false"
 
 
 def _chain_repo(tmp_path):
