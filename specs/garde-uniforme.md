@@ -12,7 +12,8 @@ et la CI rend le même verdict que le hook local.
 
 1. Ruff : les deux dépôts appliquent les règles de complexité de QualiSpectra
    (C90, PLR0912, PLR0913, PLR0915) en plus des règles communes, autofix
-   désactivé, ligne 88 (décision Arthur : 79 coûtait 138 retouches manuelles). `make lint` vert des deux côtés.
+   désactivé, ligne 88 (décision Arthur : 79 coûtait 138 retouches
+   manuelles). `make lint` vert des deux côtés.
 2. Pre-commit : la batterie pyplet (pre-commit-hooks, gitleaks, ruff,
    markdownlint, shellcheck, bandit) tourne aussi sur QualiSpectra ; les deux
    tests de garde QualiSpectra (commentaires, contrat d'import) tournent aussi
