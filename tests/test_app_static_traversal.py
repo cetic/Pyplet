@@ -38,7 +38,7 @@ Self-contained: a temp apps/ tree is built with one app that has a ``static/``
 file, plus a sibling ``*_server.py`` and an ``auth_rules.json`` as traversal
 targets, and symlinks into a second temp dir outside the tree as symlink bait.
 Uses Tornado's ``AsyncHTTPTestCase`` harness (shipped with the existing
-``tornado`` dep — no new dependency), mirroring ``healthz_test.py``.
+``tornado`` dep — no new dependency), mirroring ``test_healthz.py``.
 """
 
 import os
@@ -93,9 +93,7 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
             f.write("// legit static asset\n")
 
         # Bait files a traversal would target.
-        with open(
-            os.path.join(apps_root, "DemoApp", "DemoApp_server.py"), "w"
-        ) as f:
+        with open(os.path.join(apps_root, "DemoApp", "DemoApp_server.py"), "w") as f:
             f.write("SECRET = 'server-side source that must not leak'\n")
         with open(os.path.join(apps_root, "auth_rules.json"), "w") as f:
             f.write('{"acl": "must not leak"}\n')
@@ -134,9 +132,7 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
     def test_legit_static_file_is_served(self):
         """A real per-app static asset still returns 200."""
         resp = self.fetch("/apps/DemoApp/static/d3.v7.min.js")
-        assert resp.code == 200, (
-            f"legit static file should serve 200, got {resp.code}"
-        )
+        assert resp.code == 200, f"legit static file should serve 200, got {resp.code}"
         assert b"legit static asset" in resp.body
 
     def test_traversal_to_sibling_server_source_blocked(self):
@@ -146,8 +142,7 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
             follow_redirects=False,
         )
         assert resp.code != 200, (
-            "traversal to *_server.py must be refused, got 200 "
-            f"(body={resp.body!r})"
+            f"traversal to *_server.py must be refused, got 200 (body={resp.body!r})"
         )
         assert b"SECRET" not in resp.body
         assert resp.code in (403, 404), (
@@ -173,8 +168,7 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
             follow_redirects=False,
         )
         assert resp.code != 200, (
-            "percent-encoded traversal must be refused, got 200 "
-            f"(body={resp.body!r})"
+            f"percent-encoded traversal must be refused, got 200 (body={resp.body!r})"
         )
         assert b"SECRET" not in resp.body
 
@@ -185,12 +179,9 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
         strips the leading slash off the tail before joining would regress
         this silently, so it gets its own assertion.
         """
-        resp = self.fetch(
-            "/apps/DemoApp/static//etc/hosts", follow_redirects=False
-        )
+        resp = self.fetch("/apps/DemoApp/static//etc/hosts", follow_redirects=False)
         assert resp.code != 200, (
-            "absolute-path escape must be refused, got 200 "
-            f"(body={resp.body!r})"
+            f"absolute-path escape must be refused, got 200 (body={resp.body!r})"
         )
 
     def test_symlink_out_of_static_dir_blocked(self):
@@ -203,12 +194,9 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
         unauthenticated arbitrary-file read, worse than the ``..`` traversal
         the per-request root closes.
         """
-        resp = self.fetch(
-            "/apps/DemoApp/static/link_file", follow_redirects=False
-        )
+        resp = self.fetch("/apps/DemoApp/static/link_file", follow_redirects=False)
         assert resp.code != 200, (
-            "symlink out of static/ must be refused, got 200 "
-            f"(body={resp.body!r})"
+            f"symlink out of static/ must be refused, got 200 (body={resp.body!r})"
         )
         assert b"OUTSIDE-PRIVATE-KEY" not in resp.body
 
@@ -258,9 +246,7 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
         """
         get_resp = self.fetch("/apps/DemoApp/static/d3.v7.min.js")
         assert get_resp.code == 200
-        head_resp = self.fetch(
-            "/apps/DemoApp/static/d3.v7.min.js", method="HEAD"
-        )
+        head_resp = self.fetch("/apps/DemoApp/static/d3.v7.min.js", method="HEAD")
         assert head_resp.code == 200, (
             "HEAD on a legit static file should serve 200, got "
             f"{head_resp.code} (body={head_resp.body!r})"
@@ -268,9 +254,7 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
         assert head_resp.body == b"", (
             f"HEAD response body must be empty, got {head_resp.body!r}"
         )
-        assert head_resp.headers.get("Content-Length") == str(
-            len(get_resp.body)
-        ), (
+        assert head_resp.headers.get("Content-Length") == str(len(get_resp.body)), (
             "HEAD Content-Length must match GET body length; got "
             f"{head_resp.headers.get('Content-Length')!r} vs "
             f"{len(get_resp.body)}"
@@ -292,12 +276,8 @@ class AppStaticTraversalTest(AsyncHTTPTestCase):
 
     def test_app_without_static_dir_does_not_crash(self):
         """An app with no static/ dir 404s rather than erroring."""
-        resp = self.fetch(
-            "/apps/NoSuchApp/static/whatever.js", follow_redirects=False
-        )
-        assert resp.code == 404, (
-            f"missing static dir should 404, got {resp.code}"
-        )
+        resp = self.fetch("/apps/NoSuchApp/static/whatever.js", follow_redirects=False)
+        assert resp.code == 404, f"missing static dir should 404, got {resp.code}"
 
 
 class AppStaticPerRequestRootTest(AsyncHTTPTestCase):

@@ -24,7 +24,7 @@ pyplet-core changes are pinned here (DEPLOY-8 / SECURI-4):
       are trusted (real client IP + https scheme behind the proxy).
 
 These are sync ``def test_*`` functions using ``monkeypatch`` (env-driven
-``config``), mirroring ``tests/oauth_test.py``; the xheaders assertion drives
+``config``), mirroring ``tests/test_oauth.py``; the xheaders assertion drives
 the ``astart`` path with a captured, sentinel-stopped ``Application.listen`` so
 the real (blocking) server never starts.
 """
@@ -158,9 +158,7 @@ def test_check_origin_same_origin_allowed_with_allowlist(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_astart_listens_with_xheaders(
-    monkeypatch, tmp_path, preserve_config_dict
-):
+def test_astart_listens_with_xheaders(monkeypatch, tmp_path, preserve_config_dict):
     """``astart`` calls ``app.listen(..., xheaders=True)``.
 
     The real ``astart`` binds a port then blocks forever on
@@ -192,13 +190,9 @@ def test_astart_listens_with_xheaders(
     # No app instances → no route splice into the shared _app_spec.
     monkeypatch.setattr(_server, "server_applications", {})
     # Neutralize both fail-closed startup policies for this listen-path test.
-    monkeypatch.setattr(
-        _server.oauth, "enforce_startup_auth_policy", lambda **kw: None
-    )
+    monkeypatch.setattr(_server.oauth, "enforce_startup_auth_policy", lambda **kw: None)
     monkeypatch.setattr(_server, "enforce_startup_debug_policy", lambda: None)
-    monkeypatch.setattr(
-        _server.tornado.web.Application, "listen", _fake_listen
-    )
+    monkeypatch.setattr(_server.tornado.web.Application, "listen", _fake_listen)
 
     with pytest.raises(_StopListen):
         asyncio.run(_server.astart())

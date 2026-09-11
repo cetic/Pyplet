@@ -62,9 +62,7 @@ class TestAppDiscovery:
     """Test suite for `_load_server_module` / `__init_subclass__`
     registration across different `config.apps` shapes."""
 
-    def test_bare_relative_apps_dir(
-        self, tmp_path, monkeypatch, clean_registry
-    ):
+    def test_bare_relative_apps_dir(self, tmp_path, monkeypatch, clean_registry):
         apps_dir = tmp_path / "apps"
         _write_app(apps_dir, "myproj", "myproj", "MyProjServer")
 
@@ -73,9 +71,7 @@ class TestAppDiscovery:
 
         assert ("myproj", "myproj") in _server.server_applications
 
-    def test_nested_relative_apps_dir(
-        self, tmp_path, monkeypatch, clean_registry
-    ):
+    def test_nested_relative_apps_dir(self, tmp_path, monkeypatch, clean_registry):
         """A `config.apps` value with a path separator (e.g. "sub/apps")
         used to break registration: the dotted module name derived from
         it had more than 3 components, so `__init_subclass__`'s

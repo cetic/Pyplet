@@ -33,8 +33,7 @@ _GOOGLE_OPENID_CONFIG_URL = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
 _MICROSOFT_OPENID_CONFIG_URL = (
-    "https://login.microsoftonline.com/"
-    "{tenant}/v2.0/.well-known/openid-configuration"
+    "https://login.microsoftonline.com/{tenant}/v2.0/.well-known/openid-configuration"
 )
 
 BUILTIN_PROVIDERS: dict[str, dict[str, Any]] = {

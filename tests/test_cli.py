@@ -76,9 +76,9 @@ class TestCreateProject:
             # Mock the Path resolution to use our temp template
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 # Setup Path to return temp_workspace paths
                 def path_side_effect(path_str=None):
@@ -94,9 +94,7 @@ class TestCreateProject:
 
                 # Verify the project directory was created
                 project_dir = work_dir / "apps" / "my_test_app"
-                assert project_dir.exists(), (
-                    "Project directory should be created"
-                )
+                assert project_dir.exists(), "Project directory should be created"
 
                 # Verify client file was created
                 client_file = project_dir / "my_test_app_client.py"
@@ -116,9 +114,7 @@ class TestCreateProject:
 
                 # Verify no config.py was created
                 config_file = project_dir / "config.py"
-                assert not config_file.exists(), (
-                    "config.py should NOT be created"
-                )
+                assert not config_file.exists(), "config.py should NOT be created"
 
         finally:
             os.chdir(original_cwd)
@@ -133,9 +129,9 @@ class TestCreateProject:
         try:
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
                 mock_path_class.return_value = mock_file_path
 
                 with pytest.raises(SystemExit) as excinfo:
@@ -156,9 +152,9 @@ class TestCreateProject:
         try:
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":
@@ -203,9 +199,7 @@ class TestCreateProject:
             try:
                 # Mock shutil.copyfile to raise FileNotFoundError
                 with patch("pyplet.server.cli.shutil.copyfile") as mock_copy:
-                    mock_copy.side_effect = FileNotFoundError(
-                        "Template file not found"
-                    )
+                    mock_copy.side_effect = FileNotFoundError("Template file not found")
 
                     with pytest.raises(FileNotFoundError):
                         create_project("test_project")
@@ -229,9 +223,9 @@ class TestCreateProject:
 
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":
@@ -269,9 +263,9 @@ class TestCreateProject:
 
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":
@@ -284,16 +278,12 @@ class TestCreateProject:
                 for name in valid_names:
                     create_project(name)
                     project_dir = work_dir / "apps" / name
-                    assert project_dir.exists(), (
-                        f"Project {name} should be created"
-                    )
+                    assert project_dir.exists(), f"Project {name} should be created"
 
         finally:
             os.chdir(original_cwd)
 
-    def test_create_project_fails_when_files_exist(
-        self, temp_workspace, caplog
-    ):
+    def test_create_project_fails_when_files_exist(self, temp_workspace, caplog):
         """Test that create_project fails when template files already exist."""
         from pyplet.server.cli import create_project
 
@@ -304,9 +294,9 @@ class TestCreateProject:
         try:
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":
@@ -335,16 +325,13 @@ class TestCreateProject:
 
                     # Verify error message was logged
                     assert any(
-                        "already exists" in record.message
-                        for record in caplog.records
+                        "already exists" in record.message for record in caplog.records
                     )
 
         finally:
             os.chdir(original_cwd)
 
-    def test_create_project_fails_when_only_client_exists(
-        self, temp_workspace, caplog
-    ):
+    def test_create_project_fails_when_only_client_exists(self, temp_workspace, caplog):
         """Test that create_project fails when only the client file exists."""
         from pyplet.server.cli import create_project
 
@@ -355,9 +342,9 @@ class TestCreateProject:
         try:
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":
@@ -383,16 +370,13 @@ class TestCreateProject:
 
                     # Verify error message was logged
                     assert any(
-                        "already exists" in record.message
-                        for record in caplog.records
+                        "already exists" in record.message for record in caplog.records
                     )
 
         finally:
             os.chdir(original_cwd)
 
-    def test_create_project_fails_when_only_server_exists(
-        self, temp_workspace, caplog
-    ):
+    def test_create_project_fails_when_only_server_exists(self, temp_workspace, caplog):
         """Test that create_project fails when only the server file exists."""
         from pyplet.server.cli import create_project
 
@@ -403,9 +387,9 @@ class TestCreateProject:
         try:
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":
@@ -431,8 +415,7 @@ class TestCreateProject:
 
                     # Verify error message was logged
                     assert any(
-                        "already exists" in record.message
-                        for record in caplog.records
+                        "already exists" in record.message for record in caplog.records
                     )
 
         finally:
@@ -465,9 +448,9 @@ class TestCLILogging:
                 patch("pyplet.server.cli.Path") as mock_path_class,
             ):
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":
@@ -484,8 +467,7 @@ class TestCLILogging:
                     for record in caplog.records
                 )
                 assert any(
-                    "Files copied" in record.message
-                    for record in caplog.records
+                    "Files copied" in record.message for record in caplog.records
                 )
 
         finally:
@@ -505,9 +487,9 @@ class TestCLILogging:
                 patch("pyplet.server.cli.Path") as mock_path_class,
             ):
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":
@@ -562,15 +544,12 @@ class TestStartServer:
 
         # Check that the interrupt was logged
         assert any(
-            "Server stopped by user" in record.message
-            for record in caplog.records
+            "Server stopped by user" in record.message for record in caplog.records
         )
 
     @patch("pyplet.server.cli.asyncio.run")
     @patch("pyplet.server._server.astart")
-    def test_start_server_oserror_98(
-        self, mock_astart, mock_asyncio_run, caplog
-    ):
+    def test_start_server_oserror_98(self, mock_astart, mock_asyncio_run, caplog):
         """Test that OSError 98 (address already in use) is
         handled gracefully."""
         from pyplet.server.cli import start_server
@@ -588,8 +567,7 @@ class TestStartServer:
 
             # Check that error was logged
             assert any(
-                "The server address (" in record.message
-                for record in caplog.records
+                "The server address (" in record.message for record in caplog.records
             )
 
         # Check that the exception is re-raised is it's not
@@ -600,9 +578,7 @@ class TestStartServer:
 
     @patch("pyplet.server.cli.asyncio.run")
     @patch("pyplet.server._server.astart")
-    def test_start_server_exception(
-        self, mock_astart, mock_asyncio_run, caplog
-    ):
+    def test_start_server_exception(self, mock_astart, mock_asyncio_run, caplog):
         """Test that exceptions are logged and cause exit."""
         from pyplet.server.cli import start_server
 
@@ -615,9 +591,7 @@ class TestStartServer:
             assert excinfo.value.code == 4
 
             # Check that error was logged
-            assert any(
-                "Server error" in record.message for record in caplog.records
-            )
+            assert any("Server error" in record.message for record in caplog.records)
 
 
 class TestCLIArgumentParsing:
@@ -804,7 +778,7 @@ class TestCLIConfigOverrides:
         value)` then froze it forever, permanently shadowing that env
         var for the rest of the process (breaking, e.g., a later
         `monkeypatch.setenv(...)` on the same var in an unrelated test,
-        such as prod_hardening_test.py toggling PYPLET_DEBUG)."""
+        such as test_prod_hardening.py toggling PYPLET_DEBUG)."""
         from pyplet.server.cli import main
 
         config = preserve_config_dict
@@ -832,7 +806,7 @@ class TestCLIConfigOverrides:
         This is exactly what broke the e2e `server` fixture
         (tests/conftest.py): its forked child sets `PYPLET_PORT` in
         `os.environ` before calling `astart()`, expecting `config.port`
-        to read it live. But an *earlier*, unrelated cli_test.py test
+        to read it live. But an *earlier*, unrelated test_cli.py test
         that did `original = config.port; ...; config.port = original`
         to "clean up" left `config.port` permanently frozen in
         `config.__dict__` — `Param.__set__` always writes the instance
@@ -884,9 +858,9 @@ class TestCLIIntegration:
         try:
             with patch("pyplet.server.cli.Path") as mock_path_class:
                 mock_file_path = MagicMock()
-                mock_file_path.resolve.return_value.parent.parent = (
-                    temp_workspace["tmp_path"]
-                )
+                mock_file_path.resolve.return_value.parent.parent = temp_workspace[
+                    "tmp_path"
+                ]
 
                 def path_side_effect(path_str=None):
                     if path_str is None or path_str == "__file__":

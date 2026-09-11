@@ -61,9 +61,7 @@ class TestUpload:
         assert "btn-primary btn" in html
         assert "<label" in html  # Replaced <a> tag
         assert 'type="file"' in html  # Now uses a native file input
-        assert (
-            "handle_drop" in html
-        )  # Uses the mock event bridge to trigger upload
+        assert "handle_drop" in html
 
     def test_upload_with_destination(self):
         result = upload(client_destination="/uploads")
@@ -102,9 +100,7 @@ class TestUploadArea:
     def test_upload_area_basic(self):
         result = upload_area()
         html = str(result)
-        assert (
-            "upload-container" in html
-        )  # Class updated in the new implementation
+        assert "upload-container" in html
         assert "handle_drop" in html
         assert 'type="file"' in html
         assert "<progress" in html  # Progress bar exists
@@ -326,7 +322,5 @@ class TestMergeClasses:
     def test_overwrite_takes_precedence_over_extra(self):
         from pyplet.shared.dom._dom import _merge_classes
 
-        result = _merge_classes(
-            ".btn", extra_classes=".x", overwrite_classes=".y"
-        )
+        result = _merge_classes(".btn", extra_classes=".x", overwrite_classes=".y")
         assert result == ".y"

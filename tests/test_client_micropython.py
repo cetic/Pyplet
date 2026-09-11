@@ -43,9 +43,7 @@ def imported(monkeypatch, capsys):
     monkeypatch.setattr(sys, "implementation", _micropython_implementation())
     try:
         client = importlib.import_module("pyplet.client")
-        yield types.SimpleNamespace(
-            client=client, stdout=capsys.readouterr().out
-        )
+        yield types.SimpleNamespace(client=client, stdout=capsys.readouterr().out)
     finally:
         sys.modules.pop("pyplet.client", None)
         if saved_module is not None:

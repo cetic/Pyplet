@@ -7,7 +7,7 @@ to the resolved user's ``email`` — before the app's ``websocket_server_loop``
 is launched — so a consumer app can read
 it back via ``getattr(ws, "login", None)``.
 
-Mirrors ``tests/prod_hardening_test.py``'s ``_make_ws`` style: a bare
+Mirrors ``tests/test_prod_hardening.py``'s ``_make_ws`` style: a bare
 ``ServerWebSocket.__new__`` instance with methods/attributes monkeypatched
 directly, no real Tornado request/connection setup. ``open`` calls
 ``asyncio.create_task(application.websocket_server_loop(self))``, so each
@@ -52,9 +52,7 @@ async def test_open_captures_login_from_resolved_user(monkeypatch):
         return None
 
     fake_app = SimpleNamespace(websocket_server_loop=_noop_loop)
-    monkeypatch.setattr(
-        _server, "server_applications", {("proj", "app"): fake_app}
-    )
+    monkeypatch.setattr(_server, "server_applications", {("proj", "app"): fake_app})
 
     before = asyncio.all_tasks()
     await ws.open("proj", "app")
@@ -79,9 +77,7 @@ async def test_open_captures_anonymous_sentinel_email_verbatim(monkeypatch):
         return None
 
     fake_app = SimpleNamespace(websocket_server_loop=_noop_loop)
-    monkeypatch.setattr(
-        _server, "server_applications", {("proj", "app"): fake_app}
-    )
+    monkeypatch.setattr(_server, "server_applications", {("proj", "app"): fake_app})
 
     before = asyncio.all_tasks()
     await ws.open("proj", "app")

@@ -33,9 +33,7 @@ class _CapturingWS(ServerWebSocket):
 
 def test_base_loop_is_awaitable_like_its_client_twin():
     """The base hook returns an awaitable, as ``ClientApplication``'s does."""
-    assert inspect.iscoroutinefunction(
-        ServerApplication.websocket_server_loop
-    ), (
+    assert inspect.iscoroutinefunction(ServerApplication.websocket_server_loop), (
         "ServerApplication.websocket_server_loop must be a coroutine "
         "function: ServerWebSocket.open passes its result straight to "
         "asyncio.create_task, which raises TypeError on the None a "
@@ -74,9 +72,7 @@ class NoServerLoopSocketTest(AsyncHTTPTestCase):
     @gen_test
     async def test_open_logs_no_error_and_leaves_the_socket_alive(self):
         """No ``tornado.application`` ERROR, and the socket is not closed."""
-        url = (
-            f"ws://127.0.0.1:{self.get_http_port()}/apps/{_PROJECT}/{_APP}.ws"
-        )
+        url = f"ws://127.0.0.1:{self.get_http_port()}/apps/{_PROJECT}/{_APP}.ws"
         with self.assertNoLogs("tornado.application", level="ERROR"):
             conn = await websocket_connect(url)
             try:
@@ -92,9 +88,7 @@ class NoServerLoopSocketTest(AsyncHTTPTestCase):
     @gen_test
     async def test_message_and_close_still_reach_the_handler_queue(self):
         """``on_message``/``on_close`` work with no loop draining the queue."""
-        url = (
-            f"ws://127.0.0.1:{self.get_http_port()}/probe/{_PROJECT}/{_APP}.ws"
-        )
+        url = f"ws://127.0.0.1:{self.get_http_port()}/probe/{_PROJECT}/{_APP}.ws"
         conn = await websocket_connect(url)
         await conn.write_message("ping")
 

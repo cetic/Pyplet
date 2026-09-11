@@ -47,7 +47,7 @@ def _drop_event(files):
     )
 
 
-def _drop(
+def _drop(  # noqa: PLR0913
     bound,
     files,
     client_dest=None,
@@ -106,9 +106,7 @@ class TestWindowBindings:
 
         client_module._setup_vfs_bindings()
 
-        assert (
-            client_module.js.window.upload_file == "installed by another app"
-        )
+        assert client_module.js.window.upload_file == "installed by another app"
         assert not hasattr(client_module.js.window, "handle_drop")
 
 
@@ -202,8 +200,7 @@ class TestUploadToTheVfs:
         _drop(bound, files, client_dest="../../etc")
 
         assert bound.console.errors == [
-            "Access denied: Attempted to upload 'evil.txt' outside of "
-            f"{bound.jail}"
+            f"Access denied: Attempted to upload 'evil.txt' outside of {bound.jail}"
         ]
         assert not (bound.jail / "evil.txt").exists()
         assert not (bound.root / "etc" / "evil.txt").exists()
@@ -231,15 +228,11 @@ class TestUploadToTheVfs:
 
 class TestUploadLimits:
     def test_the_file_count_limit_truncates_and_warns(self, bound):
-        files = [
-            browser_stubs.FakeFile(f"f{index}.txt", b"x") for index in range(3)
-        ]
+        files = [browser_stubs.FakeFile(f"f{index}.txt", b"x") for index in range(3)]
 
         _drop(bound, files, client_dest="in", files_limit=2)
 
-        assert bound.console.warnings == [
-            "Limit of 2 files exceeded. Truncating."
-        ]
+        assert bound.console.warnings == ["Limit of 2 files exceeded. Truncating."]
         assert _names_in(bound.jail / "in") == ["f0.txt", "f1.txt"]
 
     def test_a_disallowed_extension_is_skipped(self, bound):
@@ -294,9 +287,7 @@ class TestUploadLimits:
 
         _drop(bound, files, client_dest="in", total_size_limit=10)
 
-        assert bound.console.errors == [
-            "Skipped second.txt: Exceeds total size limit."
-        ]
+        assert bound.console.errors == ["Skipped second.txt: Exceeds total size limit."]
         assert _names_in(bound.jail / "in") == ["first.txt"]
 
 
@@ -332,9 +323,7 @@ class TestUploadToTheServer:
             server_dest="uploads",
         )
 
-        assert bound.console.errors == [
-            "Server upload failed for a.txt: HTTP 507"
-        ]
+        assert bound.console.errors == ["Server upload failed for a.txt: HTTP 507"]
 
     def test_a_network_error_is_reported(self, bound):
         bound.window.fetch_result = browser_stubs.FakePromise(error="offline")
@@ -368,9 +357,7 @@ class TestFilePicker:
             [browser_stubs.FakeFile("a.txt", b"a")]
         )
 
-        bound.window.upload_file(
-            None, "in", None, None, None, None, ["txt", "csv"]
-        )
+        bound.window.upload_file(None, "in", None, None, None, None, ["txt", "csv"])
 
         picker = bound.document.created[-1]
         assert picker.type == "file"
@@ -390,9 +377,7 @@ class TestFilePicker:
     def test_the_picker_hints_extensions_from_a_pyodide_proxy(self, bound):
         extensions = browser_stubs.FakeJsProxy(["txt"])
 
-        bound.window.upload_file(
-            None, None, None, None, None, None, extensions
-        )
+        bound.window.upload_file(None, None, None, None, None, None, extensions)
 
         assert bound.document.created[-1].accept == ".txt"
 
@@ -407,9 +392,7 @@ class TestFilePicker:
             [browser_stubs.FakeFile("original.txt", b"data")]
         )
 
-        bound.window.upload_file(
-            "renamed.txt", "in", None, None, None, None, None
-        )
+        bound.window.upload_file("renamed.txt", "in", None, None, None, None, None)
 
         assert (bound.jail / "in" / "renamed.txt").read_bytes() == b"data"
         assert not (bound.jail / "in" / "original.txt").exists()
@@ -422,9 +405,7 @@ class TestFilePicker:
             ]
         )
 
-        bound.window.upload_file(
-            "renamed.txt", "in", None, None, None, None, None
-        )
+        bound.window.upload_file("renamed.txt", "in", None, None, None, None, None)
 
         assert _names_in(bound.jail / "in") == ["one.txt", "two.txt"], (
             "an override filename must not collapse a batch onto one name"

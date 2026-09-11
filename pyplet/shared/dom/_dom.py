@@ -202,9 +202,7 @@ def download(
     if from_vfs:
         # Prevent standard link navigation and
         # trigger frontend PyScript function
-        click_handler = (
-            f"event.preventDefault(); download_vfs_file('{file_path}');"
-        )
+        click_handler = f"event.preventDefault(); download_vfs_file('{file_path}');"
         return a(
             classes,
             href="#",
@@ -223,7 +221,7 @@ def download(
     )[button_text]
 
 
-def upload(
+def upload(  # noqa: PLR0913
     filename: str | None = None,
     button_text: str = "Upload",
     client_destination: str | None = None,
@@ -288,7 +286,7 @@ def upload(
     ]
 
 
-def upload_area(
+def upload_area(  # noqa: PLR0913
     client_destination: str | None = None,
     server_destination: str | None = None,
     text: str = "Drag and drop files here, or click to browse",
@@ -542,9 +540,7 @@ def pp_video(
         A renderable ``<video>`` element.
     """
     if from_vfs:
-        return video(
-            src="#", data_vfs_src=href, controls=True, **additional_attrs
-        )
+        return video(src="#", data_vfs_src=href, controls=True, **additional_attrs)
     return video(src=href, controls=True, **additional_attrs)
 
 
@@ -567,13 +563,11 @@ def pp_audio(
         A renderable ``<audio>`` element.
     """
     if from_vfs:
-        return audio(
-            src="#", data_vfs_src=href, controls=True, **additional_attrs
-        )
+        return audio(src="#", data_vfs_src=href, controls=True, **additional_attrs)
     return audio(src=href, controls=True, **additional_attrs)
 
 
-def slider(
+def slider(  # noqa: PLR0913
     value: float = 50,
     min: float = 0,
     max: float = 100,

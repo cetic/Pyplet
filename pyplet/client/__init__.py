@@ -25,8 +25,7 @@ except ImportError:
     # This should not be used with the current version of
     # MicroPython (>= 2026.3.1)
     print(
-        "Warning: asyncio not available, "
-        + "falling back to MicroPython JS polyfill"
+        "Warning: asyncio not available, " + "falling back to MicroPython JS polyfill"
     )
     # 2. MicroPython Fallback
     # Inject a tiny JS helper to create a safe Deferred promise across FFI
@@ -252,9 +251,7 @@ def _make_upload_onload(fname, file_obj, client_dest, server_dest):
             )
             return
 
-        if client_dest and not _write_upload_to_vfs(
-            fname, file_bytes, client_dest
-        ):
+        if client_dest and not _write_upload_to_vfs(fname, file_bytes, client_dest):
             return
 
         if server_dest:
@@ -273,7 +270,7 @@ def _total_size_rejected(selected_file, total_size, total_size_limit):
     return False
 
 
-def _process_files(
+def _process_files(  # noqa: PLR0913
     files,
     target_filename,
     client_dest,
@@ -305,9 +302,7 @@ def _process_files(
             continue
 
         if total_size_limit:
-            if _total_size_rejected(
-                selected_file, total_size, total_size_limit
-            ):
+            if _total_size_rejected(selected_file, total_size, total_size_limit):
                 continue
             total_size += selected_file.size
 
@@ -318,7 +313,7 @@ def _process_files(
         reader.readAsArrayBuffer(selected_file)
 
 
-def _make_change_handler(
+def _make_change_handler(  # noqa: PLR0913
     file_input,
     filename,
     client_dest,
@@ -346,7 +341,7 @@ def _make_change_handler(
     return on_change
 
 
-def upload_file(
+def upload_file(  # noqa: PLR0913
     filename,
     client_dest,
     server_dest,
@@ -386,7 +381,7 @@ def upload_file(
     file_input.click()
 
 
-def handle_click(
+def handle_click(  # noqa: PLR0913
     event,
     client_dest,
     server_dest,
@@ -407,7 +402,7 @@ def handle_click(
     )
 
 
-def handle_drop(
+def handle_drop(  # noqa: PLR0913
     event,
     client_dest,
     server_dest,
@@ -491,10 +486,7 @@ async def bootstrap_client(prefix, project_name, app_name, deps=()):
         client_application = found_class()
         client_applications[project_name, app_name] = client_application
 
-    if (
-        client_application.__class__.client_init
-        is not ClientApplication.client_init
-    ):
+    if client_application.__class__.client_init is not ClientApplication.client_init:
         await client_application.client_init()
 
     # Drop the boot splash (server-rendered into #container) now that the app
@@ -545,9 +537,7 @@ def _extension_rejected(selected_file, allowed_extensions):
     name = selected_file.name
     ext = name.split(".")[-1].lower() if "." in name else ""
     if ext not in allowed_extensions:
-        js.console.error(
-            f"Skipped {name}: " + f"Extension '{ext}' not allowed."
-        )
+        js.console.error(f"Skipped {name}: " + f"Extension '{ext}' not allowed.")
         return True
     return False
 
@@ -563,8 +553,7 @@ def _find_client_application(mod, project_name, app_name):
         ):
             return item
     raise RuntimeError(
-        "Could not find a ClientApplication "
-        f"subclass in {project_name}/{app_name}"
+        f"Could not find a ClientApplication subclass in {project_name}/{app_name}"
     )
 
 
@@ -572,8 +561,7 @@ def _per_file_size_rejected(selected_file, per_file_size_limit):
     """Tell whether a file busts the per-file size limit."""
     if per_file_size_limit and selected_file.size > per_file_size_limit:
         js.console.error(
-            f"Skipped {selected_file.name}: "
-            + f"Exceeds {per_file_size_limit} bytes."
+            f"Skipped {selected_file.name}: " + f"Exceeds {per_file_size_limit} bytes."
         )
         return True
     return False
@@ -587,9 +575,7 @@ class ClientWebSocket:
         self.queue = asyncio.Queue()
 
         self.ws.onmessage = create_proxy(
-            lambda event: asyncio.create_task(
-                self._enqueue_decoded_message(event)
-            )
+            lambda event: asyncio.create_task(self._enqueue_decoded_message(event))
         )
         self.ws.onclose = create_proxy(
             lambda event: asyncio.create_task(self._enqueue_close())

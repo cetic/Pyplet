@@ -69,8 +69,8 @@ builtins = ["_"]
 # construit plus. Les hooks passent `--force-exclude`, donc l'exclusion
 # vaut pour les deux chaînes — c'est le comportement d'avant la 0.16.
 exclude = [".venv", "**/build", "**/.transpiled", "**/*.md"]
-line-length = 79
-fix = true
+line-length = 88
+fix = false
 indent-width = 4
 respect-gitignore = false
 show-fixes = true
@@ -82,15 +82,19 @@ target-version = "py312"
 unsafe-fixes = false
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C90", "PLR0912", "PLR0913", "PLR0915"]
 
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+# Exceptions par fichier, jamais par désactivation globale (spec garde-uniforme).
 [tool.ruff.analyze]
 detect-string-imports = true
 
 [tool.ruff.format]
 # Enable reformatting of code snippets in docstrings.
 docstring-code-format = true
-docstring-code-line-length = 79
+docstring-code-line-length = 88
 # Enable reformatting of code snippets in comments.
 indent-style = "space"
 line-ending = "lf"

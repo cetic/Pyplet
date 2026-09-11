@@ -182,9 +182,7 @@ class FakeDocument:
     """``js.document``: element creation, ``body`` and lookups by id."""
 
     def __init__(self, picked_files=None, elements_by_id=None):
-        self.picked_files = (
-            FakeFileList() if picked_files is None else picked_files
-        )
+        self.picked_files = FakeFileList() if picked_files is None else picked_files
         self.elements_by_id = dict(elements_by_id or {})
         self.body = FakeBody()
         self.created = []

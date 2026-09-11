@@ -45,8 +45,7 @@ def test_healthz_precedes_catchall():
     assert r"/healthz" in patterns, "/healthz route missing from _app_spec"
     assert r"/.*" in patterns, "catch-all r'/.*' missing from _app_spec"
     assert patterns.index(r"/healthz") < patterns.index(r"/.*"), (
-        "/healthz must precede the catch-all r'/.*' or it gets shadowed "
-        "into a redirect"
+        "/healthz must precede the catch-all r'/.*' or it gets shadowed into a redirect"
     )
     assert patterns[-1] == r"/.*", "the catch-all r'/.*' must stay last"
 
