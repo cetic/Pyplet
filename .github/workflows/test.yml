@@ -41,6 +41,14 @@ jobs:
       matrix:
         python-version: ["3.12", "3.13", "3.14"]
 
+    env:
+      # Every uv call, `uv run` included, must land on the matrix interpreter.
+      # Without this, uv picks the runner's default 3.13 for the 3.12 and 3.14
+      # legs (measured: run 34485596900, "Using CPython 3.13.15" on both), so
+      # only one of the three versions was really tested. Same fix as in
+      # .gitlab-ci.yml.
+      UV_PYTHON: ${{ matrix.python-version }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v7.0.0

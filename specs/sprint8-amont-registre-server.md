@@ -42,12 +42,12 @@ plus de 3 lignes migrent vers `docs/api/server.md` et sont ramenées à
 | --- | --- |
 | `raison → test <nom du test>` | 70 |
 | `raison → docs/api/server.md` | 18 |
-| `TODO → issue (proposed: …)` | 1 |
+| `TODO → issue` (créée : #69) | 1 |
 | `séparateur` | 18 |
 | `paraphrase` | 32 |
 | `code mort` | 0 |
 
-Les 70 lignes `raison → test` citent 20 identifiants de test distincts,
+Les 70 lignes `raison → test` citent 19 identifiants de test distincts,
 tous existants et passants. Pour rejouer la vérification, extraire la
 colonne et la donner à `pytest` :
 
@@ -190,7 +190,7 @@ relecteur y cherche donc le contenu de la raison, non le texte source.
 | `pyplet/server/_server.py` | 888 | # Convert to JSON and compress | paraphrase |
 | `pyplet/server/_server.py` | 892 | # Set headers so the browser natively decompresses the payload | paraphrase |
 | `pyplet/server/_server.py` | 900 | # Update the extension to .json | paraphrase |
-| `pyplet/server/_server.py` | 901 | # COULD BE THE EXAMPLE RELATED BUG | TODO → issue (proposed: Bundle `package()` : élucider et lever le doute « COULD BE THE EXAMPLE RELATED BUG » sur la réécriture d'extension en `.json`) |
+| `pyplet/server/_server.py` | 901 | # COULD BE THE EXAMPLE RELATED BUG | TODO → issue #69 (Bundle `package()` : élucider et lever le doute « COULD BE THE EXAMPLE RELATED BUG » sur la réécriture d'extension en `.json`) |
 | `pyplet/server/_server.py` | 904 | # Inject PyScript core scripts | paraphrase |
 | `pyplet/server/_server.py` | 922 | # The Python script to run on the client | paraphrase |
 | `pyplet/server/_server.py` | 923 | # (works in both Pyodide and MicroPython) | paraphrase |
@@ -268,8 +268,8 @@ anglais d'origine.
 
 ## Issue GitLab proposée
 
-Un seul TODO dans le fichier. L'agent ne crée pas d'issue :
-l'orchestrateur la crée sur GitLab `seglab/pyplet` (projet 1724).
+Un seul TODO dans le fichier. Issue créée le 2026-09-12 sur GitLab
+`seglab/pyplet` : #69 (texte ci-dessous repris tel quel).
 
 ### Issue 1
 
@@ -307,7 +307,7 @@ Toutes commandes lancées depuis la racine de l'arbre de travail.
   neutralisées, est identique à celui de `ed5401b`
   (`ast.dump` comparé — `True`). Le diff ne contient donc que des lignes
   `#`, des lignes de docstring et des lignes vides.
-- **Tests cités** : les 20 identifiants de test de la colonne
+- **Tests cités** : les 19 identifiants de test de la colonne
   « Catégorie » passent (`20 passed`).
 - **Suite complète** : `make test` — voir le rapport de fin de lot.
 - **Lint** : `make lint`.
