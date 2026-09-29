@@ -19,6 +19,8 @@ that matters becomes a test; the rest goes to `docs/` or `specs/`.
 | Fast commit gate | `make precommit`; push gate `make prepush` (= lint + test) |
 | Run | `make start` |
 | Disposable clone | `make new-tree <name>` |
+| Guard chain — check | `make doctor` (links resolve, `core.hooksPath`, hook scripts runnable, chain drift from its owner's HEAD; non-zero and one line per problem) |
+| Guard chain — setup | `make env` (creates the missing links to `apps/QualiSpectra`, bmad-loop hook script included; idempotent, never overwrites) |
 
 Never hand-write a `pytest`/`ruff` invocation: `pyproject.toml` has
 `fix = true` and `respect-gitignore = false`, so a bare `ruff check .` would
@@ -47,13 +49,15 @@ to `pyplet tests` and pass `--no-fix`.
 ## Development constraints (enforced, not advisory)
 
 Target: the same layered chain as the apps developed on top of pyplet
-(`apps/QualiSpectra` is the reference implementation). State 2026-09-09:
+(`apps/QualiSpectra` is the reference implementation). State 2026-09-29:
 layers 2–4 are **live** (`main` is lint-green again since the import-sorter
 conflict was settled — it had been red since `ef4a30f`, see #58; the shared git
 hooks run `make precommit`/`make prepush` whenever the tracked `.lint-green`
 marker exists at the toplevel). Layers 0–1 (Claude Code hooks at this root)
-are **deferred**, not abandoned: they return in Sprint #8
-(seglab/pyplet#52). Until then only the git side enforces the rules here.
+are **live on a workstation where `make doctor` passes**: the chain is
+gitignored, so it is linked from its owner `apps/QualiSpectra` by `make env`,
+never cloned — a checkout that skips that step has no layer 0–1 at all, and
+`make doctor` is what says so.
 
 | Layer | When | What |
 | --- | --- | --- |
