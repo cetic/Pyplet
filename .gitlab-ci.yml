@@ -105,6 +105,27 @@ test:
         coverage_format: cobertura
         path: coverage.xml
 
+# Mirror of the `lint` job of .github/workflows/test.yml: the same `make lint`
+# as the workstation gate, so a lint verdict means the same thing everywhere.
+lint:
+  stage: lint
+  cache:
+    key:
+      prefix: uv-lint
+      files:
+        - pyproject.toml
+    paths:
+      - .cache/uv
+      - .cache/uv-python
+  before_script:
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - uv venv
+    - uv sync --extra test
+  script:
+    - export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    - make lint
+
 prek:
   stage: lint
   variables:
