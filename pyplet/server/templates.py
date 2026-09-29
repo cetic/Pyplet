@@ -67,13 +67,9 @@ def base_template(
     return html(".h-100", lang="en")[
         head[
             meta(charset="utf-8"),
-            meta(
-                name="viewport", content="width=device-width, initial-scale=1"
-            ),
+            meta(name="viewport", content="width=device-width, initial-scale=1"),
             title[
-                f"{page_title} - {config.site_name}"
-                if page_title
-                else config.site_name
+                f"{page_title} - {config.site_name}" if page_title else config.site_name
             ],
             link(
                 href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
@@ -144,9 +140,7 @@ def default_navbar(handler: RequestHandler, user: dict | None = None) -> Node:
     else:
         # Not authenticated or auth disabled: show "About" link
         right_items_content = [
-            li(".nav-item")[
-                a(".nav-link", href="/about")[f"About {config.site_name}"]
-            ]
+            li(".nav-item")[a(".nav-link", href="/about")[f"About {config.site_name}"]]
         ]
 
     return nav(".navbar.navbar-expand-sm.bg-body-tertiary")[
@@ -260,9 +254,7 @@ def login_template(handler: RequestHandler) -> Node:
                         autofocus=not providers,
                     ),
                 ],
-                button(".btn.btn-primary.w-100", type="submit")[
-                    "Send sign-in link"
-                ],
+                button(".btn.btn-primary.w-100", type="submit")["Send sign-in link"],
             ]
         )
 
@@ -271,9 +263,7 @@ def login_template(handler: RequestHandler) -> Node:
     return base_template(
         page_title="Sign in",
         navbar=default_navbar(handler, user=None),
-        content=div(".row.justify-content-center.mt-5")[
-            div(".col-sm-5")[card]
-        ],
+        content=div(".row.justify-content-center.mt-5")[div(".col-sm-5")[card]],
     )
 
 
@@ -288,21 +278,13 @@ def magiclink_sent_template(handler: RequestHandler, email_addr: str) -> Node:
             strong[email_addr],
             ".",
         ],
-        p[
-            span(".text-muted.small")[
-                f"The link expires in {ttl_min} minute(s). "
-            ]
-        ],
-        a(".btn.btn-outline-secondary.mt-2", href="/login")[
-            "← Back to sign-in"
-        ],
+        p[span(".text-muted.small")[f"The link expires in {ttl_min} minute(s). "]],
+        a(".btn.btn-outline-secondary.mt-2", href="/login")["← Back to sign-in"],
     ]
     return base_template(
         page_title="Check your inbox",
         navbar=default_navbar(handler, user=None),
-        content=div(".row.justify-content-center.mt-5")[
-            div(".col-sm-5")[card]
-        ],
+        content=div(".row.justify-content-center.mt-5")[div(".col-sm-5")[card]],
     )
 
 
@@ -319,15 +301,11 @@ def index_template(handler: RequestHandler, user: dict | None = None) -> Node:
     if oauth.auth_enabled() and user:
         app_pairs = oauth.permitted_apps(email)
         for project, app_name in app_pairs:
-            projects[project].append(
-                li[a(href=f"apps/{project}/{app_name}")[app_name]]
-            )
+            projects[project].append(li[a(href=f"apps/{project}/{app_name}")[app_name]])
 
     else:
         for project, app_name in _apps.client_apps():
-            projects[project].append(
-                li[a(href=f"apps/{project}/{app_name}")[app_name]]
-            )
+            projects[project].append(li[a(href=f"apps/{project}/{app_name}")[app_name]])
 
     if projects:
         application_list = ul[

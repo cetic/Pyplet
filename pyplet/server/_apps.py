@@ -100,6 +100,4 @@ def client_apps(
     root: str | Path | None = None,
 ) -> list[tuple[str, str]]:
     """``(project, app)`` for every discoverable ``*_client.py``."""
-    return [
-        (project, app) for project, app, _ in _discover(CLIENT_SUFFIX, root)
-    ]
+    return [(project, app) for project, app, _ in _discover(CLIENT_SUFFIX, root)]

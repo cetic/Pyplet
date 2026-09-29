@@ -123,10 +123,7 @@ class TestWsMaxMessageMbParam:
 
     def test_env_var_name(self):
         """The Param binds the PYPLET_WS_MAX_MESSAGE_MB env variable."""
-        assert (
-            PypletConfig.ws_max_message_mb.env_var
-            == "PYPLET_WS_MAX_MESSAGE_MB"
-        )
+        assert PypletConfig.ws_max_message_mb.env_var == "PYPLET_WS_MAX_MESSAGE_MB"
 
     def test_env_override_casts_to_int(self, config, monkeypatch):
         """An env override wins over the default and is cast to int."""

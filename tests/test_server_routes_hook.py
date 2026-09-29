@@ -83,13 +83,11 @@ class AppDeclaredRouteTest(AsyncHTTPTestCase):
         patterns = [entry[0] for entry in _app_spec["handlers"]]
 
         assert _PROBE_PATTERN in patterns, (
-            "routes() was not merged into _app_spec['handlers'] — the hook "
-            "is dead"
+            "routes() was not merged into _app_spec['handlers'] — the hook is dead"
         )
         assert r"/.*" in patterns, "catch-all r'/.*' missing from _app_spec"
         assert patterns.index(_PROBE_PATTERN) < patterns.index(r"/.*"), (
-            "a declared route listed after the catch-all is shadowed into a "
-            "redirect"
+            "a declared route listed after the catch-all is shadowed into a redirect"
         )
         assert patterns[-1] == r"/.*", (
             "the catch-all r'/.*' must stay the last handler, or unknown "
@@ -108,10 +106,7 @@ class AppDeclaredRouteTest(AsyncHTTPTestCase):
         )
 
         # The catch-all still works for anything undeclared.
-        unknown = self.fetch(
-            "/__nothing_declares_this__", follow_redirects=False
-        )
+        unknown = self.fetch("/__nothing_declares_this__", follow_redirects=False)
         assert unknown.code in (301, 302), (
-            f"unknown path should still hit the catch-all redirect, got "
-            f"{unknown.code}"
+            f"unknown path should still hit the catch-all redirect, got {unknown.code}"
         )

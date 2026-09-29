@@ -15,7 +15,7 @@ that matters becomes a test; the rest goes to `docs/` or `specs/`.
 | Task | Command |
 | --- | --- |
 | Tests | `make test` (all, `uv run --extra test`) / `make test-cov` |
-| Lint / format | `make lint` (gate, never fixes) / `make fmt` (fix) — `pyproject.toml` `[tool.ruff]`, line 79 |
+| Lint / format | `make lint` (gate, never fixes) / `make fmt` (fix) — `pyproject.toml` `[tool.ruff]`, line 62 |
 | Fast commit gate | `make precommit`; push gate `make prepush` (= lint + test) |
 | Run | `make start` |
 | Disposable clone | `make new-tree <name>` |

@@ -202,9 +202,7 @@ def download(
     if from_vfs:
         # Prevent standard link navigation and
         # trigger frontend PyScript function
-        click_handler = (
-            f"event.preventDefault(); download_vfs_file('{file_path}');"
-        )
+        click_handler = f"event.preventDefault(); download_vfs_file('{file_path}');"
         return a(
             classes,
             href="#",
@@ -542,9 +540,7 @@ def pp_video(
         A renderable ``<video>`` element.
     """
     if from_vfs:
-        return video(
-            src="#", data_vfs_src=href, controls=True, **additional_attrs
-        )
+        return video(src="#", data_vfs_src=href, controls=True, **additional_attrs)
     return video(src=href, controls=True, **additional_attrs)
 
 
@@ -567,9 +563,7 @@ def pp_audio(
         A renderable ``<audio>`` element.
     """
     if from_vfs:
-        return audio(
-            src="#", data_vfs_src=href, controls=True, **additional_attrs
-        )
+        return audio(src="#", data_vfs_src=href, controls=True, **additional_attrs)
     return audio(src=href, controls=True, **additional_attrs)
 
 

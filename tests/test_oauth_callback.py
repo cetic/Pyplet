@@ -13,9 +13,7 @@ _MISSING = object()
 
 _SPEC = {
     "label": "Example ID",
-    "openid_config_url": (
-        "https://id.example.test/.well-known/openid-configuration"
-    ),
+    "openid_config_url": ("https://id.example.test/.well-known/openid-configuration"),
     "client_id": "example-client",
     "client_secret": "example-secret",
     "scopes": ["openid", "email"],
@@ -33,9 +31,7 @@ async def _stub_oidc(provider):
 @pytest.fixture(autouse=True)
 def _isolate(monkeypatch):
     """Own copy of both registries, the fictional provider, no network."""
-    monkeypatch.setattr(
-        oauth, "_PROVIDER_CONFIGS", dict(oauth._PROVIDER_CONFIGS)
-    )
+    monkeypatch.setattr(oauth, "_PROVIDER_CONFIGS", dict(oauth._PROVIDER_CONFIGS))
     monkeypatch.setattr(oauth, "_CONSENT_FLOWS", dict(oauth._CONSENT_FLOWS))
     monkeypatch.setattr(oauth, "_fetch_oidc_config", _stub_oidc)
     oauth.register_provider("example", _SPEC)
@@ -45,9 +41,7 @@ def _isolate(monkeypatch):
 def sessions(monkeypatch):
     """Collect every session ``handle_callback`` would open."""
     opened = []
-    monkeypatch.setattr(
-        oauth, "set_session", lambda h, info: opened.append(info)
-    )
+    monkeypatch.setattr(oauth, "set_session", lambda h, info: opened.append(info))
     return opened
 
 
@@ -56,8 +50,8 @@ def _handler(state="s-1", code="the-code", cookie=_MISSING, **arguments):
     arguments.setdefault("state", state)
     arguments.setdefault("code", code)
     handler = MagicMock()
-    handler.get_argument.side_effect = lambda name, default=None: (
-        arguments.get(name, default)
+    handler.get_argument.side_effect = lambda name, default=None: arguments.get(
+        name, default
     )
     if cookie is _MISSING:
         cookie = json.dumps(
@@ -152,9 +146,7 @@ async def test_callback_refuses_a_failed_exchange(monkeypatch, sessions):
 
 
 @pytest.mark.asyncio
-async def test_callback_refuses_a_response_without_an_id_token(
-    monkeypatch, sessions
-):
+async def test_callback_refuses_a_response_without_an_id_token(monkeypatch, sessions):
     """A token response with no id_token identifies nobody."""
     _stub_tokens(monkeypatch, {"access_token": "a-1"}, claims={})
     handler = _handler()
@@ -163,9 +155,7 @@ async def test_callback_refuses_a_response_without_an_id_token(
 
 
 @pytest.mark.asyncio
-async def test_callback_refuses_an_unverifiable_id_token(
-    monkeypatch, sessions
-):
+async def test_callback_refuses_an_unverifiable_id_token(monkeypatch, sessions):
     """A failing signature or claims check is never a trusted login."""
     _stub_tokens(monkeypatch, {"id_token": "opaque"}, claims=None)
     handler = _handler()

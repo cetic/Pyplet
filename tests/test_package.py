@@ -62,9 +62,7 @@ class TestPackageVfsKeys:
     """`package()`'s VFS keys for a project's own files must always be
     "apps/<project>/<file>", independent of `config.apps`'s shape."""
 
-    def test_bare_relative_apps_dir(
-        self, tmp_path, monkeypatch, preserve_config_dict
-    ):
+    def test_bare_relative_apps_dir(self, tmp_path, monkeypatch, preserve_config_dict):
         project_dir = tmp_path / "apps" / "myproj"
         project_dir.mkdir(parents=True)
         (project_dir / "myproj_server.py").write_text(_APP_SERVER_SOURCE)

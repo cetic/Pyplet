@@ -28,9 +28,7 @@ class TestTemplateApp:
         driver.get(f"{server}/apps/template/template")
 
         # Wait for the container div to be present
-        container = wait.until(
-            EC.presence_of_element_located((By.ID, "container"))
-        )
+        container = wait.until(EC.presence_of_element_located((By.ID, "container")))
         assert container is not None
 
     def test_pyscript_initialization(self, driver, server, wait):
@@ -48,14 +46,10 @@ class TestTemplateApp:
 
         # Filter out expected errors (some browser warnings are normal)
         pyscript_errors = [
-            err
-            for err in severe_errors
-            if "pyscript" in err["message"].lower()
+            err for err in severe_errors if "pyscript" in err["message"].lower()
         ]
 
-        assert len(pyscript_errors) == 0, (
-            f"Pyscript errors found: {pyscript_errors}"
-        )
+        assert len(pyscript_errors) == 0, f"Pyscript errors found: {pyscript_errors}"
 
     def test_websocket_message_display(self, driver, server, wait):
         """Test that the WebSocket message from server is
@@ -63,18 +57,14 @@ class TestTemplateApp:
         driver.get(f"{server}/apps/template/template")
 
         # Wait for the container element
-        container = wait.until(
-            EC.presence_of_element_located((By.ID, "container"))
-        )
+        container = wait.until(EC.presence_of_element_located((By.ID, "container")))
 
         # Wait for the message to appear
         # (WebSocket communication + Pyscript initialization)
         # The server sends "Hello world!"
         # which should be displayed in the container
         wait.until(
-            EC.text_to_be_present_in_element(
-                (By.ID, "container"), "Hello world!"
-            )
+            EC.text_to_be_present_in_element((By.ID, "container"), "Hello world!")
         )
 
         # Verify the exact text
@@ -87,8 +77,7 @@ class TestTemplateApp:
         # Check for Pyscript script tag
         scripts = driver.find_elements(By.TAG_NAME, "script")
         pyscript_script = any(
-            "pyscript" in script.get_attribute("src") or ""
-            for script in scripts
+            "pyscript" in script.get_attribute("src") or "" for script in scripts
         )
         assert pyscript_script, "Pyscript script not found"
 
@@ -97,14 +86,10 @@ class TestTemplateApp:
         for _ in range(3):
             driver.get(f"{server}/apps/template/template")
 
-            container = wait.until(
-                EC.presence_of_element_located((By.ID, "container"))
-            )
+            container = wait.until(EC.presence_of_element_located((By.ID, "container")))
 
             wait.until(
-                EC.text_to_be_present_in_element(
-                    (By.ID, "container"), "Hello world!"
-                )
+                EC.text_to_be_present_in_element((By.ID, "container"), "Hello world!")
             )
 
             assert container.text == "Hello world!"
@@ -114,17 +99,13 @@ class TestTemplateApp:
         driver.get(f"{server}/apps/template/template")
 
         # Wait for container to have content (indicates WebSocket worked)
-        container = wait.until(
-            EC.presence_of_element_located((By.ID, "container"))
-        )
+        container = wait.until(EC.presence_of_element_located((By.ID, "container")))
 
         # Wait for non-empty text (message received via WebSocket)
         wait.until(lambda d: container.text != "")
 
         # If we got here, WebSocket communication succeeded
-        assert container.text != "", (
-            "Container should have received WebSocket message"
-        )
+        assert container.text != "", "Container should have received WebSocket message"
 
     def test_no_javascript_errors(self, driver, server, wait):
         """Test that no severe JavaScript errors occur during app execution."""
@@ -132,9 +113,7 @@ class TestTemplateApp:
 
         # Wait for the app to fully load
         wait.until(
-            EC.text_to_be_present_in_element(
-                (By.ID, "container"), "Hello world!"
-            )
+            EC.text_to_be_present_in_element((By.ID, "container"), "Hello world!")
         )
 
         # Additional wait to ensure all async operations complete
@@ -172,9 +151,7 @@ class TestTemplateAppPerformance:
 
         # Wait for message to appear
         wait.until(
-            EC.text_to_be_present_in_element(
-                (By.ID, "container"), "Hello world!"
-            )
+            EC.text_to_be_present_in_element((By.ID, "container"), "Hello world!")
         )
 
         end_time = time.time()
@@ -182,9 +159,7 @@ class TestTemplateAppPerformance:
 
         # Pyscript initialization can take a while,
         # but should be under 30 seconds
-        assert load_time < 30, (
-            f"App took too long to load: {load_time:.2f} seconds"
-        )
+        assert load_time < 30, f"App took too long to load: {load_time:.2f} seconds"
 
     def test_pyscript_bootstrap_completes(self, driver, server, wait):
         """Test that the Pyscript bootstrap process completes successfully."""
@@ -192,15 +167,11 @@ class TestTemplateAppPerformance:
 
         # The bootstrap process should result in the message being displayed
         # If bootstrap fails, the container will remain empty
-        container = wait.until(
-            EC.presence_of_element_located((By.ID, "container"))
-        )
+        container = wait.until(EC.presence_of_element_located((By.ID, "container")))
 
         # Wait up to 30 seconds for bootstrap to complete
         wait.until(
-            EC.text_to_be_present_in_element(
-                (By.ID, "container"), "Hello world!"
-            )
+            EC.text_to_be_present_in_element((By.ID, "container"), "Hello world!")
         )
 
         assert container.text == "Hello world!"
@@ -223,9 +194,7 @@ class TestTemplateAppEdgeCases:
 
         # Wait for initial load
         wait.until(
-            EC.text_to_be_present_in_element(
-                (By.ID, "container"), "Hello world!"
-            )
+            EC.text_to_be_present_in_element((By.ID, "container"), "Hello world!")
         )
 
         # Refresh the page
@@ -233,9 +202,7 @@ class TestTemplateAppEdgeCases:
 
         # Verify it still works
         wait.until(
-            EC.text_to_be_present_in_element(
-                (By.ID, "container"), "Hello world!"
-            )
+            EC.text_to_be_present_in_element((By.ID, "container"), "Hello world!")
         )
 
         container = driver.find_element(By.ID, "container")

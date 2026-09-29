@@ -18,21 +18,14 @@ class MyClientApp(pyplet.client.ClientApplication):
                 )
             )[
                 # Page Header
-                h1(style="margin-bottom: 10px;")[
-                    "Pyplet File Operations Tutorial"
-                ],
+                h1(style="margin-bottom: 10px;")["Pyplet File Operations Tutorial"],
                 p(style="color: #666; font-size: 1.1em;")[
                     (
                         "Explore how to handle file uploads and "
                         "downloads using custom components."
                     )
                 ],
-                hr(
-                    style=(
-                        "margin: 30px 0; border: none;"
-                        "border-top: 1px solid #eee;"
-                    )
-                ),
+                hr(style=("margin: 30px 0; border: none;border-top: 1px solid #eee;")),
                 # --- SECTION 1: Downloads ---
                 div(style="margin-bottom: 40px;")[
                     h2(style="margin-bottom: 10px;")["1. Downloading Files"],
@@ -55,12 +48,7 @@ class MyClientApp(pyplet.client.ClientApplication):
                         ),
                     ],
                 ],
-                hr(
-                    style=(
-                        "margin: 30px 0; border: none;"
-                        "border-top: 1px solid #eee;"
-                    )
-                ),
+                hr(style=("margin: 30px 0; border: none;border-top: 1px solid #eee;")),
                 # --- SECTION 2: Uploads ---
                 div(style="margin-bottom: 40px;")[
                     h2(style="margin-bottom: 10px;")["2. Uploading Files"],

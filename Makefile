@@ -48,6 +48,8 @@ fmt:
 	uv run --extra test ruff format $(LINT_PATHS)
 
 precommit: lint
+	uvx prek run
+	uv run --extra test pytest -q -x --no-header -p no:cacheprovider tests/test_guard_chain.py
 
 prepush: lint test
 

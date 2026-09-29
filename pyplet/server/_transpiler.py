@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 class CommentRemover(ast.NodeTransformer):
     def visit_Expr(self, node):
         # Modern Python (3.8+) uses ast.Constant for all literals
-        if isinstance(node.value, ast.Constant) and isinstance(
-            node.value.value, str
-        ):
+        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
             return None
         return node
 
@@ -91,9 +89,7 @@ class DataclassAheadOfTimeTranspiler(ast.NodeTransformer):
         new_body = []
 
         for stmt in node.body:
-            if isinstance(stmt, ast.AnnAssign) and isinstance(
-                stmt.target, ast.Name
-            ):
+            if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
                 ann_str = ast.unparse(stmt.annotation)
 
                 # If we hit dataclasses.KW_ONLY, mark it and drop the
@@ -116,9 +112,7 @@ class DataclassAheadOfTimeTranspiler(ast.NodeTransformer):
             init_ast = ast.parse(init_code).body[0]
             new_body.append(init_ast)
         except SyntaxError:
-            logger.warning(
-                "Warning: Could not synthesize __init__ for %s", node.name
-            )
+            logger.warning("Warning: Could not synthesize __init__ for %s", node.name)
 
         node.body = new_body
         return node
@@ -331,9 +325,7 @@ class UnionTypeFixer(ast.NodeTransformer):
     def _flatten_union(self, node):
         """Recursively flatten nested ``BinOp(BitOr)`` into a flat list."""
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-            return self._flatten_union(node.left) + self._flatten_union(
-                node.right
-            )
+            return self._flatten_union(node.left) + self._flatten_union(node.right)
         return [node]
 
     def _enter_annotation(self, node):
@@ -357,9 +349,7 @@ class UnionTypeFixer(ast.NodeTransformer):
         return node
 
     def _visit_func(self, node):
-        all_args = (
-            node.args.args + node.args.posonlyargs + node.args.kwonlyargs
-        )
+        all_args = node.args.args + node.args.posonlyargs + node.args.kwonlyargs
         for arg in all_args:
             if arg.annotation:
                 arg.annotation = self._enter_annotation(arg.annotation)
@@ -474,8 +464,7 @@ class StrSubclassNewStripper(ast.NodeTransformer):
 
         # Check if the class inherits from 'str'
         is_str_subclass = any(
-            isinstance(base, ast.Name) and base.id == "str"
-            for base in node.bases
+            isinstance(base, ast.Name) and base.id == "str" for base in node.bases
         )
 
         if is_str_subclass:
@@ -483,10 +472,7 @@ class StrSubclassNewStripper(ast.NodeTransformer):
             node.body = [
                 stmt
                 for stmt in node.body
-                if not (
-                    isinstance(stmt, ast.FunctionDef)
-                    and stmt.name == "__new__"
-                )
+                if not (isinstance(stmt, ast.FunctionDef) and stmt.name == "__new__")
             ]
 
         return node
@@ -629,9 +615,7 @@ class LocalVariableObfuscator(ast.NodeTransformer):
         # (Function arguments)
         arg_names = {
             arg.arg
-            for arg in node.args.args
-            + node.args.posonlyargs
-            + node.args.kwonlyargs
+            for arg in node.args.args + node.args.posonlyargs + node.args.kwonlyargs
         }
         if node.args.vararg:
             arg_names.add(node.args.vararg.arg)
@@ -644,9 +628,7 @@ class LocalVariableObfuscator(ast.NodeTransformer):
 
         # 3. Create a scrambling mapping
         # (e.g., 'user_id' -> '_O0', 'temp_data' -> '_O1')
-        mapping = {
-            old_name: f"_O{i}" for i, old_name in enumerate(safe_to_rename)
-        }
+        mapping = {old_name: f"_O{i}" for i, old_name in enumerate(safe_to_rename)}
 
         # 4. Sub-transformer to actually rewrite
         # the names in the function body

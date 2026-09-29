@@ -47,9 +47,7 @@ class _AuthMixin:
             return {"email": "", "name": "anonymous", "provider": None}
         return oauth.get_session(self)
 
-    def _require_auth(
-        self, project: str | None = None, app: str | None = None
-    ):
+    def _require_auth(self, project: str | None = None, app: str | None = None):
         """Enforce auth + ACL: the user dict on success, None once the
         request has already been terminated (redirect / error written)."""
         if not oauth.auth_enabled():
@@ -102,20 +100,14 @@ class AppStaticFileHandler(tornado.web.StaticFileHandler):
         super().initialize(path=apps_root)
         self._apps_root = apps_root
 
-    async def get(
-        self, project: str, path: str, include_body: bool = True
-    ) -> None:
-        self.root = str(
-            _apps.project_dir(project, root=self._apps_root) / "static"
-        )
+    async def get(self, project: str, path: str, include_body: bool = True) -> None:
+        self.root = str(_apps.project_dir(project, root=self._apps_root) / "static")
         await super().get(path, include_body=include_body)
 
     async def head(self, project: str, path: str) -> None:
         await self.get(project, path, include_body=False)
 
-    def validate_absolute_path(
-        self, root: str, absolute_path: str
-    ) -> str | None:
+    def validate_absolute_path(self, root: str, absolute_path: str) -> str | None:
         validated = super().validate_absolute_path(root, absolute_path)
         if validated is None:
             return None
@@ -144,9 +136,7 @@ def load_favicon_as_data_uri(filepath):
 
 _HEAD_OPEN_RE = re.compile(r"<head\b[^>]*>", re.IGNORECASE)
 _LINK_TAG_RE = re.compile(r"<link\b[^>]*>", re.IGNORECASE)
-_REL_ATTR_RE = re.compile(
-    r"""rel\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))""", re.IGNORECASE
-)
+_REL_ATTR_RE = re.compile(r"""rel\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))""", re.IGNORECASE)
 
 
 def _has_favicon_link(html_str: str) -> bool:
@@ -179,13 +169,9 @@ class BaseHandler(tornado.web.RequestHandler):
 
         head_match = _HEAD_OPEN_RE.search(html_str)
         if head_match and not _has_favicon_link(html_str):
-            favicon_tag = (
-                f'<link rel="icon" type="image/svg+xml" href="{favicon_uri}">'
-            )
+            favicon_tag = f'<link rel="icon" type="image/svg+xml" href="{favicon_uri}">'
             insert_at = head_match.end()
-            html_str = (
-                html_str[:insert_at] + favicon_tag + html_str[insert_at:]
-            )
+            html_str = html_str[:insert_at] + favicon_tag + html_str[insert_at:]
 
         self.write(html_str.encode("utf-8"))
 
@@ -242,9 +228,7 @@ class IndexHandler(_AuthMixin, BaseHandler):
         user = self._require_auth()
         if user is None:
             return
-        self.write_html(
-            str(templates.index_template(self, user)).encode("UTF-8")
-        )
+        self.write_html(str(templates.index_template(self, user)).encode("UTF-8"))
 
 
 class LogoutHandler(tornado.web.RequestHandler):
@@ -351,9 +335,7 @@ class ServerWebSocket(_AuthMixin, tornado.websocket.WebSocketHandler):
         return await self.queue.get()
 
     async def send(self, message):
-        await super().write_message(
-            message, binary=not isinstance(message, str)
-        )
+        await super().write_message(message, binary=not isinstance(message, str))
 
     def on_close(self):
         asyncio.get_running_loop().create_task(self.aclose())
@@ -554,9 +536,7 @@ class ServerApplication:
         )
         htpy_parent = str(Path(htpy_location).parent)
         markupsafe_location = str(
-            importlib.util.find_spec("markupsafe").submodule_search_locations[
-                0
-            ]
+            importlib.util.find_spec("markupsafe").submodule_search_locations[0]
         )
         markupsafe_parent = str(Path(markupsafe_location).parent)
 
@@ -587,10 +567,7 @@ class ServerApplication:
                 if not full_path.is_file():
                     continue
 
-                if (
-                    "__pycache__" in full_path.__str__()
-                    or full_path.suffix == ".pyc"
-                ):
+                if "__pycache__" in full_path.__str__() or full_path.suffix == ".pyc":
                     continue
 
                 if full_path.resolve().is_relative_to(project_static_dir):
@@ -612,12 +589,8 @@ class ServerApplication:
                         )
                         content_bytes = transpiled_str.encode("utf-8")
 
-                        transpiled_path = (
-                            app_root / ".transpiled" / target_path
-                        )
-                        transpiled_path.parent.mkdir(
-                            parents=True, exist_ok=True
-                        )
+                        transpiled_path = app_root / ".transpiled" / target_path
+                        transpiled_path.parent.mkdir(parents=True, exist_ok=True)
 
                         with transpiled_path.open(
                             "w", encoding="utf-8"
@@ -626,17 +599,14 @@ class ServerApplication:
 
                     except UnicodeDecodeError:
                         logger.warning(
-                            f"{full_path} is not valid UTF-8. "
-                            "Skipping transpilation."
+                            f"{full_path} is not valid UTF-8. Skipping transpilation."
                         )
                         content_bytes = raw_bytes
 
                 else:
                     content_bytes = raw_bytes
 
-                encoded_content = base64.b64encode(content_bytes).decode(
-                    "utf-8"
-                )
+                encoded_content = base64.b64encode(content_bytes).decode("utf-8")
                 file_map[target_path.as_posix()] = encoded_content
 
         json_bytes = json.dumps(file_map).encode("utf-8")
@@ -1000,9 +970,7 @@ else:
 
         py_config = {
             "packages": (
-                []
-                if script_tag == "mpy"
-                else ["htpy", "markupsafe", "micropip"]
+                [] if script_tag == "mpy" else ["htpy", "markupsafe", "micropip"]
             )
         }
 
@@ -1031,9 +999,7 @@ else:
             ],
         }
 
-        tree = templates.application_template(
-            f"{project}/{app}", handler, content
-        )
+        tree = templates.application_template(f"{project}/{app}", handler, content)
         handler.write_html(tree)
 
     def routes(self) -> list[tuple[str, type, dict]]:

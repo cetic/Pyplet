@@ -185,9 +185,7 @@ def _send_email_sync(to_addr: str, base: str, magic_url: str) -> None:
 async def _send_email(to_addr: str, base: str, magic_url: str) -> None:
     """Async wrapper — runs the blocking SMTP call in a thread pool."""
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(
-        None, _send_email_sync, to_addr, base, magic_url
-    )
+    await loop.run_in_executor(None, _send_email_sync, to_addr, base, magic_url)
 
 
 # ---------------------------------------------------------------------------
@@ -230,9 +228,7 @@ async def handle_request(handler) -> None:
     from . import templates
 
     handler.write(
-        str(templates.magiclink_sent_template(handler, email_addr)).encode(
-            "UTF-8"
-        )
+        str(templates.magiclink_sent_template(handler, email_addr)).encode("UTF-8")
     )
 
 

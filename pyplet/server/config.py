@@ -209,9 +209,7 @@ class PypletConfig:
     # ── Magic-link e-mail auth ───────────────────────────────────────────────
     magiclink_smtp_host = Param(
         default=None,
-        description=(
-            "Configure an SMTP server host to enable magic-link login."
-        ),
+        description=("Configure an SMTP server host to enable magic-link login."),
         env_var="MAGICLINK_SMTP_HOST",
     )
     magiclink_smtp_port = Param(

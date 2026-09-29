@@ -21,8 +21,8 @@ are compressed on the wire. Two properties are pinned here:
 
 The handshake assertion uses Tornado's ``AsyncHTTPTestCase`` harness (shipped
 with the existing ``tornado`` dep — no new dependency), mirroring
-``tests/healthz_test.py``; the unit assertion builds a bare handler via
-``__new__`` like ``tests/prod_hardening_test.py``.
+``tests/test_healthz.py``; the unit assertion builds a bare handler via
+``__new__`` like ``tests/test_prod_hardening.py``.
 """
 
 from tornado.testing import AsyncHTTPTestCase, gen_test
