@@ -136,6 +136,15 @@ doctor:
 	  fi); \
 	if [ -n "$$hooks" ]; then echo "$$hooks"; fi; \
 	if printf '%s\n' "$$hooks" | grep -q '^KO'; then rc=1; fi; \
+	if [ -r .claude/hooks/guards.py ]; then \
+	  if drift=$$(PYTHONDONTWRITEBYTECODE=1 python3 -c 'import pathlib, sys; \
+	      sys.path.insert(0, ".claude/hooks"); import guards; \
+	      print("\n".join(guards.chain_drift(pathlib.Path("."))))' 2>&1); then \
+	    if [ -n "$$drift" ]; then \
+	      printf '%s\n' "$$drift" | sed 's/^/KO   drift from owner HEAD: /'; rc=1; \
+	    else echo "ok   guard chain matches its owner's HEAD (git and Claude hooks)"; fi; \
+	  else echo "KO   drift check did not run: $$drift"; rc=1; fi; \
+	fi; \
 	if [ $$rc -eq 0 ]; then echo "doctor: guard chain in place"; \
 	else echo "doctor: 'make env' creates missing links (needs $(CHAIN_OWNER)); other KO lines are fixed by hand"; \
 	fi; \

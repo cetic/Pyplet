@@ -19,7 +19,7 @@ that matters becomes a test; the rest goes to `docs/` or `specs/`.
 | Fast commit gate | `make precommit`; push gate `make prepush` (= lint + test) |
 | Run | `make start` |
 | Disposable clone | `make new-tree <name>` |
-| Guard chain — check | `make doctor` (links resolve, `core.hooksPath`, hook scripts runnable; non-zero and one line per problem) |
+| Guard chain — check | `make doctor` (links resolve, `core.hooksPath`, hook scripts runnable, chain drift from its owner's HEAD; non-zero and one line per problem) |
 | Guard chain — setup | `make env` (creates the missing links to `apps/QualiSpectra`, bmad-loop hook script included; idempotent, never overwrites) |
 
 Never hand-write a `pytest`/`ruff` invocation: `pyproject.toml` has
@@ -49,7 +49,7 @@ to `pyplet tests` and pass `--no-fix`.
 ## Development constraints (enforced, not advisory)
 
 Target: the same layered chain as the apps developed on top of pyplet
-(`apps/QualiSpectra` is the reference implementation). State 2026-09-09:
+(`apps/QualiSpectra` is the reference implementation). State 2026-09-29:
 layers 2–4 are **live** (`main` is lint-green again since the import-sorter
 conflict was settled — it had been red since `ef4a30f`, see #58; the shared git
 hooks run `make precommit`/`make prepush` whenever the tracked `.lint-green`
