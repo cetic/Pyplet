@@ -20,7 +20,7 @@ that matters becomes a test; the rest goes to `docs/` or `specs/`.
 | Run | `make start` |
 | Disposable clone | `make new-tree <name>` |
 | Guard chain — check | `make doctor` (links resolve, `core.hooksPath`, hook scripts runnable; non-zero and one line per problem) |
-| Guard chain — setup | `make env` (creates the missing links to `apps/QualiSpectra`; idempotent, never overwrites) |
+| Guard chain — setup | `make env` (creates the missing links to `apps/QualiSpectra`, bmad-loop hook script included; idempotent, never overwrites) |
 
 Never hand-write a `pytest`/`ruff` invocation: `pyproject.toml` has
 `fix = true` and `respect-gitignore = false`, so a bare `ruff check .` would

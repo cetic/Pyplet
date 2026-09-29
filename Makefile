@@ -52,7 +52,8 @@ precommit: lint
 prepush: lint test
 
 # Guard chain: gitignored here, owned by apps/QualiSpectra and shared by
-# symlink, so a fresh clone has none of it. `env` creates the links, `doctor`
+# symlink, so a fresh clone has none of it. `env` creates the links (plus
+# the bmad-loop hook script that settings.json calls), `doctor`
 # reports drift. Both act on the current directory, so `make -C <root> doctor`
 # checks another checkout without touching it. A hook script is judged
 # runnable as it is invoked: +x only when the command runs it directly, since
@@ -69,6 +70,7 @@ CHAIN_ROOT := $(if $(filter .git,$(CHAIN_COMMON)),.,$(patsubst %/.git,%,$(CHAIN_
 CHAIN_LINKS := settings.json hooks skills
 CHAIN_GITHOOKS := .githooks
 CHAIN_SETTINGS := .claude/settings.json
+CHAIN_BMAD := .bmad-loop/bmad_loop_hook.py
 # Links are compared by the exact target `env` would write; core.hooksPath by
 # where it lands, since git accepts an absolute path there and a worktree
 # inherits it as such. `env` reads and writes the *local* config only, so a
@@ -133,7 +135,7 @@ doctor:
 	if [ -n "$$hooks" ]; then echo "$$hooks"; fi; \
 	if printf '%s\n' "$$hooks" | grep -q '^KO'; then rc=1; fi; \
 	if [ $$rc -eq 0 ]; then echo "doctor: guard chain in place"; \
-	else echo "doctor: 'make env' links what is missing (needs $(CHAIN_OWNER))"; \
+	else echo "doctor: 'make env' creates missing links (needs $(CHAIN_OWNER)); other KO lines are fixed by hand"; \
 	fi; \
 	exit $$rc
 
@@ -156,6 +158,12 @@ env:
 	  link ".claude/$$n" "$(CHAIN_OWNER_UP)/.claude/$$n" || rc=1; \
 	done; \
 	link "$(CHAIN_GITHOOKS)" "$(CHAIN_OWNER)/$(CHAIN_GITHOOKS)" || rc=1; \
+	if [ -f $(CHAIN_BMAD) ] && [ ! -L $(CHAIN_BMAD) ]; then \
+	  echo "ok   $(CHAIN_BMAD): local file kept"; \
+	else \
+	  if [ -f $(CHAIN_OWNER)/$(CHAIN_BMAD) ]; then mkdir -p $(dir $(CHAIN_BMAD)); fi; \
+	  link "$(CHAIN_BMAD)" "$(CHAIN_OWNER_UP)/$(CHAIN_BMAD)" || rc=1; \
+	fi; \
 	if [ "$$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then \
 	  echo "skip git config core.hooksPath: not a git work tree"; \
 	elif [ "$$(git rev-parse --git-dir 2>/dev/null)" \
