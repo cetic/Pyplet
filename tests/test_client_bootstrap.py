@@ -73,17 +73,13 @@ def _fake_micropip(monkeypatch, recorder):
 
 class TestApplicationLookup:
     @pytest.mark.asyncio
-    async def test_the_registry_entry_is_reused_as_is(
-        self, client_module, monkeypatch
-    ):
+    async def test_the_registry_entry_is_reused_as_is(self, client_module, monkeypatch):
         registered = _self_registering_app(client_module, monkeypatch)
         _app_module(monkeypatch)
 
         await client_module.bootstrap_client(_PREFIX, _PROJECT, _APP)
 
-        assert client_module.client_applications[_PROJECT, _APP] is (
-            registered
-        ), (
+        assert client_module.client_applications[_PROJECT, _APP] is (registered), (
             "__init_subclass__ already instantiated the app: bootstrap must "
             "reuse that instance rather than build a second one"
         )
@@ -109,9 +105,7 @@ class TestApplicationLookup:
     async def test_the_base_class_alone_is_not_an_application(
         self, client_module, monkeypatch
     ):
-        _app_module(
-            monkeypatch, ClientApplication=client_module.ClientApplication
-        )
+        _app_module(monkeypatch, ClientApplication=client_module.ClientApplication)
 
         with pytest.raises(RuntimeError, match="Could not find a Client"):
             await client_module.bootstrap_client(_PREFIX, _PROJECT, _APP)
@@ -122,9 +116,7 @@ class TestApplicationLookup:
     ):
         _app_module(monkeypatch)
 
-        with pytest.raises(
-            RuntimeError, match=f"subclass in {_PROJECT}/{_APP}"
-        ):
+        with pytest.raises(RuntimeError, match=f"subclass in {_PROJECT}/{_APP}"):
             await client_module.bootstrap_client(_PREFIX, _PROJECT, _APP)
 
 
@@ -165,9 +157,7 @@ class TestBootstrapWiring:
         async def spy(self):
             calls.append(self)
 
-        monkeypatch.setattr(
-            client_module.ClientApplication, "client_init", spy
-        )
+        monkeypatch.setattr(client_module.ClientApplication, "client_init", spy)
         _self_registering_app(client_module, monkeypatch, ())
         _app_module(monkeypatch)
 
@@ -179,9 +169,7 @@ class TestBootstrapWiring:
         )
 
     @pytest.mark.asyncio
-    async def test_the_boot_splash_is_dropped(
-        self, client_module, monkeypatch
-    ):
+    async def test_the_boot_splash_is_dropped(self, client_module, monkeypatch):
         _self_registering_app(client_module, monkeypatch)
         _app_module(monkeypatch)
         splash = browser_stubs.FakeElement("div")
@@ -232,9 +220,7 @@ class TestWebsocketWiring:
         assert wrapper.ws is socket
 
     @pytest.mark.asyncio
-    async def test_no_socket_is_opened_without_a_loop(
-        self, client_module, monkeypatch
-    ):
+    async def test_no_socket_is_opened_without_a_loop(self, client_module, monkeypatch):
         _self_registering_app(client_module, monkeypatch, ("init",))
         _app_module(monkeypatch)
 
@@ -280,9 +266,7 @@ class TestDependencyInstall:
         _self_registering_app(client_module, monkeypatch)
         _app_module(monkeypatch)
 
-        await client_module.bootstrap_client(
-            _PREFIX, _PROJECT, _APP, deps=("numpy",)
-        )
+        await client_module.bootstrap_client(_PREFIX, _PROJECT, _APP, deps=("numpy",))
 
         assert loaded == ["micropip"], (
             "a stale PyScript cache can leave micropip unregistered: "
@@ -308,8 +292,7 @@ class TestDependencyInstall:
             )
 
         assert installed == ["numpy", "requests"], (
-            "MicroPython has no micropip: deps go through mip, one call "
-            "per package"
+            "MicroPython has no micropip: deps go through mip, one call per package"
         )
 
     @pytest.mark.asyncio

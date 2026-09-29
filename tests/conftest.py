@@ -165,9 +165,7 @@ def server():
     deadline = time.monotonic() + 30
     while True:
         if not server_process.is_alive():
-            raise RuntimeError(
-                "Pyplet test server process exited during startup"
-            )
+            raise RuntimeError("Pyplet test server process exited during startup")
         try:
             with socket.create_connection((config.address, port), timeout=1):
                 break
@@ -175,8 +173,7 @@ def server():
             if time.monotonic() > deadline:
                 server_process.terminate()
                 raise RuntimeError(
-                    f"Pyplet test server not reachable on port {port} "
-                    "after 30s"
+                    f"Pyplet test server not reachable on port {port} after 30s"
                 ) from None
             time.sleep(0.2)
 

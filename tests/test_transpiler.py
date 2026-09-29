@@ -140,12 +140,7 @@ class TestDataclassTranspiler:
 
     def test_dataclass_without_fields_gets_an_empty_init(self):
         """A field-less dataclass still gets a valid, empty __init__."""
-        src = (
-            "from dataclasses import dataclass\n"
-            "@dataclass\n"
-            "class Marker:\n"
-            "    pass\n"
-        )
+        src = "from dataclasses import dataclass\n@dataclass\nclass Marker:\n    pass\n"
         result = _apply(DataclassAheadOfTimeTranspiler(), src)
         assert "def __init__(self):" in result
 
@@ -556,9 +551,7 @@ class TestTranspileEndToEnd:
 
     def test_optimize_removes_assert(self):
         src = "assert x > 0\ny = 1"
-        result = transpile_to_pyscript(
-            src, targer_interpreter="mpy", optimize=True
-        )
+        result = transpile_to_pyscript(src, targer_interpreter="mpy", optimize=True)
         assert "assert" not in result
 
     def test_mpy_removesuffix_polyfill(self):

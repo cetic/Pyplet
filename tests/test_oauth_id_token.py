@@ -2,7 +2,7 @@
 
 Exercises the pure, synchronous ``oauth._verify_id_token_against_jwks`` with
 crafted JWTs signed by a test RSA key and a JWKS built from that key's public
-half — no async, no network. Mirrors ``tests/oauth_test.py`` (sync ``def
+half — no async, no network. Mirrors ``tests/test_oauth.py`` (sync ``def
 test_*`` + ``monkeypatch``); ``authlib`` (already a dependency) mints the keys
 and signs the tokens.
 
@@ -30,9 +30,7 @@ from authlib.jose.errors import JoseError
 
 from pyplet.server import oauth
 
-pytestmark = pytest.mark.filterwarnings(
-    "ignore:authlib.jose module is deprecated"
-)
+pytestmark = pytest.mark.filterwarnings("ignore:authlib.jose module is deprecated")
 
 _RS = JsonWebToken(["RS256"])
 _ISSUER = "https://accounts.google.com"

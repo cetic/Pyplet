@@ -31,9 +31,7 @@ _TOKEN_ENDPOINT = "https://id.example.test/token"
 # A provider the framework has never heard of, declared entirely by a test.
 _SPEC = {
     "label": "Example ID",
-    "openid_config_url": (
-        "https://id.example.test/.well-known/openid-configuration"
-    ),
+    "openid_config_url": ("https://id.example.test/.well-known/openid-configuration"),
     "client_id": "example-client",
     "client_secret": "example-secret",
     "scopes": ["openid", "email"],
@@ -48,9 +46,7 @@ def _isolate_registries(monkeypatch):
     so without this a test that registers or overrides would leak into the
     next one (and into the rest of the session).
     """
-    monkeypatch.setattr(
-        oauth, "_PROVIDER_CONFIGS", dict(oauth._PROVIDER_CONFIGS)
-    )
+    monkeypatch.setattr(oauth, "_PROVIDER_CONFIGS", dict(oauth._PROVIDER_CONFIGS))
     monkeypatch.setattr(oauth, "_CONSENT_FLOWS", dict(oauth._CONSENT_FLOWS))
     yield
 
@@ -58,8 +54,8 @@ def _isolate_registries(monkeypatch):
 def _handler(**arguments):
     """A Tornado-handler double whose ``get_argument`` serves *arguments*."""
     handler = MagicMock()
-    handler.get_argument.side_effect = lambda name, default=None: (
-        arguments.get(name, default)
+    handler.get_argument.side_effect = lambda name, default=None: arguments.get(
+        name, default
     )
     return handler
 
@@ -113,9 +109,7 @@ def test_provider_label_falls_back_to_the_name():
     assert oauth.provider_label("example") == "Example"
 
 
-@pytest.mark.parametrize(
-    "missing", ["openid_config_url", "client_id", "client_secret"]
-)
+@pytest.mark.parametrize("missing", ["openid_config_url", "client_id", "client_secret"])
 def test_register_provider_rejects_an_incomplete_spec(missing):
     """A spec missing a required key fails at registration, not at login."""
     spec = {k: v for k, v in _SPEC.items() if k != missing}
@@ -140,9 +134,7 @@ def test_spec_values_may_be_callables_resolved_at_use_time():
     without re-registering.
     """
     box = {"client_id": ""}
-    oauth.register_provider(
-        "example", {**_SPEC, "client_id": lambda: box["client_id"]}
-    )
+    oauth.register_provider("example", {**_SPEC, "client_id": lambda: box["client_id"]})
     assert "example" not in oauth.enabled_providers()
     box["client_id"] = "configured-later"
     assert "example" in oauth.enabled_providers()
@@ -152,9 +144,7 @@ def test_spec_values_may_be_callables_resolved_at_use_time():
 async def test_start_login_uses_the_registered_spec(monkeypatch):
     """The authorize URL comes wholly from the spec — no vendor default."""
     monkeypatch.setattr(oauth, "_fetch_oidc_config", _stub_oidc)
-    oauth.register_provider(
-        "example", {**_SPEC, "auth_params": {"prompt": "login"}}
-    )
+    oauth.register_provider("example", {**_SPEC, "auth_params": {"prompt": "login"}})
     handler = _handler(next="/somewhere")
 
     await oauth.start_login(handler, "example")
@@ -219,9 +209,7 @@ async def test_start_consent_adds_flow_scopes_and_params(monkeypatch):
     await oauth.start_consent(handler, "files", "/back-here")
 
     params = _redirect_params(handler)
-    assert params["scope"] == (
-        "openid email https://api.example.test/auth/files"
-    )
+    assert params["scope"] == ("openid email https://api.example.test/auth/files")
     assert params["access_type"] == "offline"
     assert params["prompt"] == "consent"  # flow params beat the provider's
     assert params["client_id"] == "example-client"  # same client as login
@@ -328,9 +316,7 @@ async def test_callback_does_not_touch_the_session_on_a_consent_flow(
     """Incremental consent must not re-issue the login session cookie."""
     _stub_callback(monkeypatch)
     sessions = []
-    monkeypatch.setattr(
-        oauth, "set_session", lambda h, info: sessions.append(info)
-    )
+    monkeypatch.setattr(oauth, "set_session", lambda h, info: sessions.append(info))
     _register_flow()
 
     await oauth.handle_callback(_callback_handler())
@@ -343,9 +329,7 @@ async def test_callback_without_a_flow_still_logs_in(monkeypatch):
     """The plain login callback is untouched by the consent routing."""
     _stub_callback(monkeypatch)
     sessions = []
-    monkeypatch.setattr(
-        oauth, "set_session", lambda h, info: sessions.append(info)
-    )
+    monkeypatch.setattr(oauth, "set_session", lambda h, info: sessions.append(info))
     oauth.register_provider("example", _SPEC)
 
     handler = _callback_handler(flow=None)
@@ -384,9 +368,7 @@ async def test_callback_for_an_unregistered_flow_is_refused(monkeypatch):
     """
     _stub_callback(monkeypatch)
     sessions = []
-    monkeypatch.setattr(
-        oauth, "set_session", lambda h, info: sessions.append(info)
-    )
+    monkeypatch.setattr(oauth, "set_session", lambda h, info: sessions.append(info))
     oauth.register_provider("example", _SPEC)
 
     handler = _callback_handler(flow="never-registered")

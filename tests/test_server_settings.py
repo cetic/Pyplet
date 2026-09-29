@@ -6,7 +6,7 @@ document upload exceeded the frame and killed the socket before app code ran.
 Story 18.17 adds the setting to ``_app_spec`` from the new
 ``PYPLET_WS_MAX_MESSAGE_MB`` knob (default 40 MB).
 
-The env override is covered at the ``Param`` level in ``config_test.py``.
+The env override is covered at the ``Param`` level in ``test_config.py``.
 ``_app_spec`` is frozen at module-import time, so this test pins only the
 concrete default on the frozen spec (a computed comparison against
 ``config.ws_max_message_mb`` would be flaky under a prior env monkeypatch).

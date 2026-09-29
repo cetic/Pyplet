@@ -753,9 +753,7 @@ async def start_consent(handler, name: str, next_url: str = "/") -> None:
     )
 
     callback_url = _callback_url(handler)
-    scopes = _provider_scopes(meta) + list(
-        _spec_value(flow, "scopes", ()) or ()
-    )
+    scopes = _provider_scopes(meta) + list(_spec_value(flow, "scopes", ()) or ())
     params = {
         "client_id": client_id,
         "redirect_uri": callback_url,
@@ -800,9 +798,7 @@ async def handle_callback(handler) -> None:
 
     flow_name = state_data.get("flow")
     if flow_name:
-        await _run_consent_flow(
-            handler, flow_name, user_info, tokens, next_url
-        )
+        await _run_consent_flow(handler, flow_name, user_info, tokens, next_url)
         return
 
     set_session(handler, user_info)
@@ -821,9 +817,7 @@ def _callback_state(handler) -> dict | None:
     # --- Validate CSRF state ---
     raw_state = handler.get_signed_cookie(_STATE_COOKIE)
     if not raw_state:
-        _error(
-            handler, 400, "OAuth state cookie is missing. Please try again."
-        )
+        _error(handler, 400, "OAuth state cookie is missing. Please try again.")
         return
 
     state_data = json.loads(raw_state)
@@ -915,9 +909,7 @@ async def _callback_user(handler, tokens, provider) -> dict | None:
     return user_info
 
 
-async def _run_consent_flow(
-    handler, flow_name, user_info, tokens, next_url
-) -> None:
+async def _run_consent_flow(handler, flow_name, user_info, tokens, next_url) -> None:
     """Hand the tokens to the named consent flow, then redirect."""
     # Incremental-consent callback — do NOT call set_session (the user is
     # already logged in). Hand the raw token response to the flow that started

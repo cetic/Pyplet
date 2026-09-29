@@ -7,7 +7,7 @@ when auth is enabled but ``auth_rules.json`` is missing, and the magic-link
 refuse-in-production gate (``PYPLET_ALLOW_MAGICLINK`` opt-in).
 
 These are sync ``def test_*`` functions using the ``monkeypatch`` fixture,
-mirroring ``tests/config_test.py``. The helper under test is sync, so no
+mirroring ``tests/test_config.py``. The helper under test is sync, so no
 ``@pytest.mark.asyncio`` / pytest-asyncio is required.
 
 ACL global-state hygiene: ``oauth._acl_rules`` / ``oauth._acl_allow_all`` are
@@ -88,9 +88,7 @@ def test_enforce_warns_when_auth_off_and_not_production(monkeypatch, caplog):
 # ---------------------------------------------------------------------------
 
 
-def test_acl_denies_by_default_when_auth_on_and_no_rules_file(
-    monkeypatch, tmp_path
-):
+def test_acl_denies_by_default_when_auth_on_and_no_rules_file(monkeypatch, tmp_path):
     """Auth enabled but no rules file → is_app_permitted denies (fail
     closed)."""
     _clear_auth_env(monkeypatch)
@@ -101,9 +99,7 @@ def test_acl_denies_by_default_when_auth_on_and_no_rules_file(
     assert oauth.is_app_permitted("any", "app", "user@example.com") is False
 
 
-def test_acl_allows_all_when_auth_disabled_and_no_rules_file(
-    monkeypatch, tmp_path
-):
+def test_acl_allows_all_when_auth_disabled_and_no_rules_file(monkeypatch, tmp_path):
     """Auth fully disabled (local dev) preserves allow-all on a missing
     file."""
     _clear_auth_env(monkeypatch)
@@ -136,9 +132,7 @@ def test_enforce_raises_when_production_auth_on_and_no_rules_file(
 # ---------------------------------------------------------------------------
 
 
-def test_enforce_raises_when_production_magiclink_without_optin(
-    monkeypatch, tmp_path
-):
+def test_enforce_raises_when_production_magiclink_without_optin(monkeypatch, tmp_path):
     """Production profile + magic-link on + no opt-in → refuse to boot."""
     _clear_auth_env(monkeypatch)
     rules = _write_rules(tmp_path)
@@ -175,9 +169,7 @@ def test_enforce_allows_magiclink_with_explicit_optin(monkeypatch, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_enforce_allows_fully_configured_production_profile(
-    monkeypatch, tmp_path
-):
+def test_enforce_allows_fully_configured_production_profile(monkeypatch, tmp_path):
     """Production profile fully configured (OAuth + rules file, no magic-link)
     → boots (does not raise)."""
     _clear_auth_env(monkeypatch)

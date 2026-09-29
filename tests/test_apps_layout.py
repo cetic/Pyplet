@@ -66,9 +66,7 @@ class TestFlatLayoutDiscovery:
         _write_flat_app(root, "chat", "ChatServer")
         config.apps = str(root)
 
-        assert _apps.server_modules() == [
-            ("examples", "chat", root / "chat_server.py")
-        ]
+        assert _apps.server_modules() == [("examples", "chat", root / "chat_server.py")]
         assert _apps.client_apps() == [("examples", "chat")]
 
     def test_flat_root_spelled_dot_still_names_the_project(
@@ -91,9 +89,7 @@ class TestFlatLayoutDiscovery:
 
         assert _apps.client_apps() == [("myproj", "one")]
 
-    def test_mixed_root_yields_both_layouts(
-        self, tmp_path, preserve_config_dict
-    ):
+    def test_mixed_root_yields_both_layouts(self, tmp_path, preserve_config_dict):
         """A root holding app files AND project subdirectories must not
         make one layout hide the other."""
         root = tmp_path / "examples"
@@ -106,9 +102,7 @@ class TestFlatLayoutDiscovery:
             ("extras", "extra"),
         ]
 
-    def test_dot_directories_are_not_discovered(
-        self, tmp_path, preserve_config_dict
-    ):
+    def test_dot_directories_are_not_discovered(self, tmp_path, preserve_config_dict):
         """`glob` skips dot-prefixed entries, keeping `.transpiled/` out."""
         root = tmp_path / "examples"
         _write_flat_app(root / ".transpiled", "ghost", "GhostServer")
@@ -160,9 +154,7 @@ class TestFlatLayoutDiscovery:
         assert _apps.flat_project() is None
         assert _apps.client_apps() == []
 
-    def test_project_dir_maps_both_layouts(
-        self, tmp_path, preserve_config_dict
-    ):
+    def test_project_dir_maps_both_layouts(self, tmp_path, preserve_config_dict):
         root = tmp_path / "examples"
         _write_flat_app(root, "chat", "ChatServer")
         _write_nested_app(root, "extras", "extra", "ExtraServer")
@@ -222,9 +214,7 @@ class TestFlatLayoutListings:
             lambda project, app, email: app != "secret",
         )
 
-        assert oauth.permitted_apps("someone@example.com") == [
-            ("examples", "chat")
-        ]
+        assert oauth.permitted_apps("someone@example.com") == [("examples", "chat")]
 
     def test_index_lists_a_flat_app_when_auth_is_disabled(
         self, tmp_path, monkeypatch, preserve_config_dict
@@ -347,7 +337,6 @@ class FlatAppStaticTest(AsyncHTTPTestCase):
             follow_redirects=False,
         )
         assert resp.code != 200, (
-            "traversal to *_server.py must be refused, got 200 "
-            f"(body={resp.body!r})"
+            f"traversal to *_server.py must be refused, got 200 (body={resp.body!r})"
         )
         assert b"SECRET" not in resp.body

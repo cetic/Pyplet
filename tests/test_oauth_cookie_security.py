@@ -4,7 +4,7 @@ Covers DEPLOY-2 (the ``Secure`` attribute on all three auth cookies, gated on
 the deployed origin) and SECURI-9 (fail-fast on a missing persistent
 ``PYPLET_COOKIE_SECRET`` on the production profile).
 
-Mirrors ``tests/config_test.py`` / ``tests/oauth_test.py``: env-driven via the
+Mirrors ``tests/test_config.py`` / ``tests/test_oauth.py``: env-driven via the
 ``monkeypatch`` fixture, no live server. ``_use_secure_cookies`` and
 ``set_session`` are sync; the two OAuth-state writers (``start_login`` /
 ``start_consent``) are async and use ``@pytest.mark.asyncio`` (asyncio is
@@ -64,11 +64,7 @@ def _write_rules(tmp_path):
 
 async def _stub_oidc(provider):
     """Async stand-in for ``oauth._fetch_oidc_config`` (no network)."""
-    return {
-        "authorization_endpoint": (
-            "https://accounts.google.com/o/oauth2/v2/auth"
-        )
-    }
+    return {"authorization_endpoint": ("https://accounts.google.com/o/oauth2/v2/auth")}
 
 
 def _register_consent_flow(monkeypatch, name="extra-scope"):
@@ -203,9 +199,7 @@ async def test_start_consent_no_secure_on_plain_http(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_enforce_raises_when_production_and_no_cookie_secret(
-    monkeypatch, tmp_path
-):
+def test_enforce_raises_when_production_and_no_cookie_secret(monkeypatch, tmp_path):
     """PYPLET_REQUIRE_AUTH=1 + auth on + unset secret → refuse to boot.
 
     A real rules file is supplied so 17.6's missing-rules check does not
@@ -230,9 +224,7 @@ def test_enforce_allows_when_cookie_secret_set(monkeypatch, tmp_path):
     assert result is None
 
 
-def test_enforce_allows_when_not_production_without_secret(
-    monkeypatch, tmp_path
-):
+def test_enforce_allows_when_not_production_without_secret(monkeypatch, tmp_path):
     """Local dev (PYPLET_REQUIRE_AUTH unset) + no secret → boots (no raise)."""
     _enable_oauth(monkeypatch)
     monkeypatch.setenv("PYPLET_AUTH_RULES_FILE", str(_write_rules(tmp_path)))

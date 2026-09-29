@@ -31,27 +31,21 @@ from pyplet.server._server import (
 from pyplet.shared.dom import body, head, html, title
 
 SVG_BYTES = b"<svg xmlns='http://www.w3.org/2000/svg'></svg>"
-FAVICON_URI = (
-    f"data:image/svg+xml;base64,{base64.b64encode(SVG_BYTES).decode()}"
-)
+FAVICON_URI = f"data:image/svg+xml;base64,{base64.b64encode(SVG_BYTES).decode()}"
 
 
 @pytest.mark.unit
 class TestLoadFaviconAsDataUri:
     """Test suite for `load_favicon_as_data_uri`."""
 
-    def test_missing_file_returns_none_and_logs_warning(
-        self, tmp_path, caplog
-    ):
+    def test_missing_file_returns_none_and_logs_warning(self, tmp_path, caplog):
         missing = tmp_path / "does_not_exist.svg"
 
         with caplog.at_level(logging.WARNING):
             result = load_favicon_as_data_uri(str(missing))
 
         assert result is None
-        assert any(
-            "not found" in record.message.lower() for record in caplog.records
-        )
+        assert any("not found" in record.message.lower() for record in caplog.records)
 
     def test_reads_svg_file_and_encodes_base64(self, tmp_path):
         svg_file = tmp_path / "logo.svg"
@@ -106,9 +100,7 @@ class TestHasFaviconLink:
 
 class _NoFaviconHandler(BaseHandler):
     def get(self):
-        self.write_html(
-            "<html><head><title>t</title></head><body>hi</body></html>"
-        )
+        self.write_html("<html><head><title>t</title></head><body>hi</body></html>")
 
 
 class _ExistingFaviconHandler(BaseHandler):
@@ -157,9 +149,7 @@ class TestWriteHtmlFaviconEnabled(tornado.testing.AsyncHTTPTestCase):
         response = self.fetch("/no-favicon")
         body = response.body.decode()
 
-        expected_tag = (
-            f'<link rel="icon" type="image/svg+xml" href="{FAVICON_URI}">'
-        )
+        expected_tag = f'<link rel="icon" type="image/svg+xml" href="{FAVICON_URI}">'
         assert expected_tag in body
         # Injected immediately after the opening <head> tag.
         assert body.index("<head>") + len("<head>") == body.index(expected_tag)
@@ -180,9 +170,7 @@ class TestWriteHtmlFaviconEnabled(tornado.testing.AsyncHTTPTestCase):
         response = self.fetch("/markup")
         body = response.body.decode()
 
-        expected_tag = (
-            f'<link rel="icon" type="image/svg+xml" href="{FAVICON_URI}">'
-        )
+        expected_tag = f'<link rel="icon" type="image/svg+xml" href="{FAVICON_URI}">'
         assert expected_tag in body
         # Regression guard: the tag must be real markup, not HTML-escaped
         # text sitting inside <head> (e.g. "&lt;link rel=&#34;icon&#34;").
