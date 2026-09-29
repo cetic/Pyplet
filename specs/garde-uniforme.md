@@ -11,7 +11,8 @@ et la CI rend le même verdict que le hook local.
 ## Critères d'acceptation
 
 1. Ruff : les deux dépôts appliquent les règles de complexité de QualiSpectra
-   (C90, PLR0912, PLR0913, PLR0915) en plus des règles communes, autofix
+   (C90, PLR0911, PLR0912, PLR0915 ; PLR0913 exclu, décision B1 de
+   `specs/sprint8-amont.md`) en plus des règles communes, autofix
    désactivé, ligne 88 (décision Arthur : 79 coûtait 138 retouches
    manuelles). `make lint` vert des deux côtés.
 2. Pre-commit : la batterie pyplet (pre-commit-hooks, gitleaks, ruff,

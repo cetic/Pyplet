@@ -42,7 +42,7 @@ current_year = datetime.datetime.now().year
 logger = logging.getLogger("pyplet.server.templates")
 
 
-def base_template(  # noqa: PLR0913
+def base_template(
     *,
     page_title: str | None = None,
     navbar: Node,

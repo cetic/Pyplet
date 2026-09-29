@@ -47,7 +47,7 @@ def _drop_event(files):
     )
 
 
-def _drop(  # noqa: PLR0913
+def _drop(
     bound,
     files,
     client_dest=None,

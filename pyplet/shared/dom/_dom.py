@@ -221,7 +221,7 @@ def download(
     )[button_text]
 
 
-def upload(  # noqa: PLR0913
+def upload(
     filename: str | None = None,
     button_text: str = "Upload",
     client_destination: str | None = None,
@@ -286,7 +286,7 @@ def upload(  # noqa: PLR0913
     ]
 
 
-def upload_area(  # noqa: PLR0913
+def upload_area(
     client_destination: str | None = None,
     server_destination: str | None = None,
     text: str = "Drag and drop files here, or click to browse",
@@ -567,7 +567,7 @@ def pp_audio(
     return audio(src=href, controls=True, **additional_attrs)
 
 
-def slider(  # noqa: PLR0913
+def slider(
     value: float = 50,
     min: float = 0,
     max: float = 100,

@@ -270,7 +270,7 @@ def _total_size_rejected(selected_file, total_size, total_size_limit):
     return False
 
 
-def _process_files(  # noqa: PLR0913
+def _process_files(
     files,
     target_filename,
     client_dest,
@@ -313,7 +313,7 @@ def _process_files(  # noqa: PLR0913
         reader.readAsArrayBuffer(selected_file)
 
 
-def _make_change_handler(  # noqa: PLR0913
+def _make_change_handler(
     file_input,
     filename,
     client_dest,
@@ -341,7 +341,7 @@ def _make_change_handler(  # noqa: PLR0913
     return on_change
 
 
-def upload_file(  # noqa: PLR0913
+def upload_file(
     filename,
     client_dest,
     server_dest,
@@ -381,7 +381,7 @@ def upload_file(  # noqa: PLR0913
     file_input.click()
 
 
-def handle_click(  # noqa: PLR0913
+def handle_click(
     event,
     client_dest,
     server_dest,
@@ -402,7 +402,7 @@ def handle_click(  # noqa: PLR0913
     )
 
 
-def handle_drop(  # noqa: PLR0913
+def handle_drop(
     event,
     client_dest,
     server_dest,
